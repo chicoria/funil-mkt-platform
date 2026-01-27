@@ -1,10 +1,9 @@
-name = "decole-brevo-form"
+name = "decole-brevo-worker"
 main = "src/index.js"
 compatibility_date = "2025-01-01"
-
-[triggers]
+workers_dev = false
 routes = [
-  "https://forms.decolesuacarreiraesg.com.br/brevo*"
+  "forms.decolesuacarreiraesg.com.br/brevo*"
 ]
 
 [vars]
