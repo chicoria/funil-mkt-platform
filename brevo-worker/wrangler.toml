@@ -1,0 +1,7 @@
+name = "decole-brevo-form"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+ALLOWED_ORIGIN = "https://decolesuacarreiraesg.com.br"
+BREVO_LIST_ID = "0"
