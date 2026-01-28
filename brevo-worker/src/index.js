@@ -84,17 +84,35 @@ export default {
     }
 
     var listId = Number(env.BREVO_LIST_ID || '0');
-    var payload = {
-      email: email,
-      updateEnabled: true,
-      attributes: {},
-    };
-    if (listId > 0) payload.listIds = [listId];
-    if (first) payload.attributes.FIRSTNAME = first;
-    if (last) payload.attributes.LASTNAME = last;
-    if (phone) payload.attributes.SMS = phone;
+    var attributes = {};
+    if (first) attributes.FIRSTNAME = first;
+    if (last) attributes.LASTNAME = last;
+    if (phone) attributes.SMS = phone;
 
-    var brevoResp = await fetch('https://api.brevo.com/v3/contacts', {
+    var doiTemplateId = Number(env.BREVO_DOI_TEMPLATE_ID || '0');
+    var doiRedirectUrl = (env.BREVO_DOI_REDIRECT_URL || '').trim();
+    var useDoi = doiTemplateId > 0 && doiRedirectUrl;
+
+    var endpoint = useDoi
+      ? 'https://api.brevo.com/v3/contacts/doubleOptinConfirmation'
+      : 'https://api.brevo.com/v3/contacts';
+
+    var payload = useDoi
+      ? {
+          email: email,
+          includeListIds: listId > 0 ? [listId] : [],
+          redirectionUrl: doiRedirectUrl,
+          templateId: doiTemplateId,
+          attributes: attributes,
+        }
+      : {
+          email: email,
+          updateEnabled: true,
+          attributes: attributes,
+          listIds: listId > 0 ? [listId] : undefined,
+        };
+
+    var brevoResp = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -108,6 +126,11 @@ export default {
       return jsonResponse({ ok: false, error: 'brevo_error', detail: errText }, 502, corsHeaders);
     }
 
-    return jsonResponse({ ok: true }, 200, corsHeaders);
+    var postSubmitRedirect = (env.POST_SUBMIT_REDIRECT_URL || env.BREVO_DOI_REDIRECT_URL || '').trim();
+    if (postSubmitRedirect) {
+      return Response.redirect(postSubmitRedirect, 303);
+    }
+
+    return jsonResponse({ ok: true, doi: useDoi }, 200, corsHeaders);
   },
 };
