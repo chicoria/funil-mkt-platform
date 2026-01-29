@@ -10,5 +10,4 @@ routes = [
 ALLOWED_ORIGIN = "https://decolesuacarreiraesg.com.br"
 BREVO_LIST_ID = "7"
 BREVO_DOI_TEMPLATE_ID = "1"
-BREVO_DOI_REDIRECT_URL = "https://pay.hotmart.com/K98068530F?off=1myrvww7"
-POST_SUBMIT_REDIRECT_URL = ""
+POST_SUBMIT_REDIRECT_URL = "https://pay.hotmart.com/K98068530F?off=1myrvww7"
