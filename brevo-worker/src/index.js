@@ -212,7 +212,26 @@ export default {
     if (phone) attributes.SMS = phone;
 
     var doiTemplateId = Number(env.BREVO_DOI_TEMPLATE_ID || '0');
-    var doiRedirectUrl = (env.BREVO_DOI_REDIRECT_URL || '').trim();
+    var fullName = [first, last].filter(Boolean).join(' ');
+    var phoneParts = splitPhoneForHotmart(phone, phoneCountry);
+    var hotmartParams = {
+      name: fullName || undefined,
+      email: email,
+      doc: doc || undefined,
+      zip: zip || undefined,
+      phoneac: phoneParts.phoneac || undefined,
+      phonenumber: phoneParts.phonenumber || undefined,
+      first_name: first || undefined,
+      last_name: last || undefined,
+      phone: phone || undefined,
+      phone_country: phoneCountry || undefined,
+      EMAIL: email,
+      FIRSTNAME: first || undefined,
+      LASTNAME: last || undefined,
+      SMS: phone || undefined,
+      SMS__COUNTRY_CODE: phoneCountry || undefined,
+    };
+    var doiRedirectUrl = buildRedirectUrl((env.BREVO_DOI_REDIRECT_URL || '').trim(), hotmartParams);
     var useDoi = doiTemplateId > 0 && doiRedirectUrl;
     console.log(
       JSON.stringify({
@@ -275,25 +294,7 @@ export default {
 
     var postSubmitRedirect = (env.POST_SUBMIT_REDIRECT_URL || env.BREVO_DOI_REDIRECT_URL || '').trim();
     if (postSubmitRedirect) {
-      var fullName = [first, last].filter(Boolean).join(' ');
-      var phoneParts = splitPhoneForHotmart(phone, phoneCountry);
-      var redirectUrl = buildRedirectUrl(postSubmitRedirect, {
-        name: fullName || undefined,
-        email: email,
-        doc: doc || undefined,
-        zip: zip || undefined,
-        phoneac: phoneParts.phoneac || undefined,
-        phonenumber: phoneParts.phonenumber || undefined,
-        first_name: first || undefined,
-        last_name: last || undefined,
-        phone: phone || undefined,
-        phone_country: phoneCountry || undefined,
-        EMAIL: email,
-        FIRSTNAME: first || undefined,
-        LASTNAME: last || undefined,
-        SMS: phone || undefined,
-        SMS__COUNTRY_CODE: phoneCountry || undefined,
-      });
+      var redirectUrl = buildRedirectUrl(postSubmitRedirect, hotmartParams);
       console.log(
         JSON.stringify({
           reqId: reqId,
