@@ -106,6 +106,21 @@ async function parseBody(request) {
   return data;
 }
 
+function parseQueryParams(url) {
+  var data = {};
+  url.searchParams.forEach(function (value, key) {
+    data[key] = value;
+  });
+  return data;
+}
+
+function isDebugRedirect(request, env, url) {
+  if (!(env.DEBUG_MODE === '1' || env.DEBUG_MODE === 'true')) return false;
+  if (url.searchParams.get('debug_redirect') === '1') return true;
+  var header = request.headers.get('x-debug-redirect') || '';
+  return header === '1' || header.toLowerCase() === 'true';
+}
+
 async function verifyTurnstile(token, ip, secret) {
   if (!secret) return true;
   if (!token) return false;
@@ -123,6 +138,7 @@ async function verifyTurnstile(token, ip, secret) {
 
 export default {
   async fetch(request, env) {
+    var url = new URL(request.url);
     var reqId =
       (typeof crypto !== 'undefined' && crypto.randomUUID && crypto.randomUUID()) ||
       String(Date.now()) + '-' + Math.random().toString(16).slice(2);
@@ -156,7 +172,9 @@ export default {
       return jsonResponse({ ok: false, error: 'origin_not_allowed' }, 403, corsHeaders);
     }
 
-    if (request.method !== 'POST') {
+    var debugRedirect = isDebugRedirect(request, env, url);
+    var allowGet = debugRedirect && request.method === 'GET';
+    if (request.method !== 'POST' && !allowGet) {
       console.log(
         JSON.stringify({
           reqId: reqId,
@@ -168,7 +186,7 @@ export default {
       return jsonResponse({ ok: false, error: 'method_not_allowed' }, 405, corsHeaders);
     }
 
-    var data = await parseBody(request);
+    var data = allowGet ? parseQueryParams(url) : await parseBody(request);
     var email = (data.EMAIL || data.email || '').trim().toLowerCase();
     if (!email) {
       console.log(
@@ -243,6 +261,24 @@ export default {
       })
     );
 
+    var postSubmitRedirect = (env.POST_SUBMIT_REDIRECT_URL || env.BREVO_DOI_REDIRECT_URL || '').trim();
+    var redirectUrl = buildRedirectUrl(postSubmitRedirect, hotmartParams);
+    if (debugRedirect) {
+      return jsonResponse(
+        {
+          ok: true,
+          debug: true,
+          useDoi: useDoi,
+          postSubmitRedirect: postSubmitRedirect || '',
+          redirectUrl: redirectUrl || '',
+          doiRedirectUrl: doiRedirectUrl || '',
+          params: hotmartParams,
+        },
+        200,
+        corsHeaders
+      );
+    }
+
     var endpoint = useDoi
       ? 'https://api.brevo.com/v3/contacts/doubleOptinConfirmation'
       : 'https://api.brevo.com/v3/contacts';
@@ -292,9 +328,7 @@ export default {
       })
     );
 
-    var postSubmitRedirect = (env.POST_SUBMIT_REDIRECT_URL || env.BREVO_DOI_REDIRECT_URL || '').trim();
     if (postSubmitRedirect) {
-      var redirectUrl = buildRedirectUrl(postSubmitRedirect, hotmartParams);
       console.log(
         JSON.stringify({
           reqId: reqId,
