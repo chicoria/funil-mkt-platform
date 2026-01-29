@@ -45,6 +45,10 @@ async function verifyTurnstile(token, ip, secret) {
 
 export default {
   async fetch(request, env) {
+    var reqId =
+      (typeof crypto !== 'undefined' && crypto.randomUUID && crypto.randomUUID()) ||
+      String(Date.now()) + '-' + Math.random().toString(16).slice(2);
+    var startedAt = Date.now();
     var origin = request.headers.get('origin') || '';
     var allowedOrigin = env.ALLOWED_ORIGIN || '*';
     var corsHeaders = {
@@ -55,33 +59,70 @@ export default {
     };
 
     if (request.method === 'OPTIONS') {
+      console.log(
+        JSON.stringify({ reqId: reqId, stage: 'preflight', origin: origin, ok: true })
+      );
       return new Response(null, { headers: corsHeaders });
     }
 
     if (allowedOrigin !== '*' && origin && origin !== allowedOrigin) {
+      console.log(
+        JSON.stringify({
+          reqId: reqId,
+          stage: 'origin_check',
+          ok: false,
+          origin: origin,
+          allowedOrigin: allowedOrigin,
+        })
+      );
       return jsonResponse({ ok: false, error: 'origin_not_allowed' }, 403, corsHeaders);
     }
 
     if (request.method !== 'POST') {
+      console.log(
+        JSON.stringify({
+          reqId: reqId,
+          stage: 'method_check',
+          ok: false,
+          method: request.method,
+        })
+      );
       return jsonResponse({ ok: false, error: 'method_not_allowed' }, 405, corsHeaders);
     }
 
     var data = await parseBody(request);
     var email = (data.EMAIL || data.email || '').trim().toLowerCase();
     if (!email) {
+      console.log(
+        JSON.stringify({ reqId: reqId, stage: 'validate', ok: false, reason: 'no_email' })
+      );
       return jsonResponse({ ok: false, error: 'email_required' }, 400, corsHeaders);
     }
 
     var first = (data.FIRSTNAME || data.first_name || '').trim();
     var last = (data.LASTNAME || data.last_name || '').trim();
     var phone = normalizePhone(data.SMS || data.phone, data.SMS__COUNTRY_CODE || data.country_code);
+    console.log(
+      JSON.stringify({
+        reqId: reqId,
+        stage: 'parsed',
+        ok: true,
+        hasFirst: !!first,
+        hasLast: !!last,
+        hasPhone: !!phone,
+      })
+    );
 
     var turnstileToken = data['cf-turnstile-response'];
     var ip = request.headers.get('CF-Connecting-IP') || '';
     var turnstileOk = await verifyTurnstile(turnstileToken, ip, env.TURNSTILE_SECRET);
     if (!turnstileOk) {
+      console.log(
+        JSON.stringify({ reqId: reqId, stage: 'turnstile', ok: false })
+      );
       return jsonResponse({ ok: false, error: 'captcha_failed' }, 400, corsHeaders);
     }
+    console.log(JSON.stringify({ reqId: reqId, stage: 'turnstile', ok: true }));
 
     var listId = Number(env.BREVO_LIST_ID || '0');
     var attributes = {};
@@ -92,6 +133,15 @@ export default {
     var doiTemplateId = Number(env.BREVO_DOI_TEMPLATE_ID || '0');
     var doiRedirectUrl = (env.BREVO_DOI_REDIRECT_URL || '').trim();
     var useDoi = doiTemplateId > 0 && doiRedirectUrl;
+    console.log(
+      JSON.stringify({
+        reqId: reqId,
+        stage: 'doi_check',
+        ok: true,
+        useDoi: useDoi,
+        listId: listId,
+      })
+    );
 
     var endpoint = useDoi
       ? 'https://api.brevo.com/v3/contacts/doubleOptinConfirmation'
@@ -123,14 +173,47 @@ export default {
 
     if (!brevoResp.ok) {
       var errText = await brevoResp.text();
+      console.log(
+        JSON.stringify({
+          reqId: reqId,
+          stage: 'brevo',
+          ok: false,
+          status: brevoResp.status,
+        })
+      );
       return jsonResponse({ ok: false, error: 'brevo_error', detail: errText }, 502, corsHeaders);
     }
+    console.log(
+      JSON.stringify({
+        reqId: reqId,
+        stage: 'brevo',
+        ok: true,
+        status: brevoResp.status,
+      })
+    );
 
     var postSubmitRedirect = (env.POST_SUBMIT_REDIRECT_URL || env.BREVO_DOI_REDIRECT_URL || '').trim();
     if (postSubmitRedirect) {
+      console.log(
+        JSON.stringify({
+          reqId: reqId,
+          stage: 'redirect',
+          ok: true,
+          hasRedirect: true,
+          ms: Date.now() - startedAt,
+        })
+      );
       return Response.redirect(postSubmitRedirect, 303);
     }
 
+    console.log(
+      JSON.stringify({
+        reqId: reqId,
+        stage: 'done',
+        ok: true,
+        ms: Date.now() - startedAt,
+      })
+    );
     return jsonResponse({ ok: true, doi: useDoi }, 200, corsHeaders);
   },
 };
