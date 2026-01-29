@@ -159,7 +159,8 @@ export default {
       return new Response(null, { headers: corsHeaders });
     }
 
-    if (allowedOrigin !== '*' && origin && origin !== allowedOrigin) {
+    var debugRedirect = isDebugRedirect(request, env, url);
+    if (!debugRedirect && allowedOrigin !== '*' && origin && origin !== allowedOrigin) {
       console.log(
         JSON.stringify({
           reqId: reqId,
@@ -172,7 +173,6 @@ export default {
       return jsonResponse({ ok: false, error: 'origin_not_allowed' }, 403, corsHeaders);
     }
 
-    var debugRedirect = isDebugRedirect(request, env, url);
     var allowGet = debugRedirect && request.method === 'GET';
     if (request.method !== 'POST' && !allowGet) {
       console.log(
