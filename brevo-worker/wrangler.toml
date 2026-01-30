@@ -5,14 +5,11 @@ workers_dev = false
 routes = [
   "forms.decolesuacarreiraesg.com.br/brevo*"
 ]
-{
-  "observability": {
-    "logs": {
-      "enabled": false,
-      "invocation_logs": true
-    }
-  }
-}
+
+[observability]
+  [observability.logs]
+  enabled = false
+  invocation_logs = true
 
 [vars]
 ALLOWED_ORIGIN = "https://decolesuacarreiraesg.com.br"
