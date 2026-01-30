@@ -139,22 +139,6 @@ function parseBrevoError(payloadText) {
   };
 }
 
-function mapBrevoError(err) {
-  var msg = (err.message || '').toLowerCase();
-  if (err.code === 'invalid_parameter' && msg.indexOf('sms number is already associated') !== -1) {
-    return {
-      status: 409,
-      error: 'sms_already_used',
-      message: 'Este WhatsApp já está associado a outro e-mail. Use um número diferente.',
-    };
-  }
-  return {
-    status: 400,
-    error: 'brevo_error',
-    message: err.message || 'Erro ao enviar dados para o Brevo.',
-  };
-}
-
 async function sendBrevo(requestConfig, apiKey) {
   return fetch(requestConfig.endpoint, {
     method: 'POST',
@@ -259,16 +243,16 @@ export default {
     if (!brevoResp.ok) {
       var errText = await brevoResp.text();
       var err = parseBrevoError(errText);
-      var mapped = mapBrevoError(err);
       logStage(reqId, 'brevo', { ok: false, status: brevoResp.status, code: err.code });
       return jsonResponse(
         {
           ok: false,
-          error: mapped.error,
+          error: 'brevo_error',
           code: err.code || undefined,
-          message: mapped.message,
+          message: err.message || errText || 'Brevo error',
+          detail: errText || undefined,
         },
-        mapped.status,
+        brevoResp.status,
         corsHeaders
       );
     }

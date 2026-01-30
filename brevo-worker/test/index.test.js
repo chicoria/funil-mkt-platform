@@ -126,7 +126,7 @@ describe("brevo worker", () => {
     expect(brevoBody.redirectionUrl).toBeUndefined();
   });
 
-  it("mapeia erro de sms ja associado", async () => {
+  it("propaga erro do brevo (sms ja associado)", async () => {
     global.fetch.mockImplementationOnce(async (url) => {
       if (String(url).indexOf("challenges.cloudflare.com/turnstile") !== -1) {
         return { ok: true, json: async () => ({ success: true }) };
@@ -156,8 +156,46 @@ describe("brevo worker", () => {
       { ajax: true }
     );
     var res = await worker.fetch(req, makeEnv({ TURNSTILE_SECRET: "secret" }));
-    expect(res.status).toBe(409);
+    expect(res.status).toBe(400);
     var json = await res.json();
-    expect(json.error).toBe("sms_already_used");
+    expect(json.error).toBe("brevo_error");
+    expect(json.code).toBe("invalid_parameter");
+    expect(json.message).toMatch(/sms number is already associated/i);
+  });
+
+  it("propaga erro do brevo (telefone invalido)", async () => {
+    global.fetch.mockImplementationOnce(async (url) => {
+      if (String(url).indexOf("challenges.cloudflare.com/turnstile") !== -1) {
+        return { ok: true, json: async () => ({ success: true }) };
+      }
+      return { ok: true, status: 200, text: async () => "" };
+    });
+    global.fetch.mockImplementationOnce(async () => {
+      return {
+        ok: false,
+        status: 400,
+        text: async () =>
+          JSON.stringify({
+            code: "invalid_parameter",
+            message: "Invalid phone number",
+          }),
+      };
+    });
+
+    var req = makeRequest(
+      {
+        email: "teste@exemplo.com",
+        SMS: "123",
+        SMS__COUNTRY_CODE: "+55",
+        "cf-turnstile-response": "token"
+      },
+      { ajax: true }
+    );
+    var res = await worker.fetch(req, makeEnv({ TURNSTILE_SECRET: "secret" }));
+    expect(res.status).toBe(400);
+    var json = await res.json();
+    expect(json.error).toBe("brevo_error");
+    expect(json.code).toBe("invalid_parameter");
+    expect(json.message).toMatch(/invalid phone number/i);
   });
 });
