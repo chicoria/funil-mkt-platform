@@ -19,7 +19,7 @@ function buildCorsHeaders(allowedOrigin, origin) {
   return {
     'access-control-allow-origin': allowedOrigin === '*' ? '*' : origin,
     'access-control-allow-methods': 'POST, OPTIONS',
-    'access-control-allow-headers': 'content-type',
+    'access-control-allow-headers': 'content-type, x-brevo-ajax',
     'access-control-max-age': '86400',
   };
 }
@@ -33,6 +33,13 @@ function isOriginAllowed(allowedOrigin, origin) {
   if (allowedOrigin === '*') return true;
   if (!origin) return true;
   return origin === allowedOrigin;
+}
+
+function isAjaxRequest(request) {
+  var header = request.headers.get('x-brevo-ajax') || '';
+  if (header === '1' || header.toLowerCase() === 'true') return true;
+  var accept = request.headers.get('accept') || '';
+  return accept.indexOf('application/json') !== -1;
 }
 
 function getRequestId() {
@@ -127,6 +134,35 @@ function buildBrevoRequest(email, attributes, listId, doiConfig) {
   return {
     endpoint: endpoint,
     payload: payload,
+  };
+}
+
+function parseBrevoError(payloadText) {
+  var parsed = null;
+  try {
+    parsed = JSON.parse(payloadText);
+  } catch (err) {
+    return { code: '', message: payloadText || '' };
+  }
+  return {
+    code: parsed && parsed.code ? String(parsed.code) : '',
+    message: parsed && parsed.message ? String(parsed.message) : payloadText || '',
+  };
+}
+
+function mapBrevoError(err) {
+  var msg = (err.message || '').toLowerCase();
+  if (err.code === 'invalid_parameter' && msg.indexOf('sms number is already associated') !== -1) {
+    return {
+      status: 409,
+      error: 'sms_already_used',
+      message: 'Este WhatsApp já está associado a outro e-mail. Use um número diferente.',
+    };
+  }
+  return {
+    status: 400,
+    error: 'brevo_error',
+    message: err.message || 'Erro ao enviar dados para o Brevo.',
   };
 }
 
@@ -235,13 +271,24 @@ export default {
     var brevoResp = await sendBrevo(brevoRequest, env.BREVO_API_KEY);
     if (!brevoResp.ok) {
       var errText = await brevoResp.text();
-      logStage(reqId, 'brevo', { ok: false, status: brevoResp.status });
-      return jsonResponse({ ok: false, error: 'brevo_error', detail: errText }, 502, corsHeaders);
+      var err = parseBrevoError(errText);
+      var mapped = mapBrevoError(err);
+      logStage(reqId, 'brevo', { ok: false, status: brevoResp.status, code: err.code });
+      return jsonResponse(
+        {
+          ok: false,
+          error: mapped.error,
+          code: err.code || undefined,
+          message: mapped.message,
+        },
+        mapped.status,
+        corsHeaders
+      );
     }
 
     logStage(reqId, 'brevo', { ok: true, status: brevoResp.status });
 
-    if (postSubmitRedirect) {
+    if (postSubmitRedirect && !isAjaxRequest(request)) {
       logStage(reqId, 'redirect', {
         ok: true,
         hasRedirect: true,
@@ -251,6 +298,10 @@ export default {
     }
 
     logStage(reqId, 'done', { ok: true, ms: Date.now() - startedAt });
-    return jsonResponse({ ok: true, doi: doiConfig.useDoi }, 200, corsHeaders);
+    return jsonResponse(
+      { ok: true, doi: doiConfig.useDoi, redirectUrl: postSubmitRedirect || '' },
+      200,
+      corsHeaders
+    );
   },
 };

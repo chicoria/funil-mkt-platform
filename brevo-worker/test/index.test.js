@@ -20,6 +20,7 @@ function makeRequest(body, options = {}) {
     headers: {
       origin: options.origin || "https://decolesuacarreiraesg.com.br",
       "content-type": "application/json",
+      ...(options.ajax ? { "x-brevo-ajax": "1", accept: "application/json" } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -44,7 +45,7 @@ beforeEach(() => {
 describe("brevo worker", () => {
   it("recusa metodos nao POST", async () => {
     var req = makeRequest(null, { method: "GET" });
-    var res = await worker.fetch(req, makeEnv());
+    var res = await worker.fetch(req, makeEnv({ TURNSTILE_SECRET: "secret" }));
     expect(res.status).toBe(405);
   });
 
@@ -78,6 +79,15 @@ describe("brevo worker", () => {
     var res = await worker.fetch(req, makeEnv());
     expect(res.status).toBe(303);
     expect(res.headers.get("location")).toContain("https://pay.hotmart.com/");
+  });
+
+  it("retorna JSON quando ajax e ha redirect", async () => {
+    var req = makeRequest({ email: "teste@exemplo.com" }, { ajax: true });
+    var res = await worker.fetch(req, makeEnv());
+    expect(res.status).toBe(200);
+    var json = await res.json();
+    expect(json.ok).toBe(true);
+    expect(json.redirectUrl).toContain("https://pay.hotmart.com/");
   });
 
   it("retorna JSON quando nao ha redirect", async () => {
@@ -134,5 +144,40 @@ describe("brevo worker", () => {
     expect(res.status).toBe(303);
     expect(brevoBody.attributes.LEAD_ID).toBe("lead-456");
     expect(brevoBody.redirectionUrl).toBeUndefined();
+  });
+
+  it("mapeia erro de sms ja associado", async () => {
+    global.fetch.mockImplementationOnce(async (url) => {
+      if (String(url).indexOf("challenges.cloudflare.com/turnstile") !== -1) {
+        return { ok: true, json: async () => ({ success: true }) };
+      }
+      return { ok: true, status: 200, text: async () => "" };
+    });
+    global.fetch.mockImplementationOnce(async () => {
+      return {
+        ok: false,
+        status: 400,
+        text: async () =>
+          JSON.stringify({
+            code: "invalid_parameter",
+            message:
+              "This sms number is already associated with another user. Please use a different sms number.",
+          }),
+      };
+    });
+
+    var req = makeRequest(
+      {
+        email: "teste@exemplo.com",
+        SMS: "11999999999",
+        SMS__COUNTRY_CODE: "+55",
+        "cf-turnstile-response": "token"
+      },
+      { ajax: true }
+    );
+    var res = await worker.fetch(req, makeEnv({ TURNSTILE_SECRET: "secret" }));
+    expect(res.status).toBe(409);
+    var json = await res.json();
+    expect(json.error).toBe("sms_already_used");
   });
 });
