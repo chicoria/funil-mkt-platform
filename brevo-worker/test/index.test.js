@@ -8,7 +8,6 @@ function makeEnv(overrides = {}) {
     BREVO_LIST_ID: "7",
     BREVO_DOI_TEMPLATE_ID: "1",
     BREVO_DOI_REDIRECT_URL: "https://decolesuacarreiraesg.com.br/confirmacao.html",
-    POST_SUBMIT_REDIRECT_URL: "https://pay.hotmart.com/K98068530F?off=1myrvww7",
     TURNSTILE_SECRET: "",
     ...overrides,
   };
@@ -74,28 +73,9 @@ describe("brevo worker", () => {
     expect(res.status).toBe(400);
   });
 
-  it("redireciona quando ha POST_SUBMIT_REDIRECT_URL", async () => {
-    var req = makeRequest({ email: "teste@exemplo.com" });
-    var res = await worker.fetch(req, makeEnv());
-    expect(res.status).toBe(303);
-    expect(res.headers.get("location")).toContain("https://pay.hotmart.com/");
-  });
-
-  it("retorna JSON quando ajax e ha redirect", async () => {
-    var req = makeRequest({ email: "teste@exemplo.com" }, { ajax: true });
-    var res = await worker.fetch(req, makeEnv());
-    expect(res.status).toBe(200);
-    var json = await res.json();
-    expect(json.ok).toBe(true);
-    expect(json.redirectUrl).toContain("https://pay.hotmart.com/");
-  });
-
   it("retorna JSON quando nao ha redirect", async () => {
     var req = makeRequest({ email: "teste@exemplo.com" });
-    var res = await worker.fetch(
-      req,
-      makeEnv({ POST_SUBMIT_REDIRECT_URL: "", BREVO_DOI_REDIRECT_URL: "" })
-    );
+    var res = await worker.fetch(req, makeEnv({ BREVO_DOI_REDIRECT_URL: "" }));
     expect(res.status).toBe(200);
     var json = await res.json();
     expect(json.ok).toBe(true);
@@ -117,7 +97,7 @@ describe("brevo worker", () => {
 
     var req = makeRequest({ email: "teste@exemplo.com", LEAD_ID: "lead-123" });
     var res = await worker.fetch(req, makeEnv());
-    expect(res.status).toBe(303);
+    expect(res.status).toBe(200);
     expect(brevoBody.attributes.LEAD_ID).toBe("lead-123");
     expect(brevoBody.redirectionUrl).toContain("lead_id=lead-123");
   });
@@ -141,7 +121,7 @@ describe("brevo worker", () => {
       req,
       makeEnv({ BREVO_DOI_TEMPLATE_ID: "0", BREVO_DOI_REDIRECT_URL: "" })
     );
-    expect(res.status).toBe(303);
+    expect(res.status).toBe(200);
     expect(brevoBody.attributes.LEAD_ID).toBe("lead-456");
     expect(brevoBody.redirectionUrl).toBeUndefined();
   });

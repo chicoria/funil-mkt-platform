@@ -35,13 +35,6 @@ function isOriginAllowed(allowedOrigin, origin) {
   return origin === allowedOrigin;
 }
 
-function isAjaxRequest(request) {
-  var header = request.headers.get('x-brevo-ajax') || '';
-  if (header === '1' || header.toLowerCase() === 'true') return true;
-  var accept = request.headers.get('accept') || '';
-  return accept.indexOf('application/json') !== -1;
-}
-
 function getRequestId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();
@@ -105,10 +98,6 @@ function getDoiConfig(env, leadId) {
     redirectUrl: redirectUrl,
     useDoi: useDoi,
   };
-}
-
-function getPostSubmitRedirect(env) {
-  return (env.POST_SUBMIT_REDIRECT_URL || env.BREVO_DOI_REDIRECT_URL || '').trim();
 }
 
 function buildBrevoRequest(email, attributes, listId, doiConfig) {
@@ -264,8 +253,6 @@ export default {
       listId: listId,
     });
 
-    var postSubmitRedirect = getPostSubmitRedirect(env);
-    var redirectUrl = postSubmitRedirect;
     var brevoRequest = buildBrevoRequest(lead.email, attributes, listId, doiConfig);
 
     var brevoResp = await sendBrevo(brevoRequest, env.BREVO_API_KEY);
@@ -288,20 +275,7 @@ export default {
 
     logStage(reqId, 'brevo', { ok: true, status: brevoResp.status });
 
-    if (postSubmitRedirect && !isAjaxRequest(request)) {
-      logStage(reqId, 'redirect', {
-        ok: true,
-        hasRedirect: true,
-        ms: Date.now() - startedAt,
-      });
-      return Response.redirect(redirectUrl, 303);
-    }
-
     logStage(reqId, 'done', { ok: true, ms: Date.now() - startedAt });
-    return jsonResponse(
-      { ok: true, doi: doiConfig.useDoi, redirectUrl: postSubmitRedirect || '' },
-      200,
-      corsHeaders
-    );
+    return jsonResponse({ ok: true, doi: doiConfig.useDoi }, 200, corsHeaders);
   },
 };
