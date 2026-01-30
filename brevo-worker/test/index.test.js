@@ -90,4 +90,49 @@ describe("brevo worker", () => {
     var json = await res.json();
     expect(json.ok).toBe(true);
   });
+
+  it("inclui LEAD_ID nos atributos e na redirectionUrl (DOI)", async () => {
+    var brevoBody;
+    global.fetch.mockImplementation(async (url, options) => {
+      var urlStr = String(url || "");
+      if (urlStr.indexOf("challenges.cloudflare.com/turnstile") !== -1) {
+        return { ok: true, json: async () => ({ success: true }) };
+      }
+      if (urlStr.indexOf("api.brevo.com") !== -1) {
+        brevoBody = JSON.parse(options.body);
+        return { ok: true, status: 200, text: async () => "" };
+      }
+      return { ok: true, status: 200, text: async () => "" };
+    });
+
+    var req = makeRequest({ email: "teste@exemplo.com", LEAD_ID: "lead-123" });
+    var res = await worker.fetch(req, makeEnv());
+    expect(res.status).toBe(303);
+    expect(brevoBody.attributes.LEAD_ID).toBe("lead-123");
+    expect(brevoBody.redirectionUrl).toContain("lead_id=lead-123");
+  });
+
+  it("inclui LEAD_ID nos atributos quando DOI esta desativado", async () => {
+    var brevoBody;
+    global.fetch.mockImplementation(async (url, options) => {
+      var urlStr = String(url || "");
+      if (urlStr.indexOf("challenges.cloudflare.com/turnstile") !== -1) {
+        return { ok: true, json: async () => ({ success: true }) };
+      }
+      if (urlStr.indexOf("api.brevo.com") !== -1) {
+        brevoBody = JSON.parse(options.body);
+        return { ok: true, status: 200, text: async () => "" };
+      }
+      return { ok: true, status: 200, text: async () => "" };
+    });
+
+    var req = makeRequest({ email: "teste@exemplo.com", LEAD_ID: "lead-456" });
+    var res = await worker.fetch(
+      req,
+      makeEnv({ BREVO_DOI_TEMPLATE_ID: "0", BREVO_DOI_REDIRECT_URL: "" })
+    );
+    expect(res.status).toBe(303);
+    expect(brevoBody.attributes.LEAD_ID).toBe("lead-456");
+    expect(brevoBody.redirectionUrl).toBeUndefined();
+  });
 });

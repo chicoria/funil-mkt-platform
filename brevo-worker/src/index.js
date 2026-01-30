@@ -48,6 +48,7 @@ function normalizeLeadInput(data) {
   var last = (data.LASTNAME || data.last_name || '').trim();
   var phoneCountry = (data.SMS__COUNTRY_CODE || data.country_code || '').trim();
   var phone = normalizePhone(data.SMS || data.phone, phoneCountry);
+  var leadId = (data.LEAD_ID || data.lead_id || '').trim();
 
   return {
     email: email,
@@ -55,6 +56,7 @@ function normalizeLeadInput(data) {
     last: last,
     phoneCountry: phoneCountry,
     phone: phone,
+    leadId: leadId,
   };
 }
 
@@ -63,12 +65,33 @@ function buildAttributes(lead) {
   if (lead.first) attributes.FIRSTNAME = lead.first;
   if (lead.last) attributes.LASTNAME = lead.last;
   if (lead.phone) attributes.SMS = lead.phone;
+  if (lead.leadId) attributes.LEAD_ID = lead.leadId;
   return attributes;
 }
 
-function getDoiConfig(env) {
+function buildRedirectUrl(baseUrl, params) {
+  if (!baseUrl) return '';
+  var url;
+  try {
+    url = new URL(baseUrl);
+  } catch (err) {
+    return baseUrl;
+  }
+  Object.keys(params || {}).forEach(function (key) {
+    var value = params[key];
+    if (value === undefined || value === null || value === '') return;
+    if (url.searchParams.has(key)) return;
+    url.searchParams.set(key, String(value));
+  });
+  return url.toString();
+}
+
+function getDoiConfig(env, leadId) {
   var templateId = Number(env.BREVO_DOI_TEMPLATE_ID || '0');
-  var redirectUrl = (env.BREVO_DOI_REDIRECT_URL || '').trim();
+  var baseRedirect = (env.BREVO_DOI_REDIRECT_URL || '').trim();
+  var redirectUrl = buildRedirectUrl(baseRedirect, {
+    lead_id: leadId || undefined,
+  });
   var useDoi = templateId > 0 && redirectUrl;
   return {
     templateId: templateId,
@@ -198,7 +221,7 @@ export default {
 
     var listId = Number(env.BREVO_LIST_ID || '0');
     var attributes = buildAttributes(lead);
-    var doiConfig = getDoiConfig(env);
+    var doiConfig = getDoiConfig(env, lead.leadId);
     logStage(reqId, 'doi_check', {
       ok: true,
       useDoi: doiConfig.useDoi,
