@@ -1,3 +1,6 @@
+/**
+ * Retorna uma resposta JSON com o corpo, status e headers especificados.
+ */
 function jsonResponse(body, status, headers) {
   return new Response(JSON.stringify(body), {
     status: status,
