@@ -89,11 +89,42 @@ function buildRedirectUrl(baseUrl, params) {
   return url.toString();
 }
 
-function getDoiConfig(env, leadId) {
+function parseCookies(cookieHeader) {
+  var output = {};
+  if (!cookieHeader) return output;
+  cookieHeader.split(';').forEach(function (pair) {
+    var idx = pair.indexOf('=');
+    if (idx === -1) return;
+    var key = pair.slice(0, idx).trim();
+    var value = pair.slice(idx + 1).trim();
+    if (!key) return;
+    output[key] = decodeURIComponent(value);
+  });
+  return output;
+}
+
+function extractMetaIds(data, cookieHeader) {
+  var cookies = parseCookies(cookieHeader);
+  var fbp = (data.FBP || data.fbp || data._fbp || '').trim();
+  if (!fbp) fbp = cookies._fbp || '';
+  var fbc = (data.FBC || data.fbc || data._fbc || '').trim();
+  if (!fbc) fbc = cookies._fbc || '';
+  var fbclid = (data.FBCLID || data.fbclid || '').trim();
+  return {
+    fbp: fbp,
+    fbc: fbc,
+    fbclid: fbclid,
+  };
+}
+
+function getDoiConfig(env, leadId, metaIds) {
   var templateId = Number(env.BREVO_DOI_TEMPLATE_ID || '0');
   var baseRedirect = (env.BREVO_DOI_REDIRECT_URL || '').trim();
   var redirectUrl = buildRedirectUrl(baseRedirect, {
     lead_id: leadId || undefined,
+    fbp: metaIds && metaIds.fbp ? metaIds.fbp : undefined,
+    fbc: metaIds && metaIds.fbc ? metaIds.fbc : undefined,
+    fbclid: metaIds && metaIds.fbclid ? metaIds.fbclid : undefined,
   });
   var useDoi = templateId > 0 && redirectUrl;
   return {
@@ -209,6 +240,7 @@ export default {
     }
 
     var data = await parseBody(request);
+    var metaIds = extractMetaIds(data, request.headers.get('cookie') || '');
     var lead = normalizeLeadInput(data);
     if (!lead.email) {
       logStage(reqId, 'validate', { ok: false, reason: 'no_email' });
@@ -233,7 +265,7 @@ export default {
 
     var listId = Number(env.BREVO_LIST_ID || '0');
     var attributes = buildAttributes(lead);
-    var doiConfig = getDoiConfig(env, lead.leadId);
+    var doiConfig = getDoiConfig(env, lead.leadId, metaIds);
     logStage(reqId, 'doi_check', {
       ok: true,
       useDoi: doiConfig.useDoi,

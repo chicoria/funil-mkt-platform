@@ -81,7 +81,7 @@ describe("brevo worker", () => {
     expect(json.ok).toBe(true);
   });
 
-  it("inclui LEAD_ID nos atributos e na redirectionUrl (DOI)", async () => {
+  it("inclui LEAD_ID e identificadores da Meta na redirectionUrl (DOI)", async () => {
     var brevoBody;
     global.fetch.mockImplementation(async (url, options) => {
       var urlStr = String(url || "");
@@ -95,11 +95,20 @@ describe("brevo worker", () => {
       return { ok: true, status: 200, text: async () => "" };
     });
 
-    var req = makeRequest({ email: "teste@exemplo.com", LEAD_ID: "lead-123" });
+    var req = makeRequest({
+      email: "teste@exemplo.com",
+      LEAD_ID: "lead-123",
+      FBP: "fb.1.1234567890.1111111111",
+      FBC: "fb.1.1234567890.ABCDEF1234567890",
+      FBCLID: "ABCDEF1234567890"
+    });
     var res = await worker.fetch(req, makeEnv());
     expect(res.status).toBe(200);
     expect(brevoBody.attributes.LEAD_ID).toBe("lead-123");
     expect(brevoBody.redirectionUrl).toContain("lead_id=lead-123");
+    expect(brevoBody.redirectionUrl).toContain("fbp=fb.1.1234567890.1111111111");
+    expect(brevoBody.redirectionUrl).toContain("fbc=fb.1.1234567890.ABCDEF1234567890");
+    expect(brevoBody.redirectionUrl).toContain("fbclid=ABCDEF1234567890");
   });
 
   it("inclui LEAD_ID nos atributos quando DOI esta desativado", async () => {
