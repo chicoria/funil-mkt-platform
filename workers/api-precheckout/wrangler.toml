@@ -1,4 +1,4 @@
-name = "decole-brevo-worker"
+name = "decole-api-precheckout"
 main = "src/index.ts"
 compatibility_date = "2025-01-01"
 workers_dev = false

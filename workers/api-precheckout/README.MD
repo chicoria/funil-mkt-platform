@@ -1,4 +1,4 @@
-# Brevo Worker (Cloudflare)
+# DECOLE API Precheckout Worker (Cloudflare)
 
 Worker que recebe dados do pre-checkout, cria/atualiza contato no Brevo e redireciona o usuario.
 Suporta fluxo com Double Opt-in (DOI) e fluxo sem DOI.

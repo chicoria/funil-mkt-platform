@@ -1,5 +1,5 @@
 {
-  "name": "decole-brevo-worker",
+  "name": "decole-api-precheckout",
   "private": true,
   "type": "module",
   "scripts": {
