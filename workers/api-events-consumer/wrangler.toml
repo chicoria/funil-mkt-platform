@@ -1,0 +1,20 @@
+name = "decole-jobs-events-consumer"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+workers_dev = true
+
+[[queues.consumers]]
+queue = "decole-q-hotmart-events"
+max_batch_size = 25
+max_batch_timeout = 10
+max_retries = 5
+dead_letter_queue = "decole-q-hotmart-events-dlq"
+
+[observability]
+  [observability.logs]
+  enabled = false
+  invocation_logs = true
+
+[vars]
+BREVO_LIST_BEGIN_CHECKOUT = "0"
+BREVO_LIST_PURCHASE = "0"
