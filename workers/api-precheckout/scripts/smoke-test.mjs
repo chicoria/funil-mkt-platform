@@ -1,9 +1,9 @@
-const smokeUrl = process.env.SMOKE_URL || "https://api.decolesuacarreiraesg.com.br/brevo";
 const smokeOrigin = process.env.SMOKE_ORIGIN || "https://decolesuacarreiraesg.com.br";
 const expectedStatus = Number(process.env.SMOKE_EXPECTED_STATUS || 400);
 const expectedError = process.env.SMOKE_EXPECTED_ERROR || "email_required";
 const maxAttempts = Number(process.env.SMOKE_MAX_ATTEMPTS || 10);
 const delayMs = Number(process.env.SMOKE_DELAY_MS || 3000);
+const smokeUrl = process.env.SMOKE_URL || "https://api.decolesuacarreiraesg.com.br/brevo";
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
