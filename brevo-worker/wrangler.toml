@@ -3,7 +3,7 @@ main = "src/index.ts"
 compatibility_date = "2025-01-01"
 workers_dev = false
 routes = [
-  "forms.decolesuacarreiraesg.com.br/brevo*"
+  "api.decolesuacarreiraesg.com.br/brevo*"
 ]
 
 [observability]

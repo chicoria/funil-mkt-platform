@@ -45,7 +45,7 @@ function makeRequest(body: Record<string, unknown> | null, options: RequestOptio
   const origin = options.origin === undefined ? "https://decolesuacarreiraesg.com.br" : options.origin;
   if (origin !== null) headers.origin = origin;
 
-  return new Request("https://forms.decolesuacarreiraesg.com.br/brevo", {
+  return new Request("https://api.decolesuacarreiraesg.com.br/brevo", {
     method: options.method || "POST",
     headers,
     body: body ? JSON.stringify(body) : undefined,

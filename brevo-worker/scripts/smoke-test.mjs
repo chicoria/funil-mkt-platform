@@ -1,4 +1,4 @@
-const smokeUrl = process.env.SMOKE_URL || "https://forms.decolesuacarreiraesg.com.br/brevo";
+const smokeUrl = process.env.SMOKE_URL || "https://api.decolesuacarreiraesg.com.br/brevo";
 const smokeOrigin = process.env.SMOKE_ORIGIN || "https://decolesuacarreiraesg.com.br";
 const expectedStatus = Number(process.env.SMOKE_EXPECTED_STATUS || 400);
 const expectedError = process.env.SMOKE_EXPECTED_ERROR || "email_required";

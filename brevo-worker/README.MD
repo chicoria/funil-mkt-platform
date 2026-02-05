@@ -4,7 +4,7 @@ Worker que recebe dados do pre-checkout, cria/atualiza contato no Brevo e redire
 Suporta fluxo com Double Opt-in (DOI) e fluxo sem DOI.
 
 ## Rotas
-- `https://forms.decolesuacarreiraesg.com.br/brevo*`
+- `https://api.decolesuacarreiraesg.com.br/brevo*`
 
 ## Fluxo principal
 1. Recebe POST (ou GET em modo debug).
@@ -71,7 +71,7 @@ Execute:
 - `npm run smoke`
 
 Variaveis opcionais:
-- `SMOKE_URL` (default: `https://forms.decolesuacarreiraesg.com.br/brevo`)
+- `SMOKE_URL` (default: `https://api.decolesuacarreiraesg.com.br/brevo`)
 - `SMOKE_ORIGIN` (default: `https://decolesuacarreiraesg.com.br`)
 - `SMOKE_EXPECTED_STATUS` (default: `400`)
 - `SMOKE_EXPECTED_ERROR` (default: `email_required`)
