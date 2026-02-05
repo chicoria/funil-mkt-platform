@@ -69,5 +69,5 @@ Em debug, o worker responde JSON com:
 - O redirect do DOI adiciona os mesmos parametros do lead.
 
 ## Arquivos
-- `src/index.js` - logica do worker
+- `src/index.ts` - logica do worker
 - `wrangler.toml` - configuracao e variaveis
