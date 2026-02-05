@@ -1,9 +1,9 @@
 name = "decole-api-hotmart-webhook"
 main = "src/index.ts"
-compatibility_date = "2025-01-01"
+compatibility_date = "2026-02-05"
 workers_dev = false
 routes = [
-  "api.decolesuacarreiraesg.com.br/webhooks/hotmart*"
+  { pattern = "api.decolesuacarreiraesg.com.br/webhooks/hotmart*", zone_name = "decolesuacarreiraesg.com.br" }
 ]
 
 [[queues.producers]]
