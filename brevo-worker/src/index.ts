@@ -90,9 +90,9 @@ function normalizePhone(rawPhone: unknown, rawCountry: unknown): string {
   return digits;
 }
 
-function buildCorsHeaders(allowedOrigin: string, origin: string): JsonHeaders {
+function buildCorsHeaders(allowedOrigin: string): JsonHeaders {
   return {
-    "access-control-allow-origin": allowedOrigin === "*" ? "*" : origin,
+    "access-control-allow-origin": allowedOrigin === "*" ? "*" : allowedOrigin,
     "access-control-allow-methods": "POST, OPTIONS",
     "access-control-allow-headers": "content-type, x-brevo-ajax",
     "access-control-max-age": "86400",
@@ -106,7 +106,7 @@ function logStage(reqId: string, stage: string, data?: InputData): void {
 
 function isOriginAllowed(allowedOrigin: string, origin: string): boolean {
   if (allowedOrigin === "*") return true;
-  if (!origin) return true;
+  if (!origin) return false;
   return origin === allowedOrigin;
 }
 
@@ -317,12 +317,7 @@ const worker = {
     const startedAt = Date.now();
     const origin = request.headers.get("origin") || "";
     const allowedOrigin = env.ALLOWED_ORIGIN || "*";
-    const corsHeaders = buildCorsHeaders(allowedOrigin, origin);
-
-    if (request.method === "OPTIONS") {
-      logStage(reqId, "preflight", { ok: true, origin });
-      return new Response(null, { headers: corsHeaders });
-    }
+    const corsHeaders = buildCorsHeaders(allowedOrigin);
 
     if (!isOriginAllowed(allowedOrigin, origin)) {
       logStage(reqId, "origin_check", {
@@ -331,6 +326,11 @@ const worker = {
         allowedOrigin,
       });
       return jsonResponse({ ok: false, error: "origin_not_allowed" }, 403, corsHeaders);
+    }
+
+    if (request.method === "OPTIONS") {
+      logStage(reqId, "preflight", { ok: true, origin });
+      return new Response(null, { headers: corsHeaders });
     }
 
     if (request.method !== "POST") {

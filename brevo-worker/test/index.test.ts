@@ -12,7 +12,7 @@ type Env = {
 
 type RequestOptions = {
   method?: string;
-  origin?: string;
+  origin?: string | null;
   ajax?: boolean;
 };
 
@@ -38,13 +38,16 @@ function makeEnv(overrides: Partial<Env> = {}): Env {
 }
 
 function makeRequest(body: Record<string, unknown> | null, options: RequestOptions = {}): Request {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+    ...(options.ajax ? { "x-brevo-ajax": "1", accept: "application/json" } : {}),
+  };
+  const origin = options.origin === undefined ? "https://decolesuacarreiraesg.com.br" : options.origin;
+  if (origin !== null) headers.origin = origin;
+
   return new Request("https://forms.decolesuacarreiraesg.com.br/brevo", {
     method: options.method || "POST",
-    headers: {
-      origin: options.origin || "https://decolesuacarreiraesg.com.br",
-      "content-type": "application/json",
-      ...(options.ajax ? { "x-brevo-ajax": "1", accept: "application/json" } : {}),
-    },
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
 }
@@ -92,6 +95,18 @@ describe("brevo worker", () => {
 
   it("recusa origem nao permitida", async () => {
     const req = makeRequest({ email: "teste@exemplo.com" }, { origin: "https://malicioso.com" });
+    const res = await worker.fetch(req, makeEnv());
+    expect(res.status).toBe(403);
+  });
+
+  it("recusa requisicao sem header origin", async () => {
+    const req = makeRequest({ email: "teste@exemplo.com" }, { origin: null });
+    const res = await worker.fetch(req, makeEnv());
+    expect(res.status).toBe(403);
+  });
+
+  it("recusa preflight com origem nao permitida", async () => {
+    const req = makeRequest(null, { method: "OPTIONS", origin: "https://malicioso.com" });
     const res = await worker.fetch(req, makeEnv());
     expect(res.status).toBe(403);
   });
