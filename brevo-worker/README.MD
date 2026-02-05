@@ -47,13 +47,16 @@ Em debug, o worker responde JSON com:
 - `useDoi`, `redirectUrl`, `doiRedirectUrl`, `params`
 
 ## Variaveis (wrangler.toml)
-- `ALLOWED_ORIGIN` (ex.: `https://decolesuacarreiraesg.com.br`)
+- `ALLOWED_ORIGIN` (ex.: `https://decolesuacarreiraesg.com.br` ou lista separada por virgula)
 - `BREVO_LIST_ID`
 - `BREVO_DOI_TEMPLATE_ID`
 - `POST_SUBMIT_REDIRECT_URL`
 - `BREVO_DOI_REDIRECT_URL`
 - `TURNSTILE_SECRET` (se usar captcha)
 - `BREVO_API_KEY` (secret no ambiente)
+
+Observacao de CORS:
+- O worker tambem permite a origem fixa `http://192.168.1.67:8080`.
 
 ## Respostas
 - `200` JSON quando nao ha redirect

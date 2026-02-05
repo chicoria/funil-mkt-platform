@@ -87,6 +87,28 @@ beforeEach(() => {
 });
 
 describe("brevo worker", () => {
+  it("aceita origem local fixa mesmo fora do ALLOWED_ORIGIN", async () => {
+    const req = makeRequest({ email: "teste@exemplo.com" }, { origin: "http://192.168.1.67:8080" });
+    const res = await worker.fetch(req, makeEnv({ ALLOWED_ORIGIN: "https://decolesuacarreiraesg.com.br" }));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("access-control-allow-origin")).toBe("http://192.168.1.67:8080");
+  });
+
+  it("aceita multiplas origens configuradas por lista", async () => {
+    const req = makeRequest({ email: "teste@exemplo.com" }, { origin: "https://app.decolesuacarreiraesg.com.br" });
+    const res = await worker.fetch(
+      req,
+      makeEnv({
+        ALLOWED_ORIGIN:
+          "https://decolesuacarreiraesg.com.br, https://app.decolesuacarreiraesg.com.br",
+      })
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("access-control-allow-origin")).toBe(
+      "https://app.decolesuacarreiraesg.com.br"
+    );
+  });
+
   it("recusa metodos nao POST", async () => {
     const req = makeRequest(null, { method: "GET" });
     const res = await worker.fetch(req, makeEnv({ TURNSTILE_SECRET: "secret" }));

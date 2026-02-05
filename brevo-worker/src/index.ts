@@ -60,6 +60,8 @@ interface BrevoRequestConfig {
   payload: BrevoPayload;
 }
 
+const FIXED_ALLOWED_ORIGIN = "http://192.168.1.67:8080";
+
 function jsonResponse(body: unknown, status: number, headers?: HeadersInit): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -90,9 +92,32 @@ function normalizePhone(rawPhone: unknown, rawCountry: unknown): string {
   return digits;
 }
 
-function buildCorsHeaders(allowedOrigin: string): JsonHeaders {
+function parseAllowedOrigins(rawAllowedOrigin: string): string[] {
+  const normalized = asTrimmedString(rawAllowedOrigin);
+  if (!normalized) return [FIXED_ALLOWED_ORIGIN];
+  if (normalized === "*") return ["*"];
+
+  const origins = normalized
+    .split(/[,\n;]/)
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  if (!origins.includes(FIXED_ALLOWED_ORIGIN)) {
+    origins.push(FIXED_ALLOWED_ORIGIN);
+  }
+
+  return origins;
+}
+
+function getCorsOrigin(allowedOrigins: string[], requestOrigin: string): string {
+  if (allowedOrigins.includes("*")) return "*";
+  if (requestOrigin && allowedOrigins.includes(requestOrigin)) return requestOrigin;
+  return allowedOrigins[0] || FIXED_ALLOWED_ORIGIN;
+}
+
+function buildCorsHeaders(corsOrigin: string): JsonHeaders {
   return {
-    "access-control-allow-origin": allowedOrigin === "*" ? "*" : allowedOrigin,
+    "access-control-allow-origin": corsOrigin,
     "access-control-allow-methods": "POST, OPTIONS",
     "access-control-allow-headers": "content-type, x-brevo-ajax",
     "access-control-max-age": "86400",
@@ -104,10 +129,10 @@ function logStage(reqId: string, stage: string, data?: InputData): void {
   console.log(JSON.stringify(payload));
 }
 
-function isOriginAllowed(allowedOrigin: string, origin: string): boolean {
-  if (allowedOrigin === "*") return true;
+function isOriginAllowed(allowedOrigins: string[], origin: string): boolean {
+  if (allowedOrigins.includes("*")) return true;
   if (!origin) return false;
-  return origin === allowedOrigin;
+  return allowedOrigins.includes(origin);
 }
 
 function getRequestId(): string {
@@ -316,14 +341,14 @@ const worker = {
     const reqId = getRequestId();
     const startedAt = Date.now();
     const origin = request.headers.get("origin") || "";
-    const allowedOrigin = env.ALLOWED_ORIGIN || "*";
-    const corsHeaders = buildCorsHeaders(allowedOrigin);
+    const allowedOrigins = parseAllowedOrigins(env.ALLOWED_ORIGIN || "");
+    const corsHeaders = buildCorsHeaders(getCorsOrigin(allowedOrigins, origin));
 
-    if (!isOriginAllowed(allowedOrigin, origin)) {
+    if (!isOriginAllowed(allowedOrigins, origin)) {
       logStage(reqId, "origin_check", {
         ok: false,
         origin,
-        allowedOrigin,
+        allowedOrigins,
       });
       return jsonResponse({ ok: false, error: "origin_not_allowed" }, 403, corsHeaders);
     }
