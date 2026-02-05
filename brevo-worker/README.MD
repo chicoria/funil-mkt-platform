@@ -63,6 +63,18 @@ Em debug, o worker responde JSON com:
 - `405` metodo nao permitido
 - `502` erro do Brevo
 
+## Smoke test pos-deploy
+Execute:
+- `npm run smoke`
+
+Variaveis opcionais:
+- `SMOKE_URL` (default: `https://forms.decolesuacarreiraesg.com.br/brevo`)
+- `SMOKE_ORIGIN` (default: `https://decolesuacarreiraesg.com.br`)
+- `SMOKE_EXPECTED_STATUS` (default: `400`)
+- `SMOKE_EXPECTED_ERROR` (default: `email_required`)
+- `SMOKE_MAX_ATTEMPTS` (default: `10`)
+- `SMOKE_DELAY_MS` (default: `3000`)
+
 ## Observacoes
 - A normalizacao de telefone tenta incluir codigo do pais.
 - O split `phoneac`/`phonenumber` usa heuristica por pais.
