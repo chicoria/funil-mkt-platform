@@ -1,0 +1,19 @@
+name = "decole-links-redirect"
+main = "src/index.ts"
+compatibility_date = "2026-02-05"
+workers_dev = false
+routes = [
+  { pattern = "links.decolesuacarreiraesg.com.br/*", zone_name = "decolesuacarreiraesg.com.br" }
+]
+
+[observability]
+  [observability.logs]
+  enabled = false
+  invocation_logs = true
+
+[vars]
+ELIZETE_WHATSAPP_NUMBER = "351915787088"
+ELIZETE_WHATSAPP_DEFAULT_TEXT = "Olá Elizete, estou no site do decolesuacarreiraesg.com.br e tenho uma dúvida. :)"
+CHECKOUT_MENTORIA_URL_DEFAULT = "https://pay.hotmart.com/K98068530F?off=1myrvww7"
+CHECKOUT_MENTORIA_URL_V1 = "https://pay.hotmart.com/K98068530F?off=1myrvww7"
+CHECKOUT_MENTORIA_URL_V2 = ""
