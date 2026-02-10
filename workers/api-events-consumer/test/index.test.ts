@@ -5,6 +5,7 @@ type Env = {
   BREVO_API_KEY?: string;
   BREVO_LIST_BEGIN_CHECKOUT?: string;
   BREVO_LIST_PURCHASE?: string;
+  BREVO_LIST_CART_ABANDONMENT?: string;
 };
 
 function makeEnv(overrides: Partial<Env> = {}): Env {
@@ -12,6 +13,7 @@ function makeEnv(overrides: Partial<Env> = {}): Env {
     BREVO_API_KEY: "brevo_key",
     BREVO_LIST_BEGIN_CHECKOUT: "11",
     BREVO_LIST_PURCHASE: "22",
+    BREVO_LIST_CART_ABANDONMENT: "33",
     ...overrides,
   };
 }
@@ -88,13 +90,36 @@ describe("api-events-consumer", () => {
     expect(body.listIds?.[0]).toBe(22);
   });
 
+  it("processa cart abandonment com lista dedicada", async () => {
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: {
+              eventType: "PURCHASE_OUT_OF_SHOPPING_CART",
+              email: "lead@exemplo.com",
+            },
+          },
+        ],
+      },
+      makeEnv()
+    );
+
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(String(options.body || "{}")) as { listIds?: number[]; email?: string };
+    expect(body.email).toBe("lead@exemplo.com");
+    expect(body.listIds?.[0]).toBe(33);
+  });
+
   it("ignora evento nao mapeado", async () => {
     await worker.queue(
       {
         messages: [
           {
             body: {
-              eventType: "cart_abandoned",
+              eventType: "SUBSCRIPTION_CANCELED",
               email: "lead@exemplo.com",
             },
           },

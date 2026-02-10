@@ -18,3 +18,4 @@ dead_letter_queue = "decole-q-hotmart-events-dlq"
 [vars]
 BREVO_LIST_BEGIN_CHECKOUT = "0"
 BREVO_LIST_PURCHASE = "0"
+BREVO_LIST_CART_ABANDONMENT = "0"

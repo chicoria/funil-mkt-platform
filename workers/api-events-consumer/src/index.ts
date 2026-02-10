@@ -2,6 +2,7 @@ interface Env {
   BREVO_API_KEY?: string;
   BREVO_LIST_BEGIN_CHECKOUT?: string;
   BREVO_LIST_PURCHASE?: string;
+  BREVO_LIST_CART_ABANDONMENT?: string;
 }
 
 interface HotmartQueuedEvent {
@@ -66,11 +67,20 @@ function resolveEmail(event: HotmartQueuedEvent): string {
 function resolveListId(eventType: string, env: Env): number {
   const type = eventTypeNormalized(eventType);
 
+  if (type.includes("purchase_out_of_shopping_cart") || type.includes("cart_abandon")) {
+    return Number(env.BREVO_LIST_CART_ABANDONMENT || env.BREVO_LIST_BEGIN_CHECKOUT || "0");
+  }
+
   if (type.includes("begin_checkout") || type.includes("checkout_started")) {
     return Number(env.BREVO_LIST_BEGIN_CHECKOUT || "0");
   }
 
-  if (type.includes("purchase") || type.includes("approved")) {
+  if (
+    type.includes("purchase_approved") ||
+    type.includes("purchase_complete") ||
+    type.includes("purchase") ||
+    type.includes("approved")
+  ) {
     return Number(env.BREVO_LIST_PURCHASE || "0");
   }
 

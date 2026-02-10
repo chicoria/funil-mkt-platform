@@ -42,9 +42,23 @@ describe("api-hotmart-webhook", () => {
   });
 
   it("retorna 500 quando queue nao esta configurada", async () => {
-    const req = makeRequest("/webhooks/hotmart", { body: "{}" });
+    const req = makeRequest("/webhooks/hotmart", { body: '{"event":"PURCHASE_APPROVED"}' });
     const res = await worker.fetch(req, makeEnv({ HOTMART_EVENTS: undefined }) as any);
     expect(res.status).toBe(500);
+  });
+
+  it("retorna 400 quando payload nao possui tipo de evento", async () => {
+    const queueSend = vi.fn(async () => undefined);
+    const req = makeRequest("/webhooks/hotmart", { body: "{}" });
+    const res = await worker.fetch(
+      req,
+      makeEnv({
+        HOTMART_EVENTS: { send: queueSend },
+      }) as any
+    );
+
+    expect(res.status).toBe(400);
+    expect(queueSend).not.toHaveBeenCalled();
   });
 
   it("enfileira evento quando token nao e exigido", async () => {
@@ -85,7 +99,7 @@ describe("api-hotmart-webhook", () => {
       headers: {
         "x-hotmart-hottok": "segredo",
       },
-      body: "{}",
+      body: '{"event":"PURCHASE_APPROVED"}',
     });
 
     const res = await worker.fetch(

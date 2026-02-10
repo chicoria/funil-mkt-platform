@@ -113,7 +113,7 @@ async function parseBody(request: Request): Promise<InputData> {
 }
 
 function buildQueuedEvent(payload: InputData): HotmartQueuedEvent {
-  const eventType = pickString(payload, ["event", "event_name", "type", "name", "data.event"]) || "unknown";
+  const eventType = pickString(payload, ["event", "event_name", "type", "name", "data.event"]);
   const eventId =
     pickString(payload, ["id", "event_id", "transaction", "transaction_id", "data.id", "data.transaction"]) ||
     crypto.randomUUID();
@@ -161,6 +161,11 @@ const worker = {
     }
 
     const payload = await parseBody(request);
+    const eventType = pickString(payload, ["event", "event_name", "type", "name", "data.event"]);
+    if (!eventType) {
+      return jsonResponse({ ok: false, error: "invalid_payload", detail: "missing_event_type" }, 400);
+    }
+
     const event = buildQueuedEvent(payload);
 
     await env.HOTMART_EVENTS.send(event);
