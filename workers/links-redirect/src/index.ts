@@ -48,7 +48,6 @@ function appendQueryParams(baseUrl: string, params: URLSearchParams, ignoreKeys:
 
   params.forEach((value, key) => {
     if (!key || ignoreKeys.includes(key)) return;
-    if (value === "") return;
     url.searchParams.set(key, value);
   });
 
@@ -65,7 +64,7 @@ function handleElizeteWhatsapp(url: URL, env: Env): HandlerResult | null {
     asTrimmedString(env.ELIZETE_WHATSAPP_DEFAULT_TEXT);
 
   return {
-    location: buildWhatsAppUrl(phone, text),
+    location: appendQueryParams(buildWhatsAppUrl(phone, text), url.searchParams),
     cacheControl: "no-store",
   };
 }
@@ -79,7 +78,7 @@ function handleCheckoutMentoria(url: URL, env: Env): HandlerResult | null {
   if (!baseUrl) baseUrl = asTrimmedString(env.CHECKOUT_MENTORIA_URL_DEFAULT);
   if (!baseUrl) return null;
 
-  const location = appendQueryParams(baseUrl, url.searchParams, ["v"]);
+  const location = appendQueryParams(baseUrl, url.searchParams);
 
   return {
     location,
