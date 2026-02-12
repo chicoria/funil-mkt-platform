@@ -19,6 +19,8 @@ type RequestOptions = {
 type BrevoPayload = {
   attributes?: {
     LEAD_ID?: string;
+    SMS?: string;
+    WHATSAPP?: string;
   };
   redirectionUrl?: string;
 };
@@ -216,6 +218,33 @@ describe("brevo worker", () => {
     expect(res.status).toBe(200);
     expect(brevoBody?.attributes?.LEAD_ID).toBe("lead-456");
     expect(brevoBody?.redirectionUrl).toBeUndefined();
+  });
+
+  it("preenche WHATSAPP com o mesmo numero de SMS", async () => {
+    let brevoBody: BrevoPayload | undefined;
+
+    fetchMock.mockImplementation(async (url: RequestInfo | URL, options?: RequestInit) => {
+      const urlStr = String(url || "");
+      if (urlStr.includes("challenges.cloudflare.com/turnstile")) {
+        return makeFetchResponse({ jsonData: { success: true } });
+      }
+      if (urlStr.includes("api.brevo.com")) {
+        brevoBody = JSON.parse(String(options?.body || "{}")) as BrevoPayload;
+        return makeFetchResponse();
+      }
+      return makeFetchResponse();
+    });
+
+    const req = makeRequest({
+      email: "teste@exemplo.com",
+      SMS: "11999999999",
+      SMS__COUNTRY_CODE: "+55",
+    });
+    const res = await worker.fetch(req, makeEnv());
+
+    expect(res.status).toBe(200);
+    expect(brevoBody?.attributes?.SMS).toBe("5511999999999");
+    expect(brevoBody?.attributes?.WHATSAPP).toBe("5511999999999");
   });
 
   it("propaga erro do brevo (sms ja associado)", async () => {

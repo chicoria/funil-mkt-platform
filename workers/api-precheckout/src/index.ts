@@ -14,6 +14,7 @@ type BrevoAttributes = {
   FIRSTNAME?: string;
   LASTNAME?: string;
   SMS?: string;
+  WHATSAPP?: string;
   LEAD_ID?: string;
 };
 
@@ -165,6 +166,7 @@ function buildAttributes(lead: Lead): BrevoAttributes {
   if (lead.first) attributes.FIRSTNAME = lead.first;
   if (lead.last) attributes.LASTNAME = lead.last;
   if (lead.phone) attributes.SMS = lead.phone;
+  if (lead.phone) attributes.WHATSAPP = lead.phone;
   if (lead.leadId) attributes.LEAD_ID = lead.leadId;
   return attributes;
 }
