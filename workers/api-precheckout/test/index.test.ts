@@ -19,8 +19,6 @@ type RequestOptions = {
 type BrevoPayload = {
   attributes?: {
     LEAD_ID?: string;
-    DECOLE_ESG_FUNIL_LAST_STEP?: string;
-    DECOLE_ESG_FUNIL_LAST_STEP_TIMESTAMP?: string;
   };
   redirectionUrl?: string;
 };
@@ -188,10 +186,6 @@ describe("brevo worker", () => {
 
     expect(res.status).toBe(200);
     expect(brevoBody?.attributes?.LEAD_ID).toBe("lead-123");
-    expect(brevoBody?.attributes?.DECOLE_ESG_FUNIL_LAST_STEP).toBe("BEGIN_CHECKOUT");
-    expect(brevoBody?.attributes?.DECOLE_ESG_FUNIL_LAST_STEP_TIMESTAMP).toMatch(
-      /^\d{4}-\d{2}-\d{2}$/
-    );
     expect(brevoBody?.redirectionUrl).toContain("lead_id=lead-123");
     expect(brevoBody?.redirectionUrl).toContain("fbp=fb.1.1234567890.1111111111");
     expect(brevoBody?.redirectionUrl).toContain("fbc=fb.1.1234567890.ABCDEF1234567890");
@@ -221,10 +215,6 @@ describe("brevo worker", () => {
 
     expect(res.status).toBe(200);
     expect(brevoBody?.attributes?.LEAD_ID).toBe("lead-456");
-    expect(brevoBody?.attributes?.DECOLE_ESG_FUNIL_LAST_STEP).toBe("BEGIN_CHECKOUT");
-    expect(brevoBody?.attributes?.DECOLE_ESG_FUNIL_LAST_STEP_TIMESTAMP).toMatch(
-      /^\d{4}-\d{2}-\d{2}$/
-    );
     expect(brevoBody?.redirectionUrl).toBeUndefined();
   });
 

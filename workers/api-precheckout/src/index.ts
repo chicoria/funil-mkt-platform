@@ -15,8 +15,6 @@ type BrevoAttributes = {
   LASTNAME?: string;
   SMS?: string;
   LEAD_ID?: string;
-  DECOLE_ESG_FUNIL_LAST_STEP?: string;
-  DECOLE_ESG_FUNIL_LAST_STEP_TIMESTAMP?: string;
 };
 
 interface Lead {
@@ -168,16 +166,7 @@ function buildAttributes(lead: Lead): BrevoAttributes {
   if (lead.last) attributes.LASTNAME = lead.last;
   if (lead.phone) attributes.SMS = lead.phone;
   if (lead.leadId) attributes.LEAD_ID = lead.leadId;
-  attributes.DECOLE_ESG_FUNIL_LAST_STEP = "BEGIN_CHECKOUT";
-  attributes.DECOLE_ESG_FUNIL_LAST_STEP_TIMESTAMP = formatDateYYYYMMDD(new Date());
   return attributes;
-}
-
-function formatDateYYYYMMDD(date: Date): string {
-  const year = String(date.getUTCFullYear());
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(date.getUTCDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 function buildRedirectUrl(baseUrl: string, params?: Record<string, string | undefined>): string {
