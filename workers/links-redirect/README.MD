@@ -11,7 +11,8 @@ Worker responsavel por mapear paths estaticos em links dinamicos (ex.: WhatsApp)
 - `https://links.decolesuacarreiraesg.com.br/decole-esg/checkout`
   - Redireciona para o checkout configurado.
   - Parametros opcionais:
-    - `off` (ou `offer`, `offer_id`): sobrescreve o `off` do checkout e define `offer`.
+    - `off`: sobrescreve o `off` do checkout.
+    - `offer` (ou `offer_id`): sobrescreve o `off` e envia `offer` no destino.
     - outros query params sao repassados para o destino.
 - `https://links.decolesuacarreiraesg.com.br/decole-esg/checkout/offer/{codigo}`
   - Sobrescreve a oferta via path (ex.: `/decole-esg/checkout/offer/3j6lto4t`).

@@ -77,6 +77,9 @@ function handleCheckout(url: URL, env: Env): HandlerResult | null {
   baseUrl = asTrimmedString(env.CHECKOUT_URL);
   if (!baseUrl) return null;
 
+  const hasExplicitOfferParam =
+    url.searchParams.has("offer") || url.searchParams.has("offer_id") || url.searchParams.has("offerId");
+
   const offerCode =
     asTrimmedString(url.searchParams.get("off")) ||
     asTrimmedString(url.searchParams.get("offer")) ||
@@ -96,8 +99,12 @@ function handleCheckout(url: URL, env: Env): HandlerResult | null {
       target.searchParams.set("off", offerCode);
     }
 
-    if (resolvedOffer) {
+    if (hasExplicitOfferParam && resolvedOffer) {
       target.searchParams.set("offer", resolvedOffer);
+    }
+
+    if (!hasExplicitOfferParam) {
+      target.searchParams.delete("offer");
     }
 
     finalLocation = target.toString();
@@ -119,7 +126,6 @@ function withOfferCode(url: URL, offerCode: string): URL {
   nextUrl.searchParams.delete("offer");
   nextUrl.searchParams.delete("offer_id");
   nextUrl.searchParams.delete("offerId");
-  nextUrl.searchParams.set("off", offerCode);
   nextUrl.searchParams.set("offer", offerCode);
 
   return nextUrl;

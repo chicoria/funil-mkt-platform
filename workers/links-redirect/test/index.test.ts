@@ -66,7 +66,7 @@ describe("links-redirect worker", () => {
     const url = new URL(location);
     expect(url.origin).toBe("https://pay.hotmart.com");
     expect(url.searchParams.get("off")).toBe("1myrvww7");
-    expect(url.searchParams.get("offer")).toBe("1myrvww7");
+    expect(url.searchParams.get("offer")).toBeNull();
     expect(url.searchParams.get("utm_source")).toBe("ig");
   });
 
