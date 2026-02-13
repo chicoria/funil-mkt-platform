@@ -31,8 +31,12 @@ function buildWhatsAppUrl(phoneNumber: string, text?: string): string {
   return `${base}?text=${encodeURIComponent(text)}`;
 }
 
-function resolvePath(pathname: string): string {
-  return pathname.replace(/^\/+|\/+$/g, "").toLowerCase();
+function normalizePath(pathname: string): string {
+  return pathname.replace(/^\/+|\/+$/g, "");
+}
+
+function lowercasePath(pathname: string): string {
+  return pathname.toLowerCase();
 }
 
 function appendQueryParams(baseUrl: string, params: URLSearchParams, ignoreKeys: string[] = []): string {
@@ -82,14 +86,23 @@ function handleCheckout(url: URL, env: Env): HandlerResult | null {
   const location = appendQueryParams(baseUrl, url.searchParams, ["offer", "offer_id", "offerId", "v"]);
   let finalLocation = location;
 
-  if (offerCode) {
-    try {
-      const target = new URL(location);
+  try {
+    const target = new URL(location);
+    const baseOffer =
+      asTrimmedString(target.searchParams.get("off")) || asTrimmedString(target.searchParams.get("offer"));
+    const resolvedOffer = offerCode || baseOffer;
+
+    if (offerCode) {
       target.searchParams.set("off", offerCode);
-      finalLocation = target.toString();
-    } catch {
-      finalLocation = location;
     }
+
+    if (resolvedOffer) {
+      target.searchParams.set("offer", resolvedOffer);
+    }
+
+    finalLocation = target.toString();
+  } catch {
+    finalLocation = location;
   }
 
   return {
@@ -98,19 +111,66 @@ function handleCheckout(url: URL, env: Env): HandlerResult | null {
   };
 }
 
+function withOfferCode(url: URL, offerCode: string): URL {
+  const nextUrl = new URL(url);
+  if (!offerCode) return nextUrl;
+
+  nextUrl.searchParams.delete("off");
+  nextUrl.searchParams.delete("offer");
+  nextUrl.searchParams.delete("offer_id");
+  nextUrl.searchParams.delete("offerId");
+  nextUrl.searchParams.set("off", offerCode);
+  nextUrl.searchParams.set("offer", offerCode);
+
+  return nextUrl;
+}
+
 const handlers: Record<string, (url: URL, env: Env) => HandlerResult | null> = {
   "elizete-wp": handleElizeteWhatsapp,
   checkout: handleCheckout,
+  "decole-esg/checkout": handleCheckout,
 };
 
 const worker = {
   fetch(request: Request, env: Env): Response {
     const url = new URL(request.url);
-    const path = resolvePath(url.pathname);
+    const rawPath = normalizePath(url.pathname);
+    const path = lowercasePath(rawPath);
 
     if (request.method === "GET" || request.method === "HEAD") {
       if (!path || path === "health") {
         return jsonResponse({ ok: true, worker: "links-redirect" }, 200);
+      }
+
+      if (path.startsWith("decole-esg/checkout/offer")) {
+        const rawSegments = rawPath.split("/").filter(Boolean);
+        const lowerSegments = path.split("/").filter(Boolean);
+        const isOfferPath =
+          lowerSegments[0] === "decole-esg" &&
+          lowerSegments[1] === "checkout" &&
+          lowerSegments[2] === "offer";
+
+        if (isOfferPath) {
+          if (rawSegments.length !== 4) {
+            return jsonResponse({ ok: false, error: "not_found" }, 404);
+          }
+
+          const offerCode = rawSegments[3] || "";
+          const requestUrl = offerCode ? withOfferCode(url, offerCode) : url;
+          const result = handleCheckout(requestUrl, env);
+
+          if (!result || !result.location) {
+            return jsonResponse({ ok: false, error: "link_not_configured" }, 500);
+          }
+
+          return new Response(null, {
+            status: 302,
+            headers: {
+              location: result.location,
+              "cache-control": result.cacheControl || "no-store",
+            },
+          });
+        }
       }
 
       const handler = handlers[path];

@@ -66,6 +66,7 @@ describe("links-redirect worker", () => {
     const url = new URL(location);
     expect(url.origin).toBe("https://pay.hotmart.com");
     expect(url.searchParams.get("off")).toBe("1myrvww7");
+    expect(url.searchParams.get("offer")).toBe("1myrvww7");
     expect(url.searchParams.get("utm_source")).toBe("ig");
   });
 
@@ -74,7 +75,21 @@ describe("links-redirect worker", () => {
     const location = res.headers.get("location") || "";
     const url = new URL(location);
     expect(url.searchParams.get("off")).toBe("n82b9jqz");
-    expect(url.searchParams.get("offer")).toBeNull();
+    expect(url.searchParams.get("offer")).toBe("n82b9jqz");
+    expect(url.searchParams.get("utm_source")).toBe("ig");
+  });
+
+  it("retorna 404 quando /decole-esg/checkout/offer nao tem codigo", async () => {
+    const res = await worker.fetch(makeRequest("decole-esg/checkout/offer?utm_source=ig"), makeEnv());
+    expect(res.status).toBe(404);
+  });
+
+  it("redireciona /decole-esg/checkout/offer/:codigo com oferta da rota", async () => {
+    const res = await worker.fetch(makeRequest("decole-esg/checkout/offer/3j6lto4t?utm_source=ig"), makeEnv());
+    const location = res.headers.get("location") || "";
+    const url = new URL(location);
+    expect(url.searchParams.get("off")).toBe("3j6lto4t");
+    expect(url.searchParams.get("offer")).toBe("3j6lto4t");
     expect(url.searchParams.get("utm_source")).toBe("ig");
   });
 

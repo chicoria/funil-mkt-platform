@@ -314,7 +314,7 @@ function buildCheckoutUrl(checkoutCode: string, offerCode: string): string {
     return url.toString();
   }
 
-  const base = "https://links.decolesuacarreiraesg.com.br/checkout";
+  const base = "https://links.decolesuacarreiraesg.com.br/decole-esg/checkout";
   if (!offerCode) return base;
   const url = new URL(base);
   url.searchParams.set("off", offerCode);
