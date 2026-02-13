@@ -1,23 +1,52 @@
 # DECOLE Jobs Events Consumer (Cloudflare)
 
-Worker consumidor da Queue `decole-q-hotmart-events` para atualizar contato/lista no Brevo de forma assincrona.
+Worker consumidor da Queue `decole-q-hotmart-events` para atualizar contato no Brevo de forma assincrona.
 
 ## Queue
 - Consumer: `decole-q-hotmart-events`
 - Dead letter queue: `decole-q-hotmart-events-dlq`
 
 ## Comportamento atual
-- `PURCHASE_OUT_OF_SHOPPING_CART` / `cart_abandon` -> lista `BREVO_LIST_CART_ABANDONMENT` (fallback: `BREVO_LIST_BEGIN_CHECKOUT`)
-- `begin_checkout` / `checkout_started` -> lista `BREVO_LIST_BEGIN_CHECKOUT`
-- `purchase`, `purchase_approved`, `purchase_complete`, `approved` -> lista `BREVO_LIST_PURCHASE`
+- Processa apenas eventos cujo produto esteja mapeado em `HOTMART_PRODUCTS`.
+- Para cada produto, atualiza:
+  - `${PREFIX}_FUNIL_STEPS` (tags separadas por virgula)
+  - `${PREFIX}_FUNIL_LAST_STEP`
+  - `${PREFIX}_FUNIL_LAST_STEP_TIMESTAMP` (DD-MM-YYYY)
+- Para eventos de abandono de carrinho, envia email transacional no Brevo.
 
-O worker faz upsert do contato no Brevo (`POST /v3/contacts`, `updateEnabled=true`).
+Regra de match:
+- Prioriza `id` quando presente.
+- Se nao houver `id`, usa `name` (case-insensitive, sem acentos, com match por inclusao).
+
+O worker faz upsert do contato no Brevo (`POST /v3/contacts`, `updateEnabled=true`) com `attributes`.
+
+Campos de produto verificados no payload:
+`product.id`, `product_id`, `data.product.id`, `data.product_id`, `data.checkout.product.id`, `data.purchase.product.id`,
+`product.name`, `product_name`, `data.product.name`, `data.product_name`, `data.checkout.product.name`, `data.purchase.product.name`.
 
 ## Variaveis
 - `BREVO_API_KEY` (secret)
-- `BREVO_LIST_BEGIN_CHECKOUT`
-- `BREVO_LIST_PURCHASE`
-- `BREVO_LIST_CART_ABANDONMENT`
+- `BREVO_CART_ABANDONMENT_TEMPLATE_ID` (template transacional para abandono de carrinho)
+- `HOTMART_PRODUCTS` (JSON com produtos e prefixo)
+
+Exemplo:
+```json
+[
+  { "id": 3526906, "name": "Metodo DECOLE", "prefix": "DECOLE_ESG", "checkoutCode": "K98068530F", "offerCode": "3j6lto4t" },
+  { "id": 987654, "name": "Plano de Voo", "prefix": "DECOLE_PLANO_VOO", "checkoutCode": "K123456789", "offerCode": "abcd1234" }
+]
+```
+
+Parametros enviados para o template transacional:
+- `productName`
+- `buyerName`
+- `email`
+- `offerCode`
+- `checkoutUrl`
+
+Campos opcionais em `HOTMART_PRODUCTS`:
+- `checkoutCode`: codigo do checkout Hotmart (ex.: `K98068530F`)
+- `offerCode`: codigo de oferta default (usado quando o webhook nao envia `offer.code`)
 
 ## Referencias Hotmart
 - Purchase webhook (v2): `https://developers.hotmart.com/docs/pt-BR/2.0.0/webhook/purchase-webhook/`

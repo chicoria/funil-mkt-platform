@@ -1,8 +1,9 @@
+import { BrevoTransactionalEmailSender } from "../../../packages/shared/transactional-email";
+
 interface Env {
   BREVO_API_KEY?: string;
-  BREVO_LIST_BEGIN_CHECKOUT?: string;
-  BREVO_LIST_PURCHASE?: string;
-  BREVO_LIST_CART_ABANDONMENT?: string;
+  BREVO_CART_ABANDONMENT_TEMPLATE_ID?: string;
+  HOTMART_PRODUCTS?: string;
 }
 
 interface HotmartQueuedEvent {
@@ -20,6 +21,20 @@ interface QueueMessage<T> {
 interface MessageBatch<T> {
   messages: Array<QueueMessage<T>>;
 }
+
+type BrevoAttributes = Record<string, string>;
+
+interface ProductConfig {
+  id?: string;
+  name?: string;
+  nameNormalized?: string;
+  prefix: string;
+  checkoutCode?: string;
+  defaultOfferCode?: string;
+}
+
+let cachedProductConfigs: ProductConfig[] | null = null;
+let cachedProductConfigsRaw = "";
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -49,6 +64,187 @@ function eventTypeNormalized(eventType: string): string {
   return eventType.toLowerCase().replace(/\s+/g, "_");
 }
 
+function isCartAbandonmentEvent(eventType: string): boolean {
+  const normalized = eventTypeNormalized(eventType);
+  return normalized.includes("purchase_out_of_shopping_cart") || normalized.includes("cart_abandon");
+}
+
+function normalizeProductName(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function normalizeProductId(value: unknown): string {
+  return asString(value);
+}
+
+function formatDateDDMMYYYY(date: Date): string {
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const year = String(date.getUTCFullYear());
+  return `${day}-${month}-${year}`;
+}
+
+function normalizeTag(value: string): string {
+  return eventTypeNormalized(asString(value));
+}
+
+function mergeSteps(existing: string, nextTag: string): string {
+  const normalizedNext = normalizeTag(nextTag);
+  if (!normalizedNext) return "";
+
+  const tags = existing
+    .split(",")
+    .map((tag) => normalizeTag(tag))
+    .filter(Boolean);
+
+  if (!tags.includes(normalizedNext)) {
+    tags.push(normalizedNext);
+  }
+
+  return tags.join(", ");
+}
+
+function parseProductConfigs(raw: string): ProductConfig[] {
+  if (!raw) return [];
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    console.log(JSON.stringify({ stage: "config_error", reason: "invalid_hotmart_products_json" }));
+    return [];
+  }
+
+  if (!Array.isArray(parsed)) {
+    console.log(JSON.stringify({ stage: "config_error", reason: "hotmart_products_not_array" }));
+    return [];
+  }
+
+  const configs: ProductConfig[] = [];
+  for (const entry of parsed) {
+    if (!entry || typeof entry !== "object") continue;
+    const data = entry as Record<string, unknown>;
+    const prefix = asString(data.prefix ?? data.brevoPrefix ?? data.prefixo);
+    const id = normalizeProductId(data.id ?? data.productId ?? data.product_id);
+    const rawName = asString(data.name ?? data.productName ?? data.product_name);
+    const nameNormalized = normalizeProductName(rawName);
+    const checkoutCode = asString(data.checkoutCode ?? data.checkout_code ?? data.checkout);
+    const defaultOfferCode = asString(data.offerCode ?? data.offer ?? data.offer_id ?? data.offerId);
+
+    if (!prefix || (!id && !nameNormalized)) {
+      console.log(
+        JSON.stringify({
+          stage: "config_error",
+          reason: "hotmart_product_missing_fields",
+          hasPrefix: !!prefix,
+          hasId: !!id,
+          hasName: !!nameNormalized,
+        })
+      );
+      continue;
+    }
+
+    configs.push({
+      prefix,
+      id: id || undefined,
+      name: rawName || undefined,
+      nameNormalized: nameNormalized || undefined,
+      checkoutCode: checkoutCode || undefined,
+      defaultOfferCode: defaultOfferCode || undefined,
+    });
+  }
+
+  return configs;
+}
+
+function getProductConfigs(env: Env): ProductConfig[] {
+  const raw = asString(env.HOTMART_PRODUCTS);
+  if (!raw) return [];
+  if (cachedProductConfigs && cachedProductConfigsRaw === raw) return cachedProductConfigs;
+  cachedProductConfigsRaw = raw;
+  cachedProductConfigs = parseProductConfigs(raw);
+  return cachedProductConfigs;
+}
+
+function resolveProductId(event: HotmartQueuedEvent): string {
+  const payload = event.payload || {};
+  const paths = [
+    "product.id",
+    "product_id",
+    "productId",
+    "data.product.id",
+    "data.product_id",
+    "data.productId",
+    "data.checkout.product.id",
+    "data.purchase.product.id",
+  ];
+
+  for (const path of paths) {
+    const value = getByPath(payload, path);
+    const normalized = normalizeProductId(value);
+    if (normalized) return normalized;
+  }
+
+  return "";
+}
+
+function resolveProductName(event: HotmartQueuedEvent): string {
+  const payload = event.payload || {};
+  const paths = [
+    "product.name",
+    "product.product_name",
+    "product.productName",
+    "product",
+    "product_name",
+    "productName",
+    "data.product.name",
+    "data.product.product_name",
+    "data.product.productName",
+    "data.product",
+    "data.product_name",
+    "data.productName",
+    "data.checkout.product.name",
+    "data.purchase.product.name",
+  ];
+
+  for (const path of paths) {
+    const value = asString(getByPath(payload, path));
+    if (value) return value;
+  }
+
+  return "";
+}
+
+function matchProductConfig(
+  productId: string,
+  productName: string,
+  configs: ProductConfig[]
+): ProductConfig | null {
+  if (productId) {
+    const matchedById = configs.find((config) => config.id && config.id === productId);
+    if (matchedById) return matchedById;
+  }
+
+  const normalizedName = normalizeProductName(productName);
+  if (normalizedName) {
+    const matchedByName = configs.find((config) => {
+      if (!config.nameNormalized) return false;
+      return (
+        normalizedName === config.nameNormalized ||
+        normalizedName.includes(config.nameNormalized) ||
+        config.nameNormalized.includes(normalizedName)
+      );
+    });
+    if (matchedByName) return matchedByName;
+  }
+
+  return null;
+}
+
 function resolveEmail(event: HotmartQueuedEvent): string {
   const direct = asString(event.email);
   if (direct) return direct;
@@ -64,30 +260,106 @@ function resolveEmail(event: HotmartQueuedEvent): string {
   return "";
 }
 
-function resolveListId(eventType: string, env: Env): number {
-  const type = eventTypeNormalized(eventType);
+function resolveBuyerName(event: HotmartQueuedEvent): string {
+  const payload = event.payload || {};
+  const paths = [
+    "buyer.name",
+    "buyer.fullname",
+    "customer.name",
+    "customer.fullname",
+    "data.buyer.name",
+    "data.buyer.fullname",
+    "data.customer.name",
+    "data.customer.fullname",
+    "data.buyer.full_name",
+    "data.customer.full_name",
+    "data.name",
+  ];
 
-  if (type.includes("purchase_out_of_shopping_cart") || type.includes("cart_abandon")) {
-    return Number(env.BREVO_LIST_CART_ABANDONMENT || env.BREVO_LIST_BEGIN_CHECKOUT || "0");
+  for (const path of paths) {
+    const value = asString(getByPath(payload, path));
+    if (value) return value;
   }
 
-  if (type.includes("begin_checkout") || type.includes("checkout_started")) {
-    return Number(env.BREVO_LIST_BEGIN_CHECKOUT || "0");
-  }
-
-  if (
-    type.includes("purchase_approved") ||
-    type.includes("purchase_complete") ||
-    type.includes("purchase") ||
-    type.includes("approved")
-  ) {
-    return Number(env.BREVO_LIST_PURCHASE || "0");
-  }
-
-  return 0;
+  return "";
 }
 
-async function upsertContactToList(email: string, listId: number, apiKey: string): Promise<void> {
+function resolveOfferCode(event: HotmartQueuedEvent): string {
+  const payload = event.payload || {};
+  const paths = [
+    "offer.code",
+    "offer.id",
+    "offer_id",
+    "offerId",
+    "data.offer.code",
+    "data.offer.id",
+    "data.offer_id",
+    "data.offerCode",
+    "data.checkout.offer.code",
+    "data.checkout.offer.id",
+  ];
+
+  for (const path of paths) {
+    const value = asString(getByPath(payload, path));
+    if (value) return value;
+  }
+
+  return "";
+}
+
+function buildCheckoutUrl(checkoutCode: string, offerCode: string): string {
+  if (checkoutCode) {
+    const url = new URL(`https://pay.hotmart.com/${checkoutCode}`);
+    if (offerCode) url.searchParams.set("off", offerCode);
+    return url.toString();
+  }
+
+  const base = "https://links.decolesuacarreiraesg.com.br/checkout";
+  if (!offerCode) return base;
+  const url = new URL(base);
+  url.searchParams.set("off", offerCode);
+  return url.toString();
+}
+
+async function fetchContactAttributes(email: string, apiKey: string): Promise<Record<string, unknown> | null> {
+  const response = await fetch(`https://api.brevo.com/v3/contacts/${encodeURIComponent(email)}`, {
+    method: "GET",
+    headers: {
+      accept: "application/json",
+      "api-key": apiKey,
+    },
+  });
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    const detail = await response.text();
+    console.log(
+      JSON.stringify({
+        stage: "brevo_contact_fetch_failed",
+        status: response.status,
+        email,
+        detail: detail.slice(0, 500),
+      })
+    );
+    return null;
+  }
+
+  try {
+    const json = (await response.json()) as { attributes?: Record<string, unknown> };
+    return json?.attributes || null;
+  } catch {
+    return null;
+  }
+}
+
+async function upsertContact(
+  email: string,
+  apiKey: string,
+  attributes: BrevoAttributes
+): Promise<void> {
   if (!apiKey) {
     throw new Error("BREVO_API_KEY not configured");
   }
@@ -101,7 +373,7 @@ async function upsertContactToList(email: string, listId: number, apiKey: string
     body: JSON.stringify({
       email,
       updateEnabled: true,
-      listIds: [listId],
+      attributes,
     }),
   });
 
@@ -124,16 +396,104 @@ async function processEvent(event: HotmartQueuedEvent, env: Env): Promise<boolea
     return false;
   }
 
-  const listId = resolveListId(eventType, env);
-  if (listId <= 0) {
+  const apiKey = asString(env.BREVO_API_KEY);
+  if (!apiKey) {
+    throw new Error("BREVO_API_KEY not configured");
+  }
+
+  const productConfigs = getProductConfigs(env);
+  if (!productConfigs.length) {
+    console.log(JSON.stringify({ stage: "skip", reason: "product_config_missing", eventType }));
+    return false;
+  }
+
+  const productId = resolveProductId(event);
+  const productName = resolveProductName(event);
+  if (!productId && !productName) {
     console.log(
-      JSON.stringify({ stage: "skip", reason: "event_not_mapped", eventType, eventId: event.eventId || "" })
+      JSON.stringify({ stage: "skip", reason: "missing_product", eventType, eventId: event.eventId || "" })
     );
     return false;
   }
 
-  await upsertContactToList(email, listId, asString(env.BREVO_API_KEY));
-  console.log(JSON.stringify({ stage: "processed", eventType, eventId: event.eventId || "", email, listId }));
+  const matchedProduct = matchProductConfig(productId, productName, productConfigs);
+  if (!matchedProduct) {
+    console.log(
+      JSON.stringify({
+        stage: "skip",
+        reason: "product_not_match",
+        eventType,
+        eventId: event.eventId || "",
+        productName,
+        productId,
+      })
+    );
+    return false;
+  }
+
+  const normalizedEvent = eventTypeNormalized(eventType);
+  const existingAttributes = await fetchContactAttributes(email, apiKey);
+  const stepsKey = `${matchedProduct.prefix}_FUNIL_STEPS`;
+  const lastStepKey = `${matchedProduct.prefix}_FUNIL_LAST_STEP`;
+  const lastStepTsKey = `${matchedProduct.prefix}_FUNIL_LAST_STEP_TIMESTAMP`;
+  const existingSteps =
+    existingAttributes && typeof existingAttributes[stepsKey] === "string"
+      ? String(existingAttributes[stepsKey])
+      : "";
+
+  const steps = mergeSteps(existingSteps, normalizedEvent);
+  const attributes: BrevoAttributes = {
+    [stepsKey]: steps || normalizedEvent,
+    [lastStepKey]: normalizedEvent,
+    [lastStepTsKey]: formatDateDDMMYYYY(new Date()),
+  };
+
+  await upsertContact(email, apiKey, attributes);
+
+  if (isCartAbandonmentEvent(eventType)) {
+    const templateId = Number(env.BREVO_CART_ABANDONMENT_TEMPLATE_ID || "0");
+    if (templateId > 0) {
+      const buyerName = resolveBuyerName(event);
+      const buyerNameGreeting = buyerName ? ` ${buyerName}` : "";
+      const offerCode = resolveOfferCode(event) || matchedProduct.defaultOfferCode || "";
+      const checkoutUrl = buildCheckoutUrl(matchedProduct.checkoutCode || "", offerCode);
+      const effectiveProductName = matchedProduct.name || productName || "";
+
+      const emailSender = new BrevoTransactionalEmailSender(apiKey);
+      await emailSender.send({
+        to: { email, ...(buyerName ? { name: buyerName } : {}) },
+        templateId,
+        params: {
+          productName: effectiveProductName,
+          buyerName,
+          buyerNameGreeting,
+          email,
+          offerCode,
+          checkoutUrl,
+        },
+      });
+    } else {
+      console.log(
+        JSON.stringify({
+          stage: "skip",
+          reason: "cart_abandonment_template_not_configured",
+          eventType,
+          eventId: event.eventId || "",
+        })
+      );
+    }
+  }
+  console.log(
+    JSON.stringify({
+      stage: "processed",
+      eventType,
+      eventId: event.eventId || "",
+      email,
+      productName,
+      productId,
+      productPrefix: matchedProduct.prefix,
+    })
+  );
   return true;
 }
 

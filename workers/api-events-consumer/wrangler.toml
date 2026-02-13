@@ -16,6 +16,5 @@ dead_letter_queue = "decole-q-hotmart-events-dlq"
   invocation_logs = true
 
 [vars]
-BREVO_LIST_BEGIN_CHECKOUT = "0"
-BREVO_LIST_PURCHASE = "0"
-BREVO_LIST_CART_ABANDONMENT = "0"
+HOTMART_PRODUCTS = "[{\"id\":5083704,\"name\":\"DECOLE sua Carreira ESG\",\"prefix\":\"DECOLE_ESG\",\"checkoutCode\":\"K98068530F\",\"offerCode\":\"3j6lto4t\"}]"
+BREVO_CART_ABANDONMENT_TEMPLATE_ID = "8"
