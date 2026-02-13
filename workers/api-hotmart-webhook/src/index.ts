@@ -15,6 +15,8 @@ interface HotmartQueuedEvent {
   eventType: string;
   eventId: string;
   email: string;
+  productId: string;
+  productName: string;
   payload: InputData;
 }
 
@@ -125,6 +127,26 @@ function buildQueuedEvent(payload: InputData): HotmartQueuedEvent {
     "data.customer.email",
     "data.email",
   ]);
+  const productId = pickString(payload, [
+    "product.id",
+    "product_id",
+    "productId",
+    "data.product.id",
+    "data.product_id",
+    "data.productId",
+    "data.checkout.product.id",
+    "data.purchase.product.id",
+  ]);
+  const productName = pickString(payload, [
+    "product.name",
+    "product_name",
+    "productName",
+    "data.product.name",
+    "data.product_name",
+    "data.productName",
+    "data.checkout.product.name",
+    "data.purchase.product.name",
+  ]);
 
   return {
     source: "hotmart",
@@ -132,6 +154,8 @@ function buildQueuedEvent(payload: InputData): HotmartQueuedEvent {
     eventType,
     eventId,
     email,
+    productId,
+    productName,
     payload,
   };
 }
@@ -173,6 +197,8 @@ const worker = {
       eventType: event.eventType,
       eventId: event.eventId,
       hasEmail: !!event.email,
+      productId: event.productId || undefined,
+      productName: event.productName || undefined,
     });
 
     return jsonResponse(

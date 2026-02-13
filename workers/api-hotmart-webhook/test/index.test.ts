@@ -68,6 +68,12 @@ describe("api-hotmart-webhook", () => {
         event: "PURCHASE_APPROVED",
         id: "evt-123",
         buyer: { email: "aluna@exemplo.com" },
+        data: {
+          product: {
+            id: 3526906,
+            name: "Metodo DECOLE",
+          },
+        },
       }),
     });
 
@@ -81,10 +87,18 @@ describe("api-hotmart-webhook", () => {
     expect(res.status).toBe(202);
     expect(queueSend).toHaveBeenCalledTimes(1);
     const firstCall = (queueSend as any).mock.calls[0] || [];
-    const payload = (firstCall[0] || {}) as { eventType?: string; eventId?: string; email?: string };
+    const payload = (firstCall[0] || {}) as {
+      eventType?: string;
+      eventId?: string;
+      email?: string;
+      productId?: string;
+      productName?: string;
+    };
     expect(payload.eventType).toBe("PURCHASE_APPROVED");
     expect(payload.eventId).toBe("evt-123");
     expect(payload.email).toBe("aluna@exemplo.com");
+    expect(payload.productId).toBe("3526906");
+    expect(payload.productName).toBe("Metodo DECOLE");
   });
 
   it("retorna 401 quando token e exigido e nao enviado", async () => {
