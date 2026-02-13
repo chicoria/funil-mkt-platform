@@ -47,7 +47,7 @@ export class BrevoTransactionalEmailSender implements TransactionalEmailSender {
       params: params || {},
     };
 
-    const response = await this.fetchImpl("https://api.brevo.com/v3/smtp/email", {
+    const response = await this.fetchImpl.call(globalThis, "https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
         "content-type": "application/json",
