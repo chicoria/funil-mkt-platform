@@ -8,12 +8,9 @@ Documentacao central de configuracao do Brevo para os workers do projeto.
 3. Configure como secret no Cloudflare:
    - `BREVO_API_KEY`
 
-## 2. Listas (se usar listas por evento)
-Crie as listas no Brevo e copie os IDs:
+## 2. Listas (se usar no precheckout)
+Crie as listas no Brevo e copie o ID:
 - `BREVO_LIST_ID` (api-precheckout)
-- `BREVO_LIST_BEGIN_CHECKOUT` (api-events-consumer)
-- `BREVO_LIST_PURCHASE` (api-events-consumer)
-- `BREVO_LIST_CART_ABANDONMENT` (api-events-consumer)
 
 ## 3. DOI (Double Opt-In) para precheckout
 1. Crie o template de DOI no Brevo.
@@ -48,16 +45,11 @@ Para o atributo `WHATSAPP` aparecer na lista de atributos do contato:
 - `BREVO_DOI_TEMPLATE_ID`
 - `BREVO_DOI_REDIRECT_URL`
 
-### api-events-consumer (listas)
+### api-events-consumer
 - `BREVO_API_KEY` (secret)
-- `BREVO_LIST_BEGIN_CHECKOUT`
-- `BREVO_LIST_PURCHASE`
-- `BREVO_LIST_CART_ABANDONMENT`
-
-### api-events-consumer (tags via atributos)
-- Sem variaveis novas, mas exige atributos criados no Brevo.
-- Use o script de experimento para validar o update:
-  - `node backend/cloudflare/workers/api-events-consumer/scripts/brevo-tag-experiment.mjs`
+- `BREVO_CART_ABANDONMENT_TEMPLATE_ID` (template transacional)
+- `HOTMART_PRODUCTS` (JSON com prefixos por produto)
+- Atributos usados por produto: `${PREFIX}_FUNIL_STEPS`, `${PREFIX}_FUNIL_LAST_STEP`, `${PREFIX}_FUNIL_LAST_STEP_TIMESTAMP`
 
 ## 7. Validacao rapida
 Use o script de experimento para validar atributos:
@@ -66,4 +58,3 @@ BREVO_API_KEY=... \
 BREVO_CONTACT_EMAIL=... \
 node backend/cloudflare/workers/api-events-consumer/scripts/brevo-tag-experiment.mjs
 ```
-
