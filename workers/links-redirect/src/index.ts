@@ -1,9 +1,7 @@
 interface Env {
   ELIZETE_WHATSAPP_NUMBER?: string;
   ELIZETE_WHATSAPP_DEFAULT_TEXT?: string;
-  CHECKOUT_MENTORIA_URL_DEFAULT?: string;
-  CHECKOUT_MENTORIA_URL_V1?: string;
-  CHECKOUT_MENTORIA_URL_V2?: string;
+  CHECKOUT_URL?: string;
 }
 
 type HandlerResult = {
@@ -69,26 +67,40 @@ function handleElizeteWhatsapp(url: URL, env: Env): HandlerResult | null {
   };
 }
 
-function handleCheckoutMentoria(url: URL, env: Env): HandlerResult | null {
-  const version = asTrimmedString(url.searchParams.get("v"));
+function handleCheckout(url: URL, env: Env): HandlerResult | null {
   let baseUrl = "";
 
-  if (version === "1") baseUrl = asTrimmedString(env.CHECKOUT_MENTORIA_URL_V1);
-  if (version === "2") baseUrl = asTrimmedString(env.CHECKOUT_MENTORIA_URL_V2);
-  if (!baseUrl) baseUrl = asTrimmedString(env.CHECKOUT_MENTORIA_URL_DEFAULT);
+  baseUrl = asTrimmedString(env.CHECKOUT_URL);
   if (!baseUrl) return null;
 
-  const location = appendQueryParams(baseUrl, url.searchParams);
+  const offerCode =
+    asTrimmedString(url.searchParams.get("off")) ||
+    asTrimmedString(url.searchParams.get("offer")) ||
+    asTrimmedString(url.searchParams.get("offer_id")) ||
+    asTrimmedString(url.searchParams.get("offerId"));
+
+  const location = appendQueryParams(baseUrl, url.searchParams, ["offer", "offer_id", "offerId", "v"]);
+  let finalLocation = location;
+
+  if (offerCode) {
+    try {
+      const target = new URL(location);
+      target.searchParams.set("off", offerCode);
+      finalLocation = target.toString();
+    } catch {
+      finalLocation = location;
+    }
+  }
 
   return {
-    location,
+    location: finalLocation,
     cacheControl: "no-store",
   };
 }
 
 const handlers: Record<string, (url: URL, env: Env) => HandlerResult | null> = {
   "elizete-wp": handleElizeteWhatsapp,
-  "checkout_mentoria": handleCheckoutMentoria,
+  checkout: handleCheckout,
 };
 
 const worker = {

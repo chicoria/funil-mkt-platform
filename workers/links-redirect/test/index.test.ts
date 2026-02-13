@@ -4,18 +4,14 @@ import worker from "../src/index";
 type Env = {
   ELIZETE_WHATSAPP_NUMBER?: string;
   ELIZETE_WHATSAPP_DEFAULT_TEXT?: string;
-  CHECKOUT_MENTORIA_URL_DEFAULT?: string;
-  CHECKOUT_MENTORIA_URL_V1?: string;
-  CHECKOUT_MENTORIA_URL_V2?: string;
+  CHECKOUT_URL?: string;
 };
 
 function makeEnv(overrides: Partial<Env> = {}): Env {
   return {
     ELIZETE_WHATSAPP_NUMBER: "351 915 787 088",
     ELIZETE_WHATSAPP_DEFAULT_TEXT: "Olá Elizete, preciso de ajuda",
-    CHECKOUT_MENTORIA_URL_DEFAULT: "https://pay.hotmart.com/K98068530F?off=1myrvww7",
-    CHECKOUT_MENTORIA_URL_V1: "https://pay.hotmart.com/K98068530F?off=1myrvww7",
-    CHECKOUT_MENTORIA_URL_V2: "https://pay.hotmart.com/K98068530F?off=1myrvww7&v=2",
+    CHECKOUT_URL: "https://pay.hotmart.com/K98068530F?off=1myrvww7",
     ...overrides,
   };
 }
@@ -65,12 +61,20 @@ describe("links-redirect worker", () => {
   });
 
   it("repassa parametros recebidos para o checkout", async () => {
-    const res = await worker.fetch(makeRequest("checkout_mentoria?v=1&utm_source=ig"), makeEnv());
+    const res = await worker.fetch(makeRequest("checkout?utm_source=ig"), makeEnv());
     const location = res.headers.get("location") || "";
     const url = new URL(location);
     expect(url.origin).toBe("https://pay.hotmart.com");
     expect(url.searchParams.get("off")).toBe("1myrvww7");
-    expect(url.searchParams.get("v")).toBe("1");
+    expect(url.searchParams.get("utm_source")).toBe("ig");
+  });
+
+  it("padroniza oferta via parametro offer", async () => {
+    const res = await worker.fetch(makeRequest("checkout?offer=n82b9jqz&utm_source=ig"), makeEnv());
+    const location = res.headers.get("location") || "";
+    const url = new URL(location);
+    expect(url.searchParams.get("off")).toBe("n82b9jqz");
+    expect(url.searchParams.get("offer")).toBeNull();
     expect(url.searchParams.get("utm_source")).toBe("ig");
   });
 

@@ -14,6 +14,4 @@ routes = [
 [vars]
 ELIZETE_WHATSAPP_NUMBER = "351915787088"
 ELIZETE_WHATSAPP_DEFAULT_TEXT = "Olá Elizete, estou no site do decolesuacarreiraesg.com.br e tenho uma dúvida. :)"
-CHECKOUT_MENTORIA_URL_DEFAULT = "https://pay.hotmart.com/K98068530F?off=1myrvww7"
-CHECKOUT_MENTORIA_URL_V1 = "https://pay.hotmart.com/K98068530F?off=1myrvww7"
-CHECKOUT_MENTORIA_URL_V2 = ""
+CHECKOUT_URL = "https://pay.hotmart.com/K98068530F?off=3j6lto4t"
