@@ -5,8 +5,14 @@ export type TransactionalEmailRecipient = {
   name?: string;
 };
 
+export type TransactionalEmailReplyTo = {
+  email: string;
+  name?: string;
+};
+
 export type TransactionalEmailRequest = {
   to: TransactionalEmailRecipient;
+  replyTo?: TransactionalEmailReplyTo;
   templateId: number;
   params?: TransactionalEmailParams;
 };
@@ -25,7 +31,7 @@ export class BrevoTransactionalEmailSender implements TransactionalEmailSender {
   }
 
   async send(request: TransactionalEmailRequest): Promise<void> {
-    const { to, templateId, params } = request;
+    const { to, replyTo, templateId, params } = request;
     if (!this.apiKey) {
       throw new Error("BREVO_API_KEY not configured");
     }
@@ -43,6 +49,14 @@ export class BrevoTransactionalEmailSender implements TransactionalEmailSender {
           ...(to.name ? { name: to.name } : {}),
         },
       ],
+      ...(replyTo?.email
+        ? {
+            replyTo: {
+              email: replyTo.email,
+              ...(replyTo.name ? { name: replyTo.name } : {}),
+            },
+          }
+        : {}),
       templateId,
       params: params || {},
     };

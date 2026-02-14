@@ -3,6 +3,8 @@ import { BrevoTransactionalEmailSender } from "../../../packages/shared/transact
 interface Env {
   BREVO_API_KEY?: string;
   BREVO_CART_ABANDONMENT_TEMPLATE_ID?: string;
+  BREVO_REPLY_TO_EMAIL?: string;
+  BREVO_REPLY_TO_NAME?: string;
   HOTMART_PRODUCTS?: string;
 }
 
@@ -458,11 +460,14 @@ async function processEvent(event: HotmartQueuedEvent, env: Env): Promise<boolea
       const offerCode = resolveOfferCode(event) || matchedProduct.defaultOfferCode || "";
       const checkoutUrl = buildCheckoutUrl(matchedProduct.checkoutCode || "", offerCode);
       const effectiveProductName = matchedProduct.name || productName || "";
+      const replyToEmail = asString(env.BREVO_REPLY_TO_EMAIL);
+      const replyToName = asString(env.BREVO_REPLY_TO_NAME);
 
       const emailSender = new BrevoTransactionalEmailSender(apiKey);
       await emailSender.send({
         to: { email, ...(buyerName ? { name: buyerName } : {}) },
         templateId,
+        ...(replyToEmail ? { replyTo: { email: replyToEmail, ...(replyToName ? { name: replyToName } : {}) } } : {}),
         params: {
           productName: effectiveProductName,
           buyerName,

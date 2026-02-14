@@ -8,6 +8,7 @@ describe("BrevoTransactionalEmailSender", () => {
 
     await sender.send({
       to: { email: "lead@exemplo.com", name: "Lead" },
+      replyTo: { email: "contato@decolesuacarreiraesg.com.br", name: "DECOLE" },
       templateId: 8,
       params: { productName: "DECOLE" },
     });
@@ -23,6 +24,7 @@ describe("BrevoTransactionalEmailSender", () => {
     const body = JSON.parse(String(options.body || "{}")) as Record<string, unknown>;
     expect(body).toEqual({
       to: [{ email: "lead@exemplo.com", name: "Lead" }],
+      replyTo: { email: "contato@decolesuacarreiraesg.com.br", name: "DECOLE" },
       templateId: 8,
       params: { productName: "DECOLE" },
     });

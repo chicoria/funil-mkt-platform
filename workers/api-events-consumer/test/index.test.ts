@@ -4,6 +4,8 @@ import worker from "../src/index";
 type Env = {
   BREVO_API_KEY?: string;
   BREVO_CART_ABANDONMENT_TEMPLATE_ID?: string;
+  BREVO_REPLY_TO_EMAIL?: string;
+  BREVO_REPLY_TO_NAME?: string;
   HOTMART_PRODUCTS?: string;
 };
 
@@ -163,7 +165,10 @@ describe("api-events-consumer", () => {
           },
         ],
       },
-      makeEnv()
+      makeEnv({
+        BREVO_REPLY_TO_EMAIL: "contato@decolesuacarreiraesg.com.br",
+        BREVO_REPLY_TO_NAME: "DECOLE",
+      })
     );
 
     const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
@@ -185,11 +190,14 @@ describe("api-events-consumer", () => {
     const emailBody = JSON.parse(String(emailOptions.body || "{}")) as {
       templateId?: number;
       to?: Array<{ email?: string; name?: string }>;
+      replyTo?: { email?: string; name?: string };
       params?: Record<string, unknown>;
     };
     expect(emailBody.templateId).toBe(123);
     expect(emailBody.to?.[0]?.email).toBe("lead@exemplo.com");
     expect(emailBody.to?.[0]?.name).toBe("Lead Nome");
+    expect(emailBody.replyTo?.email).toBe("contato@decolesuacarreiraesg.com.br");
+    expect(emailBody.replyTo?.name).toBe("DECOLE");
     expect(emailBody.params?.productName).toBe("Metodo DECOLE");
     expect(emailBody.params?.buyerName).toBe("Lead Nome");
     expect(emailBody.params?.buyerNameGreeting).toBe(" Lead Nome");

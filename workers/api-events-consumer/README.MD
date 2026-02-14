@@ -27,7 +27,11 @@ Campos de produto verificados no payload:
 ## Variaveis
 - `BREVO_API_KEY` (secret)
 - `BREVO_CART_ABANDONMENT_TEMPLATE_ID` (template transacional para abandono de carrinho)
-- `HOTMART_PRODUCTS` (JSON com produtos e prefixo)
+- `BREVO_REPLY_TO_EMAIL` (opcional, reply-to do email transacional)
+- `BREVO_REPLY_TO_NAME` (opcional, nome do reply-to)
+
+## Config
+- `backend/cloudflare/config/hotmart-products.json` (produtos e prefixo)
 
 Exemplo:
 ```json
@@ -44,7 +48,7 @@ Parametros enviados para o template transacional:
 - `offerCode`
 - `checkoutUrl`
 
-Campos opcionais em `HOTMART_PRODUCTS`:
+Campos opcionais em `config/hotmart-products.json`:
 - `checkoutCode`: codigo do checkout Hotmart (ex.: `K98068530F`)
 - `offerCode`: codigo de oferta default (usado quando o webhook nao envia `offer.code`)
 
