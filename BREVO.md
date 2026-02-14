@@ -48,7 +48,9 @@ Para o atributo `WHATSAPP` aparecer na lista de atributos do contato:
 ### api-events-consumer
 - `BREVO_API_KEY` (secret)
 - `BREVO_CART_ABANDONMENT_TEMPLATE_ID` (template transacional)
-- `HOTMART_PRODUCTS` (JSON com prefixos por produto)
+- `BREVO_REPLY_TO_EMAIL` (opcional, reply-to do email transacional)
+- `BREVO_REPLY_TO_NAME` (opcional, nome do reply-to)
+- Produtos: `backend/cloudflare/config/hotmart-products.json`
 - Atributos usados por produto: `${PREFIX}_FUNIL_STEPS`, `${PREFIX}_FUNIL_LAST_STEP`, `${PREFIX}_FUNIL_LAST_STEP_TIMESTAMP`
 
 ## 7. Validacao rapida
