@@ -29,11 +29,12 @@ Campos de produto verificados no payload:
 - `BREVO_CART_ABANDONMENT_TEMPLATE_ID` (template transacional para abandono de carrinho)
 - `BREVO_REPLY_TO_EMAIL` (opcional; quando definido, envia `replyTo.email` no email transacional)
 - `BREVO_REPLY_TO_NAME` (opcional; usado como `replyTo.name` quando `BREVO_REPLY_TO_EMAIL` estiver definido)
+- `HOTMART_PRODUCTS` (JSON string com produtos mapeados)
 
 ## Config
-- `backend/cloudflare/config/hotmart-products.json` (produtos e prefixo)
+- Configure os produtos em `HOTMART_PRODUCTS` dentro de `[vars]` no `wrangler.toml`.
 
-Exemplo:
+Exemplo de estrutura (antes de serializar para string JSON):
 ```json
 [
   { "id": 3526906, "name": "Metodo DECOLE", "prefix": "DECOLE_ESG", "checkoutCode": "K98068530F", "offerCode": "3j6lto4t" },
@@ -48,7 +49,7 @@ Parametros enviados para o template transacional:
 - `offerCode`
 - `checkoutUrl`
 
-Campos opcionais em `config/hotmart-products.json`:
+Campos opcionais em cada item de `HOTMART_PRODUCTS`:
 - `checkoutCode`: codigo do checkout Hotmart (ex.: `K98068530F`)
 - `offerCode`: codigo de oferta default (usado quando o webhook nao envia `offer.code`)
 

@@ -50,7 +50,7 @@ Para o atributo `WHATSAPP` aparecer na lista de atributos do contato:
 - `BREVO_CART_ABANDONMENT_TEMPLATE_ID` (template transacional)
 - `BREVO_REPLY_TO_EMAIL` (opcional; quando definido, envia `replyTo.email` no email transacional)
 - `BREVO_REPLY_TO_NAME` (opcional; usado como `replyTo.name` quando `BREVO_REPLY_TO_EMAIL` estiver definido)
-- Produtos: `backend/cloudflare/config/hotmart-products.json`
+- Produtos: `HOTMART_PRODUCTS` em `[vars]` no `backend/cloudflare/workers/api-events-consumer/wrangler.toml`
 - Atributos usados por produto: `${PREFIX}_FUNIL_STEPS`, `${PREFIX}_FUNIL_LAST_STEP`, `${PREFIX}_FUNIL_LAST_STEP_TIMESTAMP`
 
 ## 7. Validacao rapida
