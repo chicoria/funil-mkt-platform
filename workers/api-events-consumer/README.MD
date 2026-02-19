@@ -27,8 +27,8 @@ Campos de produto verificados no payload:
 ## Variaveis
 - `BREVO_API_KEY` (secret)
 - `BREVO_CART_ABANDONMENT_TEMPLATE_ID` (template transacional para abandono de carrinho)
-- `BREVO_REPLY_TO_EMAIL` (opcional, reply-to do email transacional)
-- `BREVO_REPLY_TO_NAME` (opcional, nome do reply-to)
+- `BREVO_REPLY_TO_EMAIL` (opcional; quando definido, envia `replyTo.email` no email transacional)
+- `BREVO_REPLY_TO_NAME` (opcional; usado como `replyTo.name` quando `BREVO_REPLY_TO_EMAIL` estiver definido)
 
 ## Config
 - `backend/cloudflare/config/hotmart-products.json` (produtos e prefixo)
