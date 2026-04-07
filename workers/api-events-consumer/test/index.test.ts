@@ -1,12 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import worker from "../src/index";
 
+type KVStub = {
+  get: ReturnType<typeof vi.fn>;
+  put: ReturnType<typeof vi.fn>;
+};
+
 type Env = {
   BREVO_API_KEY?: string;
   BREVO_CART_ABANDONMENT_TEMPLATE_ID?: string;
   BREVO_REPLY_TO_EMAIL?: string;
   BREVO_REPLY_TO_NAME?: string;
   HOTMART_PRODUCTS?: string;
+  DEDUPE_KV?: KVStub;
 };
 
 const HOTMART_PRODUCTS_CONFIG = JSON.stringify([
@@ -26,11 +32,26 @@ const HOTMART_PRODUCTS_CONFIG = JSON.stringify([
   },
 ]);
 
+function makeKvStub(existingKeys: Record<string, string | null> = {}): KVStub {
+  const store = new Map<string, string>();
+  Object.entries(existingKeys).forEach(([key, value]) => {
+    if (value !== null) store.set(key, value);
+  });
+
+  return {
+    get: vi.fn(async (key: string) => store.get(key) ?? null),
+    put: vi.fn(async (key: string, value: string) => {
+      store.set(key, value);
+    }),
+  };
+}
+
 function makeEnv(overrides: Partial<Env> = {}): Env {
   return {
     BREVO_API_KEY: "brevo_key",
     BREVO_CART_ABANDONMENT_TEMPLATE_ID: "123",
     HOTMART_PRODUCTS: HOTMART_PRODUCTS_CONFIG,
+    DEDUPE_KV: makeKvStub(),
     ...overrides,
   };
 }
@@ -142,12 +163,18 @@ describe("api-events-consumer", () => {
   });
 
   it("processa cart abandonment e atualiza atributos", async () => {
+    const env = makeEnv({
+      BREVO_REPLY_TO_EMAIL: "contato@decolesuacarreiraesg.com.br",
+      BREVO_REPLY_TO_NAME: "DECOLE",
+    });
+
     await worker.queue(
       {
         messages: [
           {
             body: {
               eventType: "PURCHASE_OUT_OF_SHOPPING_CART",
+              eventId: "cart-evt-1",
               email: "lead@exemplo.com",
               payload: {
                 offer: {
@@ -165,10 +192,7 @@ describe("api-events-consumer", () => {
           },
         ],
       },
-      makeEnv({
-        BREVO_REPLY_TO_EMAIL: "contato@decolesuacarreiraesg.com.br",
-        BREVO_REPLY_TO_NAME: "DECOLE",
-      })
+      env
     );
 
     const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
@@ -204,6 +228,8 @@ describe("api-events-consumer", () => {
     expect(emailBody.params?.email).toBe("lead@exemplo.com");
     expect(emailBody.params?.offerCode).toBe("n82b9jqz");
     expect(emailBody.params?.checkoutUrl).toBe("https://pay.hotmart.com/KDECOLE123?off=n82b9jqz");
+
+    expect(env.DEDUPE_KV?.put).toHaveBeenCalledTimes(2);
   });
 
   it("usa offerCode do config quando webhook nao envia offer.code", async () => {
@@ -213,6 +239,7 @@ describe("api-events-consumer", () => {
           {
             body: {
               eventType: "PURCHASE_OUT_OF_SHOPPING_CART",
+              eventId: "cart-evt-2",
               email: "lead@exemplo.com",
               payload: {
                 product: {
@@ -244,6 +271,91 @@ describe("api-events-consumer", () => {
     expect(emailBody.to?.[0]?.email).toBe("lead@exemplo.com");
     expect(emailBody.params?.offerCode).toBe("offer-default-decole");
     expect(emailBody.params?.checkoutUrl).toBe("https://pay.hotmart.com/KDECOLE123?off=offer-default-decole");
+  });
+
+  it("ignora evento duplicado pelo mesmo eventId", async () => {
+    const env = makeEnv({
+      DEDUPE_KV: makeKvStub({
+        "hotmart:event:cart-evt-dup": "2026-04-06T01:45:00.000Z",
+      }),
+    });
+
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: {
+              eventType: "PURCHASE_OUT_OF_SHOPPING_CART",
+              eventId: "cart-evt-dup",
+              email: "lead@exemplo.com",
+              payload: {
+                product: {
+                  id: 3526906,
+                  name: "Metodo DECOLE",
+                },
+              },
+            },
+          },
+        ],
+      },
+      env
+    );
+
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes("/smtp/email"))).toBe(false);
+    expect(env.DEDUPE_KV?.put).not.toHaveBeenCalled();
+  });
+
+  it("ignora evento duplicado na mesma janela diaria", async () => {
+    const realDate = Date;
+    vi.stubGlobal(
+      "Date",
+      class extends Date {
+        constructor(...args: ConstructorParameters<typeof Date>) {
+          if (args.length === 0) {
+            super("2026-04-06T12:00:00.000Z");
+            return;
+          }
+          super(...args);
+        }
+        static now() {
+          return new realDate("2026-04-06T12:00:00.000Z").getTime();
+        }
+      } as DateConstructor
+    );
+
+    const env = makeEnv({
+      DEDUPE_KV: makeKvStub({
+        "hotmart:email:lead@exemplo.com:purchase_out_of_shopping_cart:2026-04-06": "2026-04-06T01:45:00.000Z",
+      }),
+    });
+
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: {
+              eventType: "PURCHASE_OUT_OF_SHOPPING_CART",
+              eventId: "cart-evt-3",
+              email: "lead@exemplo.com",
+              payload: {
+                product: {
+                  id: 3526906,
+                  name: "Metodo DECOLE",
+                },
+              },
+            },
+          },
+        ],
+      },
+      env
+    );
+
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes("/smtp/email"))).toBe(false);
+    expect(env.DEDUPE_KV?.put).not.toHaveBeenCalled();
   });
 
   it("ignora evento de outro produto", async () => {

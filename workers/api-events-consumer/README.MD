@@ -30,6 +30,19 @@ Campos de produto verificados no payload:
 - `BREVO_REPLY_TO_EMAIL` (opcional; quando definido, envia `replyTo.email` no email transacional)
 - `BREVO_REPLY_TO_NAME` (opcional; usado como `replyTo.name` quando `BREVO_REPLY_TO_EMAIL` estiver definido)
 - `HOTMART_PRODUCTS` (JSON string com produtos mapeados)
+- `DEDUPE_KV` (binding KV para evitar reenvio duplicado de emails de abandono)
+
+## Idempotencia / anti-duplicacao
+Para eventos de abandono de carrinho, o worker agora usa KV para duas travas:
+
+- por `eventId`: chave `hotmart:event:<eventId>` com TTL de 90 dias
+- por janela diaria: chave `hotmart:email:<email>:<eventType>:<yyyy-mm-dd>` com TTL de 48h
+
+Se uma dessas chaves ja existir, o worker faz log com `stage: "duplicate_skipped"` e nao reenvia o email.
+
+Observacao importante:
+- o KV reduz fortemente duplicacoes por retry/replay, mas nao e transacional forte
+- para garantia maxima contra concorrencia extrema, evoluir depois para Durable Object
 
 ## Config
 - Configure os produtos em `HOTMART_PRODUCTS` dentro de `[vars]` no `wrangler.toml`.
@@ -61,6 +74,22 @@ Campos opcionais em cada item de `HOTMART_PRODUCTS`:
 - Endpoint de health: `GET /health` (via workers.dev)
 - Smoke:
   - `SMOKE_URL=https://<worker>.workers.dev/health npm run smoke`
+
+## Como criar e ligar o KV
+1. Criar namespace de producao:
+   - `wrangler kv namespace create DEDUPE_KV`
+2. Criar namespace de preview/dev:
+   - `wrangler kv namespace create DEDUPE_KV --preview`
+3. Copiar os IDs retornados para `wrangler.toml` em `[[kv_namespaces]]`
+4. Deployar o worker novamente
+
+Exemplo de bloco no `wrangler.toml`:
+```toml
+[[kv_namespaces]]
+binding = "DEDUPE_KV"
+id = "<KV_NAMESPACE_ID_PROD>"
+preview_id = "<KV_NAMESPACE_ID_PREVIEW>"
+```
 
 ## Experimento Brevo (tags via atributos)
 O caminho mais estavel e usar atributos customizados e segmentar no painel. Os atributos precisam existir no Brevo e devem ser enviados em letras maiusculas.

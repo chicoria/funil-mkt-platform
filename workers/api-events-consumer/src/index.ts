@@ -1,11 +1,17 @@
 import { BrevoTransactionalEmailSender } from "../../../packages/shared/transactional-email";
 
+interface KVNamespaceLike {
+  get(key: string): Promise<string | null>;
+  put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
+}
+
 interface Env {
   BREVO_API_KEY?: string;
   BREVO_CART_ABANDONMENT_TEMPLATE_ID?: string;
   BREVO_REPLY_TO_EMAIL?: string;
   BREVO_REPLY_TO_NAME?: string;
   HOTMART_PRODUCTS?: string;
+  DEDUPE_KV?: KVNamespaceLike;
 }
 
 interface HotmartQueuedEvent {
@@ -88,6 +94,13 @@ function formatDateDDMMYYYY(date: Date): string {
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
   const year = String(date.getUTCFullYear());
   return `${day}-${month}-${year}`;
+}
+
+function formatDateYYYYMMDD(date: Date): string {
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const year = String(date.getUTCFullYear());
+  return `${year}-${month}-${day}`;
 }
 
 function normalizeTag(value: string): string {
@@ -385,6 +398,27 @@ async function upsertContact(
   }
 }
 
+const EVENT_DEDUPE_TTL_SECONDS = 60 * 60 * 24 * 90;
+const DAILY_DEDUPE_TTL_SECONDS = 60 * 60 * 48;
+
+function buildEventDedupeKey(eventId: string): string {
+  return `hotmart:event:${eventId}`;
+}
+
+function buildDailyDedupeKey(email: string, normalizedEvent: string, dateKey: string): string {
+  return `hotmart:email:${email.toLowerCase()}:${normalizedEvent}:${dateKey}`;
+}
+
+async function hasDedupeKey(kv: KVNamespaceLike | undefined, key: string): Promise<boolean> {
+  if (!kv) return false;
+  return (await kv.get(key)) !== null;
+}
+
+async function putDedupeKey(kv: KVNamespaceLike | undefined, key: string, ttl: number): Promise<void> {
+  if (!kv) return;
+  await kv.put(key, new Date().toISOString(), { expirationTtl: ttl });
+}
+
 async function processEvent(event: HotmartQueuedEvent, env: Env): Promise<boolean> {
   const eventType = asString(event.eventType);
   if (!eventType) {
@@ -455,6 +489,36 @@ async function processEvent(event: HotmartQueuedEvent, env: Env): Promise<boolea
   if (isCartAbandonmentEvent(eventType)) {
     const templateId = Number(env.BREVO_CART_ABANDONMENT_TEMPLATE_ID || "0");
     if (templateId > 0) {
+      const dateKey = formatDateYYYYMMDD(new Date());
+      const dedupeEventKey = event.eventId ? buildEventDedupeKey(event.eventId) : "";
+      const dedupeDailyKey = buildDailyDedupeKey(email, normalizedEvent, dateKey);
+
+      if (dedupeEventKey && (await hasDedupeKey(env.DEDUPE_KV, dedupeEventKey))) {
+        console.log(
+          JSON.stringify({
+            stage: "duplicate_skipped",
+            dedupeScope: "event",
+            eventType,
+            eventId: event.eventId || "",
+            email,
+          })
+        );
+        return false;
+      }
+
+      if (await hasDedupeKey(env.DEDUPE_KV, dedupeDailyKey)) {
+        console.log(
+          JSON.stringify({
+            stage: "duplicate_skipped",
+            dedupeScope: "daily",
+            eventType,
+            eventId: event.eventId || "",
+            email,
+          })
+        );
+        return false;
+      }
+
       const buyerName = resolveBuyerName(event);
       const buyerNameGreeting = buyerName ? ` ${buyerName}` : "";
       const offerCode = resolveOfferCode(event) || matchedProduct.defaultOfferCode || "";
@@ -477,6 +541,11 @@ async function processEvent(event: HotmartQueuedEvent, env: Env): Promise<boolea
           checkoutUrl,
         },
       });
+
+      if (dedupeEventKey) {
+        await putDedupeKey(env.DEDUPE_KV, dedupeEventKey, EVENT_DEDUPE_TTL_SECONDS);
+      }
+      await putDedupeKey(env.DEDUPE_KV, dedupeDailyKey, DAILY_DEDUPE_TTL_SECONDS);
     } else {
       console.log(
         JSON.stringify({
