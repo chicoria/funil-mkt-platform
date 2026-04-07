@@ -4,14 +4,16 @@ import worker from "../src/index";
 type Env = {
   ELIZETE_WHATSAPP_NUMBER?: string;
   ELIZETE_WHATSAPP_DEFAULT_TEXT?: string;
-  CHECKOUT_URL?: string;
+  DECOLE_MENTORIA_CHECKOUT_URL?: string;
+  PLANO_DE_VOO_CHECKOUT_URL?: string;
 };
 
 function makeEnv(overrides: Partial<Env> = {}): Env {
   return {
     ELIZETE_WHATSAPP_NUMBER: "351 915 787 088",
     ELIZETE_WHATSAPP_DEFAULT_TEXT: "Olá Elizete, preciso de ajuda",
-    CHECKOUT_URL: "https://pay.hotmart.com/K98068530F?off=1myrvww7",
+    DECOLE_MENTORIA_CHECKOUT_URL: "https://pay.hotmart.com/K98068530F?off=1myrvww7",
+    PLANO_DE_VOO_CHECKOUT_URL: "https://pay.hotmart.com/W104931067S",
     ...overrides,
   };
 }
@@ -76,6 +78,25 @@ describe("links-redirect worker", () => {
     const url = new URL(location);
     expect(url.searchParams.get("off")).toBe("n82b9jqz");
     expect(url.searchParams.get("offer")).toBe("n82b9jqz");
+    expect(url.searchParams.get("utm_source")).toBe("ig");
+  });
+
+  it("redireciona plano de voo com parametros recebidos", async () => {
+    const res = await worker.fetch(makeRequest("plano-de-voo/checkout?utm_source=ig"), makeEnv());
+    const location = res.headers.get("location") || "";
+    const url = new URL(location);
+    expect(url.origin).toBe("https://pay.hotmart.com");
+    expect(url.pathname).toBe("/W104931067S");
+    expect(url.searchParams.get("utm_source")).toBe("ig");
+  });
+
+  it("redireciona /plano-de-voo/checkout/offer/:codigo com oferta da rota", async () => {
+    const res = await worker.fetch(makeRequest("plano-de-voo/checkout/offer/novo123?utm_source=ig"), makeEnv());
+    const location = res.headers.get("location") || "";
+    const url = new URL(location);
+    expect(url.pathname).toBe("/W104931067S");
+    expect(url.searchParams.get("off")).toBe("novo123");
+    expect(url.searchParams.get("offer")).toBe("novo123");
     expect(url.searchParams.get("utm_source")).toBe("ig");
   });
 

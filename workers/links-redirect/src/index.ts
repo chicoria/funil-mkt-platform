@@ -1,7 +1,8 @@
 interface Env {
   ELIZETE_WHATSAPP_NUMBER?: string;
   ELIZETE_WHATSAPP_DEFAULT_TEXT?: string;
-  CHECKOUT_URL?: string;
+  DECOLE_MENTORIA_CHECKOUT_URL?: string;
+  PLANO_DE_VOO_CHECKOUT_URL?: string;
 }
 
 type HandlerResult = {
@@ -71,10 +72,7 @@ function handleElizeteWhatsapp(url: URL, env: Env): HandlerResult | null {
   };
 }
 
-function handleCheckout(url: URL, env: Env): HandlerResult | null {
-  let baseUrl = "";
-
-  baseUrl = asTrimmedString(env.CHECKOUT_URL);
+function handleCheckoutByBaseUrl(url: URL, baseUrl: string): HandlerResult | null {
   if (!baseUrl) return null;
 
   const hasExplicitOfferParam =
@@ -118,6 +116,16 @@ function handleCheckout(url: URL, env: Env): HandlerResult | null {
   };
 }
 
+function handleCheckout(url: URL, env: Env): HandlerResult | null {
+  const baseUrl = asTrimmedString(env.DECOLE_MENTORIA_CHECKOUT_URL);
+  return handleCheckoutByBaseUrl(url, baseUrl);
+}
+
+function handlePlanoDeVooCheckout(url: URL, env: Env): HandlerResult | null {
+  const baseUrl = asTrimmedString(env.PLANO_DE_VOO_CHECKOUT_URL);
+  return handleCheckoutByBaseUrl(url, baseUrl);
+}
+
 function withOfferCode(url: URL, offerCode: string): URL {
   const nextUrl = new URL(url);
   if (!offerCode) return nextUrl;
@@ -135,6 +143,7 @@ const handlers: Record<string, (url: URL, env: Env) => HandlerResult | null> = {
   "elizete-wp": handleElizeteWhatsapp,
   checkout: handleCheckout,
   "decole-esg/checkout": handleCheckout,
+  "plano-de-voo/checkout": handlePlanoDeVooCheckout,
 };
 
 const worker = {
@@ -148,11 +157,11 @@ const worker = {
         return jsonResponse({ ok: true, worker: "links-redirect" }, 200);
       }
 
-      if (path.startsWith("decole-esg/checkout/offer")) {
+      if (path.startsWith("decole-esg/checkout/offer") || path.startsWith("plano-de-voo/checkout/offer")) {
         const rawSegments = rawPath.split("/").filter(Boolean);
         const lowerSegments = path.split("/").filter(Boolean);
         const isOfferPath =
-          lowerSegments[0] === "decole-esg" &&
+          (lowerSegments[0] === "decole-esg" || lowerSegments[0] === "plano-de-voo") &&
           lowerSegments[1] === "checkout" &&
           lowerSegments[2] === "offer";
 
@@ -163,7 +172,8 @@ const worker = {
 
           const offerCode = rawSegments[3] || "";
           const requestUrl = offerCode ? withOfferCode(url, offerCode) : url;
-          const result = handleCheckout(requestUrl, env);
+          const handler = lowerSegments[0] === "plano-de-voo" ? handlePlanoDeVooCheckout : handleCheckout;
+          const result = handler(requestUrl, env);
 
           if (!result || !result.location) {
             return jsonResponse({ ok: false, error: "link_not_configured" }, 500);
