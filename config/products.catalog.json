@@ -109,6 +109,29 @@
         "checkoutBaseUrl": "https://pay.hotmart.com/K98068530F?off=3j6lto4t"
       },
 
+      "landingPages": [
+        {
+          "name": "Landing page principal",
+          "url": "https://decolesuacarreiraesg.com.br",
+          "repo": "decolesuacarreiraesg",
+          "folder": "site/",
+          "indexFile": "site/index.html",
+          "gtm": "GTM-58CQ9K7X",
+          "ga4": "G-BQQB6X5XN1",
+          "metaPixel": ""
+        },
+        {
+          "name": "Página de confirmação DOI",
+          "url": "https://decolesuacarreiraesg.com.br/confirmacao.html",
+          "repo": "decolesuacarreiraesg",
+          "folder": "site/",
+          "indexFile": "site/confirmacao.html",
+          "gtm": "GTM-58CQ9K7X",
+          "ga4": "G-BQQB6X5XN1",
+          "metaPixel": ""
+        }
+      ],
+
       "backend": {
         "workers": [
           "api-hotmart-webhook",
@@ -194,6 +217,54 @@
         "checkoutPath": "/plano-de-voo/checkout",
         "checkoutOfferPathTemplate": "/plano-de-voo/checkout/offer/{offerCode}",
         "checkoutBaseUrl": "https://pay.hotmart.com/W104931067S"
+      },
+
+      "landingPages": [
+        {
+          "name": "Landing page Plano de Voo",
+          "url": "https://decolesuacarreiraesg.com.br/planodevoo",
+          "repo": "decolesuacarreiraesg",
+          "folder": "site/planodevoo/",
+          "indexFile": "site/planodevoo/index.html",
+          "gtm": "GTM-58CQ9K7X",
+          "ga4": "G-BQQB6X5XN1",
+          "metaPixel": ""
+        },
+        {
+          "name": "Formulário gerador (comprador autenticado)",
+          "url": "https://decolesuacarreiraesg.com.br/gerar-plano-voo",
+          "repo": "decolesuacarreiraesg",
+          "folder": "site/gerar-plano-voo/",
+          "indexFile": "site/gerar-plano-voo/index.html",
+          "gtm": "",
+          "ga4": "",
+          "metaPixel": ""
+        }
+      ],
+
+      "app": {
+        "name": "Plano de Voo App",
+        "url": "https://plano.decolesuacarreiraesg.com.br",
+        "repo": "decole-plano-de-voo-app",
+        "repoUrl": "https://github.com/chicoria/decole-plano-de-voo-app.git",
+        "folder": "/",
+        "indexFile": "app/page.tsx",
+        "stack": "Next.js 16 + TypeScript + PostgreSQL + Docker",
+        "gtm": "",
+        "ga4": "",
+        "metaPixel": ""
+      },
+
+      "n8nAutomation": {
+        "name": "Plano de Voo n8n Workflows",
+        "repo": "decole-plano-de-voo",
+        "repoUrl": "https://github.com/chicoria/decole-plano-de-voo.git",
+        "folder": "/",
+        "workflows": {
+          "principal": "BJiMJbSj7XcRa43B",
+          "subfluxoGerador": "Tl5MxuawrvhW9sYX",
+          "subfluxoParserUpload": "kFZdrwLM6jdtwJ8G"
+        }
       },
 
       "backend": {
