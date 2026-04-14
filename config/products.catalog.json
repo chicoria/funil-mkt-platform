@@ -103,6 +103,12 @@
         "automations": {}
       },
 
+      "meta": {
+        "pixelIdEnvVar": "META_PIXEL_ID_DECOLE_ESG",
+        "capiTokenEnvVar": "META_CAPI_ACCESS_TOKEN_DECOLE_ESG",
+        "testEventCodeEnvVar": "META_TEST_EVENT_CODE_DECOLE_ESG"
+      },
+
       "links": {
         "checkoutPath": "/decole-esg/checkout",
         "checkoutOfferPathTemplate": "/decole-esg/checkout/offer/{offerCode}",
@@ -158,7 +164,7 @@
       ],
 
       "hotmart": {
-        "productId": "",
+        "productId": "7393301",
         "productName": "Plano de Voo",
         "checkoutCode": "W104931067S",
         "defaultOfferCode": ""
@@ -211,6 +217,12 @@
         "templates": {},
         "segments": {},
         "automations": {}
+      },
+
+      "meta": {
+        "pixelIdEnvVar": "META_PIXEL_ID_PLANOVOO",
+        "capiTokenEnvVar": "META_CAPI_ACCESS_TOKEN_PLANOVOO",
+        "testEventCodeEnvVar": "META_TEST_EVENT_CODE_PLANOVOO"
       },
 
       "links": {
