@@ -1,0 +1,240 @@
+{
+  "schemaVersion": 2,
+  "updatedAt": "2026-04-14",
+  "description": "Catálogo central de produtos — cada produto declara seus subsistemas.",
+
+  "global": {
+    "hotmart": {
+      "auth": {
+        "secretEnvVar": "HOTMART_WEBHOOK_TOKEN",
+        "acceptedHeaders": [
+          "X-HOTMART-HOTTOK",
+          "X-HOTMART-TOKEN",
+          "X-WEBHOOK-TOKEN"
+        ],
+        "acceptedQueryParams": [
+          "hottok",
+          "token"
+        ]
+      },
+      "docs": {
+        "responseCodes": "https://developers.hotmart.com/docs/pt-BR/1.0.0/webhook/http-response-codes-webhook/",
+        "purchaseWebhook": "https://developers.hotmart.com/docs/pt-BR/2.0.0/webhook/purchase-webhook/",
+        "cartAbandonmentWebhook": "https://developers.hotmart.com/docs/pt-BR/2.0.0/webhook/cart-abandonment-webhook/"
+      }
+    },
+    "n8n": {
+      "baseUrl": "https://n8n.decolesuacarreiraesg.com.br"
+    },
+    "brevo": {
+      "replyToEmail": "contato@decolesuacarreiraesg.com.br",
+      "replyToEmailEnvVar": "BREVO_REPLY_TO_EMAIL"
+    }
+  },
+
+  "products": {
+    "DECOLE_ESG_MENTORIA": {
+      "name": "DECOLE sua Carreira ESG",
+      "aliases": [
+        "DECOLE_ESG",
+        "MENTORIA",
+        "ESG"
+      ],
+
+      "hotmart": {
+        "productId": "5083704",
+        "productName": "DECOLE sua Carreira ESG",
+        "checkoutCode": "K98068530F",
+        "defaultOfferCode": "3j6lto4t"
+      },
+
+      "webhooks": {
+        "hotmart": {
+          "ingressUrl": "https://api.decolesuacarreiraesg.com.br/webhooks/hotmart",
+          "events": [
+            {
+              "event": "PURCHASE_APPROVED",
+              "handler": "cloudflare-queue",
+              "description": "Compra aprovada → fila → atualiza Brevo"
+            },
+            {
+              "event": "PURCHASE_OUT_OF_SHOPPING_CART",
+              "handler": "cloudflare-queue",
+              "description": "Carrinho abandonado → fila → email transacional"
+            },
+            {
+              "event": "BEGIN_CHECKOUT",
+              "handler": "cloudflare-queue",
+              "description": "Início de checkout → fila → atualiza funil Brevo"
+            },
+            {
+              "event": "GENERATE_LEAD",
+              "handler": "cloudflare-queue",
+              "description": "Lead gerado → fila → atualiza funil Brevo"
+            }
+          ]
+        }
+      },
+
+      "brevo": {
+        "funnelPrefix": "DECOLE_ESG",
+        "funnelFields": {
+          "steps": "DECOLE_ESG_FUNIL_STEPS",
+          "lastStep": "DECOLE_ESG_FUNIL_LAST_STEP",
+          "lastStepTimestamp": "DECOLE_ESG_FUNIL_LAST_STEP_TIMESTAMP"
+        },
+        "lists": {
+          "precheckout": {
+            "id": "7",
+            "name": "Leads Precheckout"
+          }
+        },
+        "templates": {
+          "doi": {
+            "id": "1",
+            "description": "Double Opt-In confirmation"
+          },
+          "cartAbandonment": {
+            "id": "8",
+            "description": "Email carrinho abandonado"
+          }
+        },
+        "segments": {},
+        "automations": {}
+      },
+
+      "links": {
+        "checkoutPath": "/decole-esg/checkout",
+        "checkoutOfferPathTemplate": "/decole-esg/checkout/offer/{offerCode}",
+        "checkoutBaseUrl": "https://pay.hotmart.com/K98068530F?off=3j6lto4t"
+      },
+
+      "backend": {
+        "workers": [
+          "api-hotmart-webhook",
+          "api-events-consumer",
+          "api-precheckout",
+          "links-redirect"
+        ],
+        "queue": {
+          "name": "decole-q-hotmart-events",
+          "dlq": "decole-q-hotmart-events-dlq"
+        },
+        "kv": {
+          "dedupeBinding": "DEDUPE_KV"
+        }
+      }
+    },
+
+    "DECOLE_PLANOVOO": {
+      "name": "Plano de Voo",
+      "aliases": [
+        "PLANOVOO",
+        "PLANO_VOO",
+        "PLANO VOO"
+      ],
+
+      "hotmart": {
+        "productId": "",
+        "productName": "Plano de Voo",
+        "checkoutCode": "W104931067S",
+        "defaultOfferCode": ""
+      },
+
+      "webhooks": {
+        "hotmart": {
+          "ingressUrl": "https://n8n.decolesuacarreiraesg.com.br/webhook/plano-de-voo/hotmart",
+          "events": [
+            {
+              "event": "PURCHASE_APPROVED",
+              "handler": "n8n",
+              "description": "Compra aprovada → n8n processa entrega"
+            }
+          ]
+        },
+        "app": {
+          "submeter": {
+            "url": "https://n8n.decolesuacarreiraesg.com.br/webhook/plano-de-voo/submeter",
+            "method": "POST",
+            "contentType": "multipart/form-data",
+            "fields": [
+              "token",
+              "nome",
+              "email",
+              "curriculo_texto",
+              "descricao_vaga"
+            ],
+            "description": "Submissão do formulário Plano de Voo → n8n gera plano"
+          },
+          "validarToken": {
+            "url": "https://n8n.decolesuacarreiraesg.com.br/webhook/validar-token",
+            "method": "GET",
+            "params": [
+              "token"
+            ],
+            "description": "Valida token de acesso do comprador"
+          }
+        }
+      },
+
+      "brevo": {
+        "funnelPrefix": "DECOLE_PLANOVOO",
+        "funnelFields": {
+          "steps": "DECOLE_PLANOVOO_FUNIL_STEPS",
+          "lastStep": "DECOLE_PLANOVOO_FUNIL_LAST_STEP",
+          "lastStepTimestamp": "DECOLE_PLANOVOO_FUNIL_LAST_STEP_TIMESTAMP"
+        },
+        "lists": {},
+        "templates": {},
+        "segments": {},
+        "automations": {}
+      },
+
+      "links": {
+        "checkoutPath": "/plano-de-voo/checkout",
+        "checkoutOfferPathTemplate": "/plano-de-voo/checkout/offer/{offerCode}",
+        "checkoutBaseUrl": "https://pay.hotmart.com/W104931067S"
+      },
+
+      "backend": {
+        "workers": [
+          "api-precheckout",
+          "links-redirect"
+        ],
+        "n8nWorkflows": [
+          "plano-de-voo/hotmart",
+          "plano-de-voo/submeter",
+          "validar-token"
+        ]
+      }
+    }
+  },
+
+  "workerViews": {
+    "api-hotmart-webhook": {
+      "description": "Recebe webhooks Hotmart, valida auth, enfileira. Consultar products[*].webhooks.hotmart onde handler=cloudflare-queue.",
+      "secrets": [
+        "HOTMART_WEBHOOK_TOKEN"
+      ]
+    },
+    "api-events-consumer": {
+      "description": "Consome fila, resolve produto, atualiza Brevo, envia emails.",
+      "envVarMapping": {
+        "HOTMART_PRODUCTS": "Para cada produto com webhooks.hotmart.handler=cloudflare-queue → {id, name, prefix, checkoutCode, offerCode}",
+        "BREVO_CART_ABANDONMENT_TEMPLATE_ID": "produto.brevo.templates.cartAbandonment.id",
+        "BREVO_REPLY_TO_EMAIL": "global.brevo.replyToEmail"
+      }
+    },
+    "api-precheckout": {
+      "description": "Lead capture via Brevo DOI. Resolve produto por aliases → funnelPrefix.",
+      "derivedConfig": "Para cada produto → {code, prefix: brevo.funnelPrefix, aliases, listId: brevo.lists.precheckout.id}"
+    },
+    "links-redirect": {
+      "description": "Redirects de checkout. Para cada produto → checkoutPath : checkoutBaseUrl.",
+      "envVarMapping": {
+        "DECOLE_MENTORIA_CHECKOUT_URL": "products.DECOLE_ESG_MENTORIA.links.checkoutBaseUrl",
+        "PLANO_DE_VOO_CHECKOUT_URL": "products.DECOLE_PLANOVOO.links.checkoutBaseUrl"
+      }
+    }
+  }
+}
