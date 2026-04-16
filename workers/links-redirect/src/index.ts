@@ -3,12 +3,21 @@ interface Env {
   ELIZETE_WHATSAPP_DEFAULT_TEXT?: string;
   DECOLE_MENTORIA_CHECKOUT_URL?: string;
   PLANO_DE_VOO_CHECKOUT_URL?: string;
+  LINKS_PRODUCTS?: string;
 }
 
 type HandlerResult = {
   location: string;
   cacheControl?: string;
 };
+
+interface LinksProductConfig {
+  checkoutPath: string;
+  checkoutBaseUrl: string;
+}
+
+let cachedLinksProductsRaw = "";
+let cachedLinksProducts: LinksProductConfig[] = [];
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -38,6 +47,43 @@ function normalizePath(pathname: string): string {
 
 function lowercasePath(pathname: string): string {
   return pathname.toLowerCase();
+}
+
+function parseLinksProducts(rawConfig: string): LinksProductConfig[] {
+  const raw = asTrimmedString(rawConfig);
+  if (!raw) return [];
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    console.log(JSON.stringify({ stage: "config_error", reason: "invalid_links_products_json" }));
+    return [];
+  }
+
+  if (!Array.isArray(parsed)) {
+    console.log(JSON.stringify({ stage: "config_error", reason: "links_products_not_array" }));
+    return [];
+  }
+
+  return parsed
+    .map((entry) => {
+      const data = entry as Record<string, unknown>;
+      const checkoutPath = lowercasePath(normalizePath(asTrimmedString(data.checkoutPath)));
+      const checkoutBaseUrl = asTrimmedString(data.checkoutBaseUrl);
+      if (!checkoutPath || !checkoutBaseUrl) return null;
+      return { checkoutPath, checkoutBaseUrl };
+    })
+    .filter((entry): entry is LinksProductConfig => !!entry);
+}
+
+function getLinksProducts(env: Env): LinksProductConfig[] {
+  const raw = asTrimmedString(env.LINKS_PRODUCTS);
+  if (!raw) return [];
+  if (raw === cachedLinksProductsRaw) return cachedLinksProducts;
+  cachedLinksProductsRaw = raw;
+  cachedLinksProducts = parseLinksProducts(raw);
+  return cachedLinksProducts;
 }
 
 function appendQueryParams(baseUrl: string, params: URLSearchParams, ignoreKeys: string[] = []): string {
@@ -116,13 +162,24 @@ function handleCheckoutByBaseUrl(url: URL, baseUrl: string): HandlerResult | nul
   };
 }
 
-function handleCheckout(url: URL, env: Env): HandlerResult | null {
-  const baseUrl = asTrimmedString(env.DECOLE_MENTORIA_CHECKOUT_URL);
-  return handleCheckoutByBaseUrl(url, baseUrl);
+function resolveCheckoutBaseUrlByPath(path: string, env: Env): string {
+  const normalizedPath = lowercasePath(normalizePath(path));
+
+  const dynamicMatch = getLinksProducts(env).find((item) => item.checkoutPath === normalizedPath);
+  if (dynamicMatch) return dynamicMatch.checkoutBaseUrl;
+
+  if (normalizedPath === "checkout" || normalizedPath === "decole-esg/checkout") {
+    return asTrimmedString(env.DECOLE_MENTORIA_CHECKOUT_URL);
+  }
+  if (normalizedPath === "plano-de-voo/checkout") {
+    return asTrimmedString(env.PLANO_DE_VOO_CHECKOUT_URL);
+  }
+
+  return "";
 }
 
-function handlePlanoDeVooCheckout(url: URL, env: Env): HandlerResult | null {
-  const baseUrl = asTrimmedString(env.PLANO_DE_VOO_CHECKOUT_URL);
+function handleCheckoutPath(url: URL, checkoutPath: string, env: Env): HandlerResult | null {
+  const baseUrl = resolveCheckoutBaseUrlByPath(checkoutPath, env);
   return handleCheckoutByBaseUrl(url, baseUrl);
 }
 
@@ -141,9 +198,6 @@ function withOfferCode(url: URL, offerCode: string): URL {
 
 const handlers: Record<string, (url: URL, env: Env) => HandlerResult | null> = {
   "elizete-wp": handleElizeteWhatsapp,
-  checkout: handleCheckout,
-  "decole-esg/checkout": handleCheckout,
-  "plano-de-voo/checkout": handlePlanoDeVooCheckout,
 };
 
 const worker = {
@@ -157,36 +211,44 @@ const worker = {
         return jsonResponse({ ok: true, worker: "links-redirect" }, 200);
       }
 
-      if (path.startsWith("decole-esg/checkout/offer") || path.startsWith("plano-de-voo/checkout/offer")) {
-        const rawSegments = rawPath.split("/").filter(Boolean);
-        const lowerSegments = path.split("/").filter(Boolean);
-        const isOfferPath =
-          (lowerSegments[0] === "decole-esg" || lowerSegments[0] === "plano-de-voo") &&
-          lowerSegments[1] === "checkout" &&
-          lowerSegments[2] === "offer";
-
-        if (isOfferPath) {
-          if (rawSegments.length !== 4) {
-            return jsonResponse({ ok: false, error: "not_found" }, 404);
-          }
-
-          const offerCode = rawSegments[3] || "";
-          const requestUrl = offerCode ? withOfferCode(url, offerCode) : url;
-          const handler = lowerSegments[0] === "plano-de-voo" ? handlePlanoDeVooCheckout : handleCheckout;
-          const result = handler(requestUrl, env);
-
-          if (!result || !result.location) {
-            return jsonResponse({ ok: false, error: "link_not_configured" }, 500);
-          }
-
-          return new Response(null, {
-            status: 302,
-            headers: {
-              location: result.location,
-              "cache-control": result.cacheControl || "no-store",
-            },
-          });
+      const offerMatch = rawPath.match(/^(.+)\/checkout\/offer\/([^/]+)$/i);
+      if (offerMatch) {
+        const checkoutPrefix = normalizePath(offerMatch[1] || "");
+        const offerCode = offerMatch[2] || "";
+        if (!checkoutPrefix || !offerCode) {
+          return jsonResponse({ ok: false, error: "not_found" }, 404);
         }
+
+        const checkoutPath = `${checkoutPrefix}/checkout`;
+        const requestUrl = withOfferCode(url, offerCode);
+        const result = handleCheckoutPath(requestUrl, checkoutPath, env);
+
+        if (!result || !result.location) {
+          return jsonResponse({ ok: false, error: "link_not_configured" }, 500);
+        }
+
+        return new Response(null, {
+          status: 302,
+          headers: {
+            location: result.location,
+            "cache-control": result.cacheControl || "no-store",
+          },
+        });
+      }
+
+      if (path === "checkout" || path.endsWith("/checkout")) {
+        const result = handleCheckoutPath(url, rawPath, env);
+        if (!result || !result.location) {
+          return jsonResponse({ ok: false, error: "link_not_configured" }, 500);
+        }
+
+        return new Response(null, {
+          status: 302,
+          headers: {
+            location: result.location,
+            "cache-control": result.cacheControl || "no-store",
+          },
+        });
       }
 
       const handler = handlers[path];

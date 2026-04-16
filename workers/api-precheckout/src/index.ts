@@ -4,6 +4,7 @@ interface Env {
   BREVO_LIST_ID?: string;
   BREVO_DOI_TEMPLATE_ID?: string;
   BREVO_DOI_REDIRECT_URL?: string;
+  PRECHECKOUT_PRODUCTS?: string;
   TURNSTILE_SECRET?: string;
 }
 
@@ -39,6 +40,22 @@ interface DoiConfig {
   useDoi: boolean;
 }
 
+interface PrecheckoutProductConfig {
+  code: string;
+  aliases: string[];
+  listId?: number;
+  doiTemplateId?: number;
+  doiRedirectUrl?: string;
+}
+
+interface ResolvedPrecheckoutConfig {
+  listId: number;
+  doiTemplateId: number;
+  doiRedirectUrl: string;
+  requestedProductCode: string;
+  matchedProductCode: string;
+}
+
 interface BrevoDoiPayload {
   email: string;
   includeListIds: number[];
@@ -62,6 +79,8 @@ interface BrevoRequestConfig {
 }
 
 const FIXED_ALLOWED_ORIGIN = "http://192.168.1.67:8080";
+let cachedPrecheckoutProductsRaw = "";
+let cachedPrecheckoutProducts: PrecheckoutProductConfig[] = [];
 
 function jsonResponse(body: unknown, status: number, headers?: HeadersInit): Response {
   return new Response(JSON.stringify(body), {
@@ -73,6 +92,25 @@ function jsonResponse(body: unknown, status: number, headers?: HeadersInit): Res
 function asTrimmedString(value: unknown): string {
   if (value === undefined || value === null) return "";
   return String(value).trim();
+}
+
+function asPositiveInt(value: unknown): number | undefined {
+  const raw = asTrimmedString(value);
+  if (!raw) return undefined;
+  const num = Number(raw);
+  if (!Number.isFinite(num) || num <= 0) return undefined;
+  return Math.floor(num);
+}
+
+function normalizeProductToken(value: unknown): string {
+  const raw = asTrimmedString(value);
+  if (!raw) return "";
+  return raw
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
 }
 
 function pickField(data: InputData, keys: string[]): string {
@@ -108,6 +146,56 @@ function parseAllowedOrigins(rawAllowedOrigin: string): string[] {
   }
 
   return origins;
+}
+
+function parsePrecheckoutProducts(rawConfig: string): PrecheckoutProductConfig[] {
+  const raw = asTrimmedString(rawConfig);
+  if (!raw) return [];
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    console.log(JSON.stringify({ stage: "config_error", reason: "invalid_precheckout_products_json" }));
+    return [];
+  }
+
+  if (!Array.isArray(parsed)) {
+    console.log(JSON.stringify({ stage: "config_error", reason: "precheckout_products_not_array" }));
+    return [];
+  }
+
+  const output: PrecheckoutProductConfig[] = [];
+
+  for (const entry of parsed) {
+    if (!entry || typeof entry !== "object") continue;
+    const data = entry as Record<string, unknown>;
+    const code = asTrimmedString(data.code ?? data.productCode);
+    if (!code) continue;
+
+    const aliasSource = Array.isArray(data.aliases) ? data.aliases : [];
+    const aliases = aliasSource.map((item) => asTrimmedString(item)).filter(Boolean);
+    const listId = asPositiveInt(data.listId);
+    const doiTemplateId = asPositiveInt(data.doiTemplateId ?? data.templateId);
+    const doiRedirectUrl = asTrimmedString(data.doiRedirectUrl ?? data.redirectUrl);
+
+    output.push({ code, aliases, listId, doiTemplateId, doiRedirectUrl: doiRedirectUrl || undefined });
+  }
+
+  return output;
+}
+
+function getPrecheckoutProducts(env: Env): PrecheckoutProductConfig[] {
+  const raw = asTrimmedString(env.PRECHECKOUT_PRODUCTS);
+  if (!raw) return [];
+
+  if (raw === cachedPrecheckoutProductsRaw) {
+    return cachedPrecheckoutProducts;
+  }
+
+  cachedPrecheckoutProductsRaw = raw;
+  cachedPrecheckoutProducts = parsePrecheckoutProducts(raw);
+  return cachedPrecheckoutProducts;
 }
 
 function getCorsOrigin(allowedOrigins: string[], requestOrigin: string): string {
@@ -227,9 +315,49 @@ function extractMetaIds(data: InputData, cookieHeader: string): MetaIds {
   };
 }
 
-function getDoiConfig(env: Env, leadId: string, metaIds: MetaIds): DoiConfig {
-  const templateId = Number(env.BREVO_DOI_TEMPLATE_ID || "0");
-  const baseRedirect = asTrimmedString(env.BREVO_DOI_REDIRECT_URL);
+function resolvePrecheckoutConfig(data: InputData, env: Env): ResolvedPrecheckoutConfig {
+  const requestedProductCode = pickField(data, ["product_code", "PRODUCT_CODE", "produto", "product"]);
+  const defaultListId = Number(env.BREVO_LIST_ID || "0");
+  const defaultDoiTemplateId = Number(env.BREVO_DOI_TEMPLATE_ID || "0");
+  const defaultDoiRedirectUrl = asTrimmedString(env.BREVO_DOI_REDIRECT_URL);
+  const products = getPrecheckoutProducts(env);
+
+  if (!requestedProductCode || !products.length) {
+    return {
+      listId: defaultListId,
+      doiTemplateId: defaultDoiTemplateId,
+      doiRedirectUrl: defaultDoiRedirectUrl,
+      requestedProductCode,
+      matchedProductCode: "",
+    };
+  }
+
+  const normalizedRequest = normalizeProductToken(requestedProductCode);
+  const matchedProduct = products.find((product) => {
+    if (normalizeProductToken(product.code) === normalizedRequest) return true;
+    return product.aliases.some((alias) => normalizeProductToken(alias) === normalizedRequest);
+  });
+
+  if (!matchedProduct) {
+    return {
+      listId: defaultListId,
+      doiTemplateId: defaultDoiTemplateId,
+      doiRedirectUrl: defaultDoiRedirectUrl,
+      requestedProductCode,
+      matchedProductCode: "",
+    };
+  }
+
+  return {
+    listId: matchedProduct.listId ?? defaultListId,
+    doiTemplateId: matchedProduct.doiTemplateId ?? defaultDoiTemplateId,
+    doiRedirectUrl: matchedProduct.doiRedirectUrl || defaultDoiRedirectUrl,
+    requestedProductCode,
+    matchedProductCode: matchedProduct.code,
+  };
+}
+
+function getDoiConfig(templateId: number, baseRedirect: string, leadId: string, metaIds: MetaIds): DoiConfig {
   const redirectUrl = buildRedirectUrl(baseRedirect, {
     lead_id: leadId || undefined,
     fbp: metaIds.fbp || undefined,
@@ -392,17 +520,24 @@ const worker = {
 
     logStage(reqId, "turnstile", { ok: true });
 
-    const listId = Number(env.BREVO_LIST_ID || "0");
+    const precheckoutConfig = resolvePrecheckoutConfig(data, env);
     const attributes = buildAttributes(lead);
-    const doiConfig = getDoiConfig(env, lead.leadId, metaIds);
+    const doiConfig = getDoiConfig(
+      precheckoutConfig.doiTemplateId,
+      precheckoutConfig.doiRedirectUrl,
+      lead.leadId,
+      metaIds
+    );
 
     logStage(reqId, "doi_check", {
       ok: true,
       useDoi: doiConfig.useDoi,
-      listId,
+      listId: precheckoutConfig.listId,
+      requestedProductCode: precheckoutConfig.requestedProductCode,
+      matchedProductCode: precheckoutConfig.matchedProductCode,
     });
 
-    const brevoRequest = buildBrevoRequest(lead.email, attributes, listId, doiConfig);
+    const brevoRequest = buildBrevoRequest(lead.email, attributes, precheckoutConfig.listId, doiConfig);
     const brevoResp = await sendBrevo(brevoRequest, env.BREVO_API_KEY || "");
 
     if (!brevoResp.ok) {

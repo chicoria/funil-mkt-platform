@@ -22,13 +22,15 @@ const HOTMART_PRODUCTS_CONFIG = JSON.stringify([
     prefix: "DECOLE_ESG",
     checkoutCode: "KDECOLE123",
     offerCode: "offer-default-decole",
+    checkoutPath: "/decole-esg/checkout",
   },
   {
     id: 987654,
     name: "Plano de Voo",
-    prefix: "DECOLE_PLANO_VOO",
+    prefix: "DECOLE_PLANOVOO",
     checkoutCode: "KPLANOVOO123",
     offerCode: "offer-default-plano",
+    checkoutPath: "/plano-de-voo/checkout",
   },
 ]);
 
@@ -157,9 +159,9 @@ describe("api-events-consumer", () => {
     };
     expect(body.email).toBe("compradora@exemplo.com");
     expect(body.listIds).toBeUndefined();
-    expect(body.attributes?.DECOLE_PLANO_VOO_FUNIL_LAST_STEP).toBe("purchase");
-    expect(body.attributes?.DECOLE_PLANO_VOO_FUNIL_LAST_STEP_TIMESTAMP).toMatch(/^\d{2}-\d{2}-\d{4}$/);
-    expect(body.attributes?.DECOLE_PLANO_VOO_FUNIL_STEPS).toBe("purchase");
+    expect(body.attributes?.DECOLE_PLANOVOO_FUNIL_LAST_STEP).toBe("purchase");
+    expect(body.attributes?.DECOLE_PLANOVOO_FUNIL_LAST_STEP_TIMESTAMP).toMatch(/^\d{2}-\d{2}-\d{4}$/);
+    expect(body.attributes?.DECOLE_PLANOVOO_FUNIL_STEPS).toBe("purchase");
   });
 
   it("processa cart abandonment e atualiza atributos", async () => {

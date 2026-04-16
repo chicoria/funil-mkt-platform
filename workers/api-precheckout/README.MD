@@ -30,6 +30,7 @@ Campos suportados (principais):
 - `LASTNAME` / `last_name`
 - `SMS` / `phone`
 - `SMS__COUNTRY_CODE` / `country_code`
+- `product_code` / `PRODUCT_CODE` / `produto` (resolve configuracao multiproduto)
 - `DOC` / `doc` / `CPF` / `CNPJ`
 - `ZIP` / `zip` / `CEP`
 
@@ -50,8 +51,8 @@ Em debug, o worker responde JSON com:
 - `ALLOWED_ORIGIN` (ex.: `https://decolesuacarreiraesg.com.br` ou lista separada por virgula)
 - `BREVO_LIST_ID`
 - `BREVO_DOI_TEMPLATE_ID`
-- `POST_SUBMIT_REDIRECT_URL`
 - `BREVO_DOI_REDIRECT_URL`
+- `PRECHECKOUT_PRODUCTS` (JSON por produto: `[{code,aliases,listId,doiTemplateId,doiRedirectUrl}]`)
 - `TURNSTILE_SECRET` (se usar captcha)
 - `BREVO_API_KEY` (secret no ambiente)
 

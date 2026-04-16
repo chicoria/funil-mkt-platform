@@ -29,6 +29,7 @@ Worker responsavel por mapear paths estaticos em links dinamicos (ex.: WhatsApp)
 
 - `ELIZETE_WHATSAPP_NUMBER` (ex.: `5511999999999`)
 - `ELIZETE_WHATSAPP_DEFAULT_TEXT` (opcional)
+- `LINKS_PRODUCTS` (JSON multiproduto: `[{checkoutPath, checkoutBaseUrl}]`)
 - `DECOLE_MENTORIA_CHECKOUT_URL` (fallback)
 - `PLANO_DE_VOO_CHECKOUT_URL` (checkout do Plano de Voo)
 

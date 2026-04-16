@@ -39,6 +39,7 @@ interface ProductConfig {
   prefix: string;
   checkoutCode?: string;
   defaultOfferCode?: string;
+  checkoutPath?: string;
 }
 
 let cachedProductConfigs: ProductConfig[] | null = null;
@@ -149,6 +150,7 @@ function parseProductConfigs(raw: string): ProductConfig[] {
     const nameNormalized = normalizeProductName(rawName);
     const checkoutCode = asString(data.checkoutCode ?? data.checkout_code ?? data.checkout);
     const defaultOfferCode = asString(data.offerCode ?? data.offer ?? data.offer_id ?? data.offerId);
+    const checkoutPath = asString(data.checkoutPath ?? data.checkout_path);
 
     if (!prefix || (!id && !nameNormalized)) {
       console.log(
@@ -170,6 +172,7 @@ function parseProductConfigs(raw: string): ProductConfig[] {
       nameNormalized: nameNormalized || undefined,
       checkoutCode: checkoutCode || undefined,
       defaultOfferCode: defaultOfferCode || undefined,
+      checkoutPath: checkoutPath || undefined,
     });
   }
 
@@ -322,14 +325,15 @@ function resolveOfferCode(event: HotmartQueuedEvent): string {
   return "";
 }
 
-function buildCheckoutUrl(checkoutCode: string, offerCode: string): string {
+function buildCheckoutUrl(checkoutCode: string, offerCode: string, checkoutPath: string): string {
   if (checkoutCode) {
     const url = new URL(`https://pay.hotmart.com/${checkoutCode}`);
     if (offerCode) url.searchParams.set("off", offerCode);
     return url.toString();
   }
 
-  const base = "https://links.decolesuacarreiraesg.com.br/decole-esg/checkout";
+  const normalizedPath = asString(checkoutPath).replace(/^\/+/, "");
+  const base = `https://links.decolesuacarreiraesg.com.br/${normalizedPath || "decole-esg/checkout"}`;
   if (!offerCode) return base;
   const url = new URL(base);
   url.searchParams.set("off", offerCode);
@@ -522,7 +526,11 @@ async function processEvent(event: HotmartQueuedEvent, env: Env): Promise<boolea
       const buyerName = resolveBuyerName(event);
       const buyerNameGreeting = buyerName ? ` ${buyerName}` : "";
       const offerCode = resolveOfferCode(event) || matchedProduct.defaultOfferCode || "";
-      const checkoutUrl = buildCheckoutUrl(matchedProduct.checkoutCode || "", offerCode);
+      const checkoutUrl = buildCheckoutUrl(
+        matchedProduct.checkoutCode || "",
+        offerCode,
+        matchedProduct.checkoutPath || ""
+      );
       const effectiveProductName = matchedProduct.name || productName || "";
       const replyToEmail = asString(env.BREVO_REPLY_TO_EMAIL);
       const replyToName = asString(env.BREVO_REPLY_TO_NAME);

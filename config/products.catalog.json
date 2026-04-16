@@ -213,8 +213,18 @@
           "lastStep": "DECOLE_PLANOVOO_FUNIL_LAST_STEP",
           "lastStepTimestamp": "DECOLE_PLANOVOO_FUNIL_LAST_STEP_TIMESTAMP"
         },
-        "lists": {},
-        "templates": {},
+        "lists": {
+          "precheckout": {
+            "id": "8",
+            "name": "precheckout_planovoo"
+          }
+        },
+        "templates": {
+          "doi": {
+            "id": "1",
+            "description": "Double Opt-In confirmation"
+          }
+        },
         "segments": {},
         "automations": {}
       },
@@ -303,18 +313,19 @@
     "api-events-consumer": {
       "description": "Consome fila, resolve produto, atualiza Brevo, envia emails.",
       "envVarMapping": {
-        "HOTMART_PRODUCTS": "Para cada produto com webhooks.hotmart.handler=cloudflare-queue → {id, name, prefix, checkoutCode, offerCode}",
+        "HOTMART_PRODUCTS": "Para cada produto com webhooks.hotmart.handler=cloudflare-queue → {id, name, prefix, checkoutCode, offerCode, checkoutPath}",
         "BREVO_CART_ABANDONMENT_TEMPLATE_ID": "produto.brevo.templates.cartAbandonment.id",
         "BREVO_REPLY_TO_EMAIL": "global.brevo.replyToEmail"
       }
     },
     "api-precheckout": {
       "description": "Lead capture via Brevo DOI. Resolve produto por aliases → funnelPrefix.",
-      "derivedConfig": "Para cada produto → {code, prefix: brevo.funnelPrefix, aliases, listId: brevo.lists.precheckout.id}"
+      "derivedConfig": "Para cada produto → {code, aliases, listId: brevo.lists.precheckout.id, doiTemplateId: brevo.templates.doi.id, doiRedirectUrl}"
     },
     "links-redirect": {
       "description": "Redirects de checkout. Para cada produto → checkoutPath : checkoutBaseUrl.",
       "envVarMapping": {
+        "LINKS_PRODUCTS": "Para cada produto → {checkoutPath, checkoutBaseUrl}",
         "DECOLE_MENTORIA_CHECKOUT_URL": "products.DECOLE_ESG_MENTORIA.links.checkoutBaseUrl",
         "PLANO_DE_VOO_CHECKOUT_URL": "products.DECOLE_PLANOVOO.links.checkoutBaseUrl"
       }

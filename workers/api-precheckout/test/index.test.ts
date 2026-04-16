@@ -7,6 +7,7 @@ type Env = {
   BREVO_LIST_ID: string;
   BREVO_DOI_TEMPLATE_ID: string;
   BREVO_DOI_REDIRECT_URL: string;
+  PRECHECKOUT_PRODUCTS?: string;
   TURNSTILE_SECRET: string;
 };
 
@@ -17,6 +18,9 @@ type RequestOptions = {
 };
 
 type BrevoPayload = {
+  includeListIds?: number[];
+  listIds?: number[];
+  templateId?: number;
   attributes?: {
     LEAD_ID?: string;
     SMS?: string;
@@ -245,6 +249,90 @@ describe("brevo worker", () => {
     expect(res.status).toBe(200);
     expect(brevoBody?.attributes?.SMS).toBe("5511999999999");
     expect(brevoBody?.attributes?.WHATSAPP).toBe("5511999999999");
+  });
+
+  it("resolve produto por product_code e usa listId/template/redirect configurados", async () => {
+    let brevoBody: BrevoPayload | undefined;
+
+    fetchMock.mockImplementation(async (url: RequestInfo | URL, options?: RequestInit) => {
+      const urlStr = String(url || "");
+      if (urlStr.includes("api.brevo.com")) {
+        brevoBody = JSON.parse(String(options?.body || "{}")) as BrevoPayload;
+        return makeFetchResponse();
+      }
+      return makeFetchResponse();
+    });
+
+    const req = makeRequest({
+      email: "teste@exemplo.com",
+      product_code: "DECOLE_PLANOVOO",
+    });
+    const res = await worker.fetch(
+      req,
+      makeEnv({
+        PRECHECKOUT_PRODUCTS: JSON.stringify([
+          {
+            code: "DECOLE_ESG_MENTORIA",
+            aliases: ["DECOLE_ESG"],
+            listId: 7,
+            doiTemplateId: 1,
+            doiRedirectUrl: "https://decolesuacarreiraesg.com.br/confirmacao.html",
+          },
+          {
+            code: "DECOLE_PLANOVOO",
+            aliases: ["PLANOVOO", "PLANO_VOO"],
+            listId: 17,
+            doiTemplateId: 2,
+            doiRedirectUrl: "https://decolesuacarreiraesg.com.br/confirmacao-plano.html",
+          },
+        ]),
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(brevoBody?.includeListIds).toEqual([17]);
+    expect(brevoBody?.templateId).toBe(2);
+    expect(brevoBody?.redirectionUrl).toContain("confirmacao-plano.html");
+  });
+
+  it("resolve produto por alias e faz fallback para defaults quando nao encontra", async () => {
+    const payloads: BrevoPayload[] = [];
+
+    fetchMock.mockImplementation(async (url: RequestInfo | URL, options?: RequestInit) => {
+      const urlStr = String(url || "");
+      if (urlStr.includes("api.brevo.com")) {
+        payloads.push(JSON.parse(String(options?.body || "{}")) as BrevoPayload);
+        return makeFetchResponse();
+      }
+      return makeFetchResponse();
+    });
+
+    const env = makeEnv({
+      PRECHECKOUT_PRODUCTS: JSON.stringify([
+        {
+          code: "DECOLE_PLANOVOO",
+          aliases: ["PLANO VOO"],
+          listId: 17,
+        },
+      ]),
+    });
+
+    const aliasReq = makeRequest({
+      email: "alias@exemplo.com",
+      produto: "plano voo",
+    });
+    const unknownReq = makeRequest({
+      email: "fallback@exemplo.com",
+      product_code: "PRODUTO_INEXISTENTE",
+    });
+
+    const aliasRes = await worker.fetch(aliasReq, env);
+    const unknownRes = await worker.fetch(unknownReq, env);
+
+    expect(aliasRes.status).toBe(200);
+    expect(unknownRes.status).toBe(200);
+    expect(payloads[0]?.includeListIds).toEqual([17]);
+    expect(payloads[1]?.includeListIds).toEqual([7]);
   });
 
   it("propaga erro do brevo (sms ja associado)", async () => {

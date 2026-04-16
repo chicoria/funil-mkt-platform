@@ -6,6 +6,7 @@ type Env = {
   ELIZETE_WHATSAPP_DEFAULT_TEXT?: string;
   DECOLE_MENTORIA_CHECKOUT_URL?: string;
   PLANO_DE_VOO_CHECKOUT_URL?: string;
+  LINKS_PRODUCTS?: string;
 };
 
 function makeEnv(overrides: Partial<Env> = {}): Env {
@@ -112,6 +113,25 @@ describe("links-redirect worker", () => {
     expect(url.searchParams.get("off")).toBe("3j6lto4t");
     expect(url.searchParams.get("offer")).toBe("3j6lto4t");
     expect(url.searchParams.get("utm_source")).toBe("ig");
+  });
+
+  it("resolve checkout por LINKS_PRODUCTS para produtos novos", async () => {
+    const res = await worker.fetch(
+      makeRequest("novo-produto/checkout?utm_campaign=multi"),
+      makeEnv({
+        LINKS_PRODUCTS: JSON.stringify([
+          {
+            checkoutPath: "/novo-produto/checkout",
+            checkoutBaseUrl: "https://pay.hotmart.com/KNOVO999",
+          },
+        ]),
+      })
+    );
+    expect(res.status).toBe(302);
+    const location = res.headers.get("location") || "";
+    const url = new URL(location);
+    expect(url.pathname).toBe("/KNOVO999");
+    expect(url.searchParams.get("utm_campaign")).toBe("multi");
   });
 
   it("recusa metodos nao permitidos", async () => {
