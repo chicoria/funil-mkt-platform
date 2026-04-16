@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import worker from "../src/index";
 
 type KVStub = {
-  get: ReturnType<typeof vi.fn>;
-  put: ReturnType<typeof vi.fn>;
+  get(key: string): Promise<string | null>;
+  put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
 };
 
 type Env = {
@@ -39,8 +39,8 @@ function makeKvStub(existingKeys: Record<string, string | null> = {}): KVStub {
   });
 
   return {
-    get: vi.fn(async (key: string) => store.get(key) ?? null),
-    put: vi.fn(async (key: string, value: string) => {
+    get: vi.fn(async (key: string): Promise<string | null> => store.get(key) ?? null),
+    put: vi.fn(async (key: string, value: string): Promise<void> => {
       store.set(key, value);
     }),
   };
@@ -312,7 +312,7 @@ describe("api-events-consumer", () => {
     vi.stubGlobal(
       "Date",
       class extends Date {
-        constructor(...args: ConstructorParameters<typeof Date>) {
+        constructor(...args: [] | ConstructorParameters<typeof Date>) {
           if (args.length === 0) {
             super("2026-04-06T12:00:00.000Z");
             return;
