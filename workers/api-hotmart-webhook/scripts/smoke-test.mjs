@@ -1,4 +1,5 @@
-const smokeUrl = process.env.SMOKE_URL || "https://api.decolesuacarreiraesg.com.br/webhooks/hotmart";
+const smokeUrl =
+  process.env.SMOKE_URL || "https://api.decolesuacarreiraesg.com.br/webhooks/v1/decole-esg/hotmart/events";
 const expectedStatus = Number(process.env.SMOKE_EXPECTED_STATUS || 202);
 const maxAttempts = Number(process.env.SMOKE_MAX_ATTEMPTS || 10);
 const delayMs = Number(process.env.SMOKE_DELAY_MS || 3000);

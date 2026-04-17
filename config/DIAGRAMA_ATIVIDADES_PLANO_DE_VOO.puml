@@ -1,0 +1,63 @@
+@startuml
+title Plano de Voo - Fluxos de Informacao (Atividades)
+
+skinparam shadowing false
+skinparam activity {
+  BackgroundColor #F8F9FA
+  BorderColor #2D3748
+  FontColor #1A202C
+  DiamondBackgroundColor #EDF2F7
+  DiamondBorderColor #2D3748
+}
+
+start
+
+if (Origem do fluxo?) then (Landing / Precheckout)
+  :Usuario abre\n/site/planodevoo;
+  :Clica CTA com\n[data-open-precheckout];
+  :Formulario envia POST\n/api.decolesuacarreiraesg.com.br/brevo\ncom product_code=DECOLE_PLANOVOO;
+  :api-precheckout resolve produto\nvia PRECHECKOUT_PRODUCTS;
+  :Seleciona listId=8 e doiTemplateId=10;
+  :Envia contato para Brevo DOI;
+  :Brevo envia email de confirmacao;
+  if (Usuario confirma DOI?) then (Sim)
+    :Redireciona para confirmacao.html;
+    :Frontend redireciona para\nlinks.decolesuacarreiraesg.com.br/plano-de-voo/checkout;
+    :links-redirect resolve checkout\n-> pay.hotmart.com/W104931067S;
+  else (Nao)
+    :Contato permanece sem confirmacao DOI;
+  endif
+
+elseif (Webhook Hotmart)
+  :Hotmart envia evento\n(PURCHASE_APPROVED) para\n/webhooks/v1/planodevoo/hotmart/purchase-approved;
+  :api-external-webhooks valida token\n(HOTMART_WEBHOOK_TOKEN);
+  :Parseia produto/subsistema/operacao\npelo path;
+  if (Regra de forward existe?) then (Sim)
+    :Forward payload para n8n\n(webhook/plano-de-voo/hotmart);
+    if (Forward falhou e required=true?) then (Sim)
+      :Retorna 502\n(forca retry no emissor);
+      stop
+    endif
+  endif
+  :Enfileira evento em\nHOTMART_EVENTS (decole-q-hotmart-events);
+  :api-events-consumer consome fila;
+  :Resolve produto e atualiza\natributos de funil no Brevo\n(DECOLE_PLANOVOO_FUNIL_*);
+
+elseif (App Plano de Voo)
+  :Comprador acessa\n/gerar-plano-voo;
+  :App valida token em n8n\n/webhook/validar-token;
+  if (Token valido?) then (Sim)
+    :App envia submissao para n8n\n/webhook/plano-de-voo/submeter;
+    :n8n processa curriculo/vaga\ne gera plano;
+  else (Nao)
+    :Bloqueia acesso ao fluxo de geracao;
+  endif
+
+else (Checkout direto)
+  :Usuario acessa link curto\n/plano-de-voo/checkout\n(links-redirect);
+  :links-redirect resolve URL final\nHotmart + query params;
+endif
+
+stop
+
+@enduml

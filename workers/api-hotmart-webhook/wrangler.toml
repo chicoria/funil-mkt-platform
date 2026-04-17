@@ -1,9 +1,10 @@
-name = "decole-api-hotmart-webhook"
+name = "decole-api-external-webhooks"
 main = "src/index.ts"
 compatibility_date = "2026-02-05"
 workers_dev = false
 routes = [
-  { pattern = "api.decolesuacarreiraesg.com.br/webhooks/hotmart*", zone_name = "decolesuacarreiraesg.com.br" }
+  { pattern = "api.decolesuacarreiraesg.com.br/webhooks/hotmart*", zone_name = "decolesuacarreiraesg.com.br" },
+  { pattern = "api.decolesuacarreiraesg.com.br/webhooks/v1/*", zone_name = "decolesuacarreiraesg.com.br" }
 ]
 
 [[queues.producers]]
@@ -14,3 +15,6 @@ queue = "decole-q-hotmart-events"
   [observability.logs]
   enabled = false
   invocation_logs = true
+
+[vars]
+WEBHOOK_FORWARDING_RULES = "[{\"productSlug\":\"planodevoo\",\"subsystem\":\"hotmart\",\"targetUrl\":\"https://n8n.decolesuacarreiraesg.com.br/webhook/plano-de-voo/hotmart\",\"required\":true}]"

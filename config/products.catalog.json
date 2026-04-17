@@ -50,7 +50,7 @@
 
       "webhooks": {
         "hotmart": {
-          "ingressUrl": "https://api.decolesuacarreiraesg.com.br/webhooks/hotmart",
+          "ingressUrl": "https://api.decolesuacarreiraesg.com.br/webhooks/v1/decole-esg/hotmart/events",
           "events": [
             {
               "event": "PURCHASE_APPROVED",
@@ -140,7 +140,7 @@
 
       "backend": {
         "workers": [
-          "api-hotmart-webhook",
+          "api-external-webhooks",
           "api-events-consumer",
           "api-precheckout",
           "links-redirect"
@@ -172,12 +172,13 @@
 
       "webhooks": {
         "hotmart": {
-          "ingressUrl": "https://n8n.decolesuacarreiraesg.com.br/webhook/plano-de-voo/hotmart",
+          "ingressUrl": "https://api.decolesuacarreiraesg.com.br/webhooks/v1/planodevoo/hotmart/purchase-approved",
+          "forwardTargetUrl": "https://n8n.decolesuacarreiraesg.com.br/webhook/plano-de-voo/hotmart",
           "events": [
             {
               "event": "PURCHASE_APPROVED",
-              "handler": "n8n",
-              "description": "Compra aprovada → n8n processa entrega"
+              "handler": "cloudflare-queue",
+              "description": "Compra aprovada → ingress worker (forward n8n + fila)"
             }
           ]
         },
@@ -304,8 +305,8 @@
   },
 
   "workerViews": {
-    "api-hotmart-webhook": {
-      "description": "Recebe webhooks Hotmart, valida auth, enfileira. Consultar products[*].webhooks.hotmart onde handler=cloudflare-queue.",
+    "api-external-webhooks": {
+      "description": "Recebe webhooks externos, valida auth e enfileira. Padrao: /webhooks/v1/{produto}/{subsistema}/{operacao}.",
       "secrets": [
         "HOTMART_WEBHOOK_TOKEN"
       ]

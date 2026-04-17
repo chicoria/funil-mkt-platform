@@ -1,0 +1,46 @@
+@startuml
+title Plano de Voo - Deployment Diagram
+
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam componentStyle rectangle
+
+node "Internet" as internet {
+  node "Usuario (Browser)" as browser
+  node "Hotmart" as hotmart
+  node "Brevo API" as brevo
+  node "n8n Cloud" as n8n
+}
+
+node "Cloudflare" as cf {
+  node "Zone: decolesuacarreiraesg.com.br" as zone {
+    node "Site estatico\n/decolesuacarreiraesg.com.br/planodevoo" as site
+
+    node "Worker: links-redirect\nlinks.decolesuacarreiraesg.com.br" as links
+    node "Worker: api-precheckout\napi.decolesuacarreiraesg.com.br/brevo" as precheckout
+    node "Worker: api-external-webhooks\napi.decolesuacarreiraesg.com.br/webhooks/v1/*" as ingress
+    node "Worker: api-events-consumer\n(queue consumer)" as consumer
+
+    queue "Queue: decole-q-hotmart-events" as q_events
+    queue "DLQ: decole-q-hotmart-events-dlq" as q_dlq
+    database "KV: DEDUPE_KV" as kv
+  }
+}
+
+browser --> site : GET /planodevoo
+browser --> precheckout : POST /brevo\n(product_code=DECOLE_PLANOVOO)
+precheckout --> brevo : Contacts API\n(DOI/lista precheckout_planovoo)
+browser --> links : GET /plano-de-voo/checkout
+links --> hotmart : redirect checkout W104931067S
+
+hotmart --> ingress : POST /webhooks/v1/planodevoo/hotmart/purchase-approved
+ingress --> n8n : forward target\n/plano-de-voo/hotmart
+ingress --> q_events : enqueue normalized event
+q_events --> consumer : message batch
+consumer --> brevo : update contact funnel attrs
+consumer --> kv : dedupe read/write
+consumer --> q_dlq : failed retries
+
+n8n --> n8n : /webhook/validar-token\n/webhook/plano-de-voo/submeter
+
+@enduml

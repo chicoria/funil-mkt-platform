@@ -1,5 +1,5 @@
 {
-  "name": "decole-api-hotmart-webhook",
+  "name": "decole-api-external-webhooks",
   "private": true,
   "type": "module",
   "scripts": {
