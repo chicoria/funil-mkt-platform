@@ -223,6 +223,7 @@
         "templates": {
           "doi": {
             "id": "10",
+            "tag": "optin",
             "description": "Double Opt-In confirmation - Plano de Voo"
           }
         },
