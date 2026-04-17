@@ -201,9 +201,12 @@ describe("api-external-webhooks", () => {
 
     expect(res.status).toBe(202);
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [forwardUrl, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const firstForwardCall = (fetchMock.mock.calls as unknown[][])[0];
+    expect(firstForwardCall).toBeDefined();
+    const forwardUrl = String(firstForwardCall?.[0] ?? "");
+    const options = firstForwardCall?.[1] as RequestInit | undefined;
     expect(forwardUrl).toBe("https://n8n.decolesuacarreiraesg.com.br/webhook/plano-de-voo/hotmart");
-    expect(options.method).toBe("POST");
+    expect(options?.method).toBe("POST");
     expect(queueSend).toHaveBeenCalledTimes(1);
   });
 
