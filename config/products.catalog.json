@@ -121,7 +121,33 @@
           "indexFile": "site/index.html",
           "gtm": "GTM-58CQ9K7X",
           "ga4": "G-BQQB6X5XN1",
-          "metaPixel": ""
+          "metaPixel": "",
+          "events": [
+            {
+              "name": "generate_lead",
+              "produto": "DECOLE_ESG_MENTORIA",
+              "google": {
+                "channel": "ga4_via_gtm",
+                "eventName": "generate_lead"
+              },
+              "meta": {
+                "channel": "pixel_via_gtm",
+                "eventName": "Lead"
+              }
+            },
+            {
+              "name": "cta_click",
+              "produto": "DECOLE_ESG_MENTORIA",
+              "google": {
+                "channel": "ga4_via_gtm",
+                "eventName": "cta_click"
+              },
+              "meta": {
+                "channel": "pixel_via_gtm",
+                "eventName": "cta_click"
+              }
+            }
+          ]
         },
         {
           "name": "Página de confirmação DOI",
@@ -131,7 +157,21 @@
           "indexFile": "site/confirmacao.html",
           "gtm": "GTM-58CQ9K7X",
           "ga4": "G-BQQB6X5XN1",
-          "metaPixel": ""
+          "metaPixel": "",
+          "events": [
+            {
+              "name": "sign_up",
+              "produto": "DECOLE_ESG_MENTORIA",
+              "google": {
+                "channel": "ga4_via_gtm",
+                "eventName": "sign_up"
+              },
+              "meta": {
+                "channel": "pixel_via_gtm",
+                "eventName": "CompleteRegistration"
+              }
+            }
+          ]
         }
       ],
 
@@ -257,7 +297,57 @@
           "indexFile": "site/planodevoo/index.html",
           "gtm": "GTM-58CQ9K7X",
           "ga4": "G-BQQB6X5XN1",
-          "metaPixel": ""
+          "metaPixel": "",
+          "events": [
+            {
+              "name": "generate_lead",
+              "produto": "DECOLE_PLANOVOO",
+              "google": {
+                "channel": "ga4_via_gtm",
+                "eventName": "generate_lead"
+              },
+              "meta": {
+                "channel": "pixel_via_gtm",
+                "eventName": "Lead"
+              }
+            },
+            {
+              "name": "cta_click",
+              "produto": "DECOLE_PLANOVOO",
+              "google": {
+                "channel": "ga4_via_gtm",
+                "eventName": "cta_click"
+              },
+              "meta": {
+                "channel": "pixel_via_gtm",
+                "eventName": "cta_click"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Página de confirmação DOI — Plano de Voo",
+          "url": "https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html",
+          "repo": "decolesuacarreiraesg",
+          "folder": "site/planodevoo/",
+          "indexFile": "site/planodevoo/confirmacao.html",
+          "gtm": "GTM-58CQ9K7X",
+          "ga4": "G-BQQB6X5XN1",
+          "metaPixel": "",
+          "events": [
+            {
+              "name": "sign_up",
+              "produto": "DECOLE_PLANOVOO",
+              "google": {
+                "channel": "ga4_via_gtm",
+                "eventName": "sign_up"
+              },
+              "meta": {
+                "channel": "pixel_via_gtm",
+                "eventName": "CompleteRegistration"
+              }
+            }
+          ]
         }
       ],
 

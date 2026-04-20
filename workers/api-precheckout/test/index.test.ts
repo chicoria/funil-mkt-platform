@@ -283,7 +283,7 @@ describe("brevo worker", () => {
             aliases: ["PLANOVOO", "PLANO_VOO"],
             listId: 17,
             doiTemplateId: 2,
-            doiRedirectUrl: "https://decolesuacarreiraesg.com.br/confirmacao-plano.html",
+            doiRedirectUrl: "https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html",
           },
         ]),
       })
@@ -292,7 +292,7 @@ describe("brevo worker", () => {
     expect(res.status).toBe(200);
     expect(brevoBody?.includeListIds).toEqual([17]);
     expect(brevoBody?.templateId).toBe(2);
-    expect(brevoBody?.redirectionUrl).toContain("confirmacao-plano.html");
+    expect(brevoBody?.redirectionUrl).toContain("/planodevoo/confirmacao.html");
   });
 
   it("resolve produto por alias e faz fallback para defaults quando nao encontra", async () => {
