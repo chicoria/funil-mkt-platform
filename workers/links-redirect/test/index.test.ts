@@ -14,7 +14,7 @@ function makeEnv(overrides: Partial<Env> = {}): Env {
     ELIZETE_WHATSAPP_NUMBER: "351 915 787 088",
     ELIZETE_WHATSAPP_DEFAULT_TEXT: "Olá Elizete, preciso de ajuda",
     DECOLE_MENTORIA_CHECKOUT_URL: "https://pay.hotmart.com/K98068530F?off=1myrvww7",
-    PLANO_DE_VOO_CHECKOUT_URL: "https://pay.hotmart.com/W104931067S",
+    PLANO_DE_VOO_CHECKOUT_URL: "https://pay.hotmart.com/R105463680A?off=f3yweqek",
     ...overrides,
   };
 }
@@ -87,7 +87,8 @@ describe("links-redirect worker", () => {
     const location = res.headers.get("location") || "";
     const url = new URL(location);
     expect(url.origin).toBe("https://pay.hotmart.com");
-    expect(url.pathname).toBe("/W104931067S");
+    expect(url.pathname).toBe("/R105463680A");
+    expect(url.searchParams.get("off")).toBe("f3yweqek");
     expect(url.searchParams.get("utm_source")).toBe("ig");
   });
 
@@ -95,7 +96,7 @@ describe("links-redirect worker", () => {
     const res = await worker.fetch(makeRequest("plano-de-voo/checkout/offer/novo123?utm_source=ig"), makeEnv());
     const location = res.headers.get("location") || "";
     const url = new URL(location);
-    expect(url.pathname).toBe("/W104931067S");
+    expect(url.pathname).toBe("/R105463680A");
     expect(url.searchParams.get("off")).toBe("novo123");
     expect(url.searchParams.get("offer")).toBe("novo123");
     expect(url.searchParams.get("utm_source")).toBe("ig");

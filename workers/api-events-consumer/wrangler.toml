@@ -20,6 +20,6 @@ binding = "DEDUPE_KV"
 id = "f928a6e6eed541f6b84a94c67dd15480"
 
 [vars]
-HOTMART_PRODUCTS = "[{\"id\":5083704,\"name\":\"DECOLE sua Carreira ESG\",\"prefix\":\"DECOLE_ESG\",\"checkoutCode\":\"K98068530F\",\"offerCode\":\"3j6lto4t\",\"checkoutPath\":\"/decole-esg/checkout\"},{\"id\":7393301,\"name\":\"Plano de Voo\",\"prefix\":\"DECOLE_PLANOVOO\",\"checkoutCode\":\"W104931067S\",\"offerCode\":\"\",\"checkoutPath\":\"/plano-de-voo/checkout\"}]"
+HOTMART_PRODUCTS = "[{\"id\":5083704,\"name\":\"DECOLE sua Carreira ESG\",\"prefix\":\"DECOLE_ESG\",\"checkoutCode\":\"K98068530F\",\"offerCode\":\"3j6lto4t\",\"checkoutPath\":\"/decole-esg/checkout\"},{\"id\":7592718,\"name\":\"DECOLE - Plano de Voo\",\"prefix\":\"DECOLE_PLANOVOO\",\"checkoutCode\":\"R105463680A\",\"offerCode\":\"f3yweqek\",\"checkoutPath\":\"/plano-de-voo/checkout\"}]"
 BREVO_CART_ABANDONMENT_TEMPLATE_ID = "8"
 BREVO_REPLY_TO_EMAIL = "contato@decolesuacarreiraesg.com.br"
