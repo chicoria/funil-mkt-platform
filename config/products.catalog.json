@@ -106,6 +106,28 @@
         "testEventCodeEnvVar": "META_TEST_EVENT_CODE_DECOLE_ESG"
       },
 
+      "tracking": {
+        "productCode": "DECOLE_ESG_MENTORIA",
+        "gtm": {
+          "containerPublicId": "GTM-58CQ9K7X",
+          "differentiationKey": "produto",
+          "differentiationValue": "DECOLE_ESG_MENTORIA"
+        },
+        "ga4": {
+          "measurementId": "G-BQQB6X5XN1",
+          "differentiationKeys": {
+            "produto": "DECOLE_ESG_MENTORIA",
+            "product_code": "DECOLE_ESG_MENTORIA"
+          }
+        },
+        "metaPixel": {
+          "pixelIdEnvVar": "META_PIXEL_ID_DECOLE_ESG",
+          "pixelId": "1329973348435032",
+          "differentiationKey": "pixel_id",
+          "differentiationValue": "1329973348435032"
+        }
+      },
+
       "links": {
         "checkoutPath": "/decole-esg/checkout",
         "checkoutOfferPathTemplate": "/decole-esg/checkout/offer/{offerCode}",
@@ -280,6 +302,28 @@
         "pixelIdEnvVar": "META_PIXEL_ID_PLANOVOO",
         "capiTokenEnvVar": "META_CAPI_ACCESS_TOKEN_PLANOVOO",
         "testEventCodeEnvVar": "META_TEST_EVENT_CODE_PLANOVOO"
+      },
+
+      "tracking": {
+        "productCode": "DECOLE_PLANOVOO",
+        "gtm": {
+          "containerPublicId": "GTM-58CQ9K7X",
+          "differentiationKey": "produto",
+          "differentiationValue": "DECOLE_PLANOVOO"
+        },
+        "ga4": {
+          "measurementId": "G-BQQB6X5XN1",
+          "differentiationKeys": {
+            "produto": "DECOLE_PLANOVOO",
+            "product_code": "DECOLE_PLANOVOO"
+          }
+        },
+        "metaPixel": {
+          "pixelIdEnvVar": "META_PIXEL_ID_PLANOVOO",
+          "pixelId": "2220600768748665",
+          "differentiationKey": "pixel_id",
+          "differentiationValue": "2220600768748665"
+        }
       },
 
       "links": {
