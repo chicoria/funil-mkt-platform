@@ -7,6 +7,9 @@ interface KVNamespaceLike {
 
 export interface DispatcherEnv {
   DEDUPE_KV?: KVNamespaceLike;
+  IDENTITY_KV?: KVNamespaceLike;
+  IDENTITY_DB?: unknown;
+  EVENT_STORE_DB?: unknown;
   CATALOG_JSON?: string;
 }
 

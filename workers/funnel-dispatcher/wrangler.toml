@@ -14,6 +14,20 @@ dead_letter_queue = "decole-q-funnel-events-dlq"
 binding = "DEDUPE_KV"
 id = "placeholder_dedupe_kv_id"
 
+[[kv_namespaces]]
+binding = "IDENTITY_KV"
+id = "placeholder_identity_kv_id"
+
+[[d1_databases]]
+binding = "IDENTITY_DB"
+database_name = "decole-d1-identity"
+database_id = "placeholder_identity_db_id"
+
+[[d1_databases]]
+binding = "EVENT_STORE_DB"
+database_name = "decole-d1-event-store"
+database_id = "placeholder_event_store_db_id"
+
 [observability]
 enabled = true
 head_sampling_rate = 1

@@ -350,6 +350,20 @@ Provisionar do zero:
 
 Não há estratégia de convivência com filas legadas neste plano.
 
+Automação incremental proposta:
+
+1. Planejar recursos (sem chamadas API):
+   `backend/cloudflare/scripts/provision-greenfield-resources.sh`
+2. Provisionar via API (idempotente):
+   `backend/cloudflare/scripts/provision-greenfield-resources.sh --apply`
+3. Aplicar IDs reais nos bindings do dispatcher:
+   `backend/cloudflare/scripts/apply-greenfield-bindings.sh`
+
+Artefatos:
+
+- manifesto versionado: `backend/cloudflare/config/cloudflare-greenfield.resources.json`
+- IDs gerados por ambiente (não versionados): `backend/cloudflare/config/generated/cloudflare-greenfield.ids.json`
+
 ### 5. EventDispatcher genérico — funnel-dispatcher
 
 Refatorar o consumer de switch hardcoded para dispatcher guiado por catálogo:
@@ -706,6 +720,10 @@ Sugestão de workflows:
 - `backend/cloudflare/tests/e2e/`
 - `backend/cloudflare/scripts/deploy-incremental.sh`
 - `backend/cloudflare/scripts/healthcheck-worker.sh`
+- `backend/cloudflare/scripts/provision-greenfield-resources.sh`
+- `backend/cloudflare/scripts/apply-greenfield-bindings.sh`
+- `backend/cloudflare/config/cloudflare-greenfield.resources.json`
+- `backend/cloudflare/config/generated/.gitkeep`
 - `.github/workflows/deploy-incremental-hotmart-ingress.yml`
 - `.github/workflows/ci-unit-contract.yml`
 - `.github/workflows/ci-integration.yml`

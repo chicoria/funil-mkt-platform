@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "resources": {
+    "queues": {
+      "funnel_main": "decole-q-funnel-events",
+      "funnel_dlq": "decole-q-funnel-events-dlq"
+    },
+    "kv": {
+      "dedupe": "decole-kv-funnel-dedupe",
+      "identity": "decole-kv-identity-links"
+    },
+    "d1": {
+      "identity": "decole-d1-identity",
+      "event_store": "decole-d1-event-store"
+    }
+  },
+  "bindings": {
+    "funnel_dispatcher": {
+      "kv": {
+        "DEDUPE_KV": "dedupe",
+        "IDENTITY_KV": "identity"
+      },
+      "d1": {
+        "IDENTITY_DB": "identity",
+        "EVENT_STORE_DB": "event_store"
+      }
+    }
+  }
+}
