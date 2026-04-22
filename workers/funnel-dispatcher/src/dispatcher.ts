@@ -11,6 +11,16 @@ export interface DispatcherEnv {
   IDENTITY_DB?: unknown;
   EVENT_STORE_DB?: unknown;
   CATALOG_JSON?: string;
+  BREVO_API_KEY?: string;
+  BREVO_BASE_URL?: string;
+  BREVO_DOI_TEMPLATE_ID?: string;
+  BREVO_CART_ABANDON_TEMPLATE_ID?: string;
+  N8N_WEBHOOK_URL?: string;
+  GA4_MEASUREMENT_ID?: string;
+  GA4_API_SECRET?: string;
+  META_PIXEL_ID?: string;
+  META_CAPI_ACCESS_TOKEN?: string;
+  META_TEST_EVENT_CODE?: string;
 }
 
 export type HandlerFn = (event: FunnelEvent, env: DispatcherEnv) => Promise<void>;

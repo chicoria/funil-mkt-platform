@@ -1,5 +1,6 @@
 import { isFunnelEvent, FunnelEvent } from "../../../packages/shared/src/funnel-event";
 import { DispatcherEnv, runChain } from "./dispatcher";
+import { createHandlers } from "./handlers";
 
 interface QueueMessage<T> {
   body: T;
@@ -16,32 +17,7 @@ function jsonResponse(body: unknown, status: number): Response {
   });
 }
 
-const handlers = {
-  async resolve_identity(event: FunnelEvent): Promise<void> {
-    console.log(JSON.stringify({ stage: "handler", handler: "resolve_identity", event_id: event.event_id }));
-  },
-  async upsert_event_store(event: FunnelEvent): Promise<void> {
-    console.log(JSON.stringify({ stage: "handler", handler: "upsert_event_store", event_id: event.event_id }));
-  },
-  async send_brevo_doi(event: FunnelEvent): Promise<void> {
-    console.log(JSON.stringify({ stage: "handler", handler: "send_brevo_doi", event_id: event.event_id }));
-  },
-  async update_brevo_funnel(event: FunnelEvent): Promise<void> {
-    console.log(JSON.stringify({ stage: "handler", handler: "update_brevo_funnel", event_id: event.event_id }));
-  },
-  async send_cart_abandonment_email(event: FunnelEvent): Promise<void> {
-    console.log(JSON.stringify({ stage: "handler", handler: "send_cart_abandonment_email", event_id: event.event_id }));
-  },
-  async forward_n8n(event: FunnelEvent): Promise<void> {
-    console.log(JSON.stringify({ stage: "handler", handler: "forward_n8n", event_id: event.event_id }));
-  },
-  async emit_tracking(event: FunnelEvent): Promise<void> {
-    console.log(JSON.stringify({ stage: "handler", handler: "emit_tracking", event_id: event.event_id }));
-  },
-  async sync_brevo_segments(event: FunnelEvent): Promise<void> {
-    console.log(JSON.stringify({ stage: "handler", handler: "sync_brevo_segments", event_id: event.event_id }));
-  },
-};
+const handlers = createHandlers();
 
 export default {
   async fetch(request: Request): Promise<Response> {
