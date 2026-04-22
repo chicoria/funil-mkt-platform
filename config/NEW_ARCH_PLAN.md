@@ -19,8 +19,22 @@ O repositório já tem `backend/cloudflare/config/products.catalog.json` (schema
 Este plano assume **recriação completa da infraestrutura** (greenfield) para o domínio de funil:
 
 - Sem compatibilidade retroativa com APIs, filas, bindings, KV, D1 ou workers anteriores.
-- Sem estratégia de coexistência temporária entre componentes legados e novos.
-- Workers novos entram como baseline operacional; componentes antigos podem ser desativados após cutover.
+- Com **delivery incremental** e convivência controlada por fase (piloto -> expansão -> cutover).
+- Workers novos entram como baseline operacional por trilha; componentes antigos são desativados apenas após gate E2E e janela de estabilidade.
+
+### Estratégia de delivery incremental
+
+Modelo de rollout:
+
+1. Piloto em 1 worker (`api-hotmart-ingress`) com deploy isolado.
+2. Expansão por componente (`api-funnel-ingress`, `funnel-dispatcher`, handlers).
+3. Cutover final de rotas somente após validação E2E repetida.
+
+Regras:
+
+- Não executar big-bang de deploy.
+- Cada deploy incremental deve ter rollback documentado.
+- Sem misturar estratégias de entrega no mesmo componente: escolher `Wrangler deploy` **ou** `Cloudflare Builds API` por worker/ambiente.
 
 ## Arquitetura alvo (do diagrama)
 
@@ -690,6 +704,9 @@ Sugestão de workflows:
 - `backend/cloudflare/tests/unit/`
 - `backend/cloudflare/tests/integration/`
 - `backend/cloudflare/tests/e2e/`
+- `backend/cloudflare/scripts/deploy-incremental.sh`
+- `backend/cloudflare/scripts/healthcheck-worker.sh`
+- `.github/workflows/deploy-incremental-hotmart-ingress.yml`
 - `.github/workflows/ci-unit-contract.yml`
 - `.github/workflows/ci-integration.yml`
 - `.github/workflows/ci-e2e-staging.yml`
@@ -718,7 +735,8 @@ Regra de coordenação:
 
 | Fase | Agentes principais | Entrega incremental | Gate obrigatório (E2E) |
 | --- | --- | --- | --- |
-| **F0 — Baseline** | A + E | Congelar estado atual, fixtures e smoke tests remotos funcionando | smoke atual verde (`api-precheckout`, webhook ingest) |
+| **F0.1 — Delivery Baseline** | B + E | Definir estratégia de deploy incremental (piloto) + scripts/workflow de entrega | deploy piloto em staging com rollback testado |
+| **F0.2 — Baseline Operacional** | A + E | Congelar estado atual, fixtures e smoke tests remotos funcionando | smoke atual verde (`api-precheckout`, webhook ingest) |
 | **F1 — Core Contract** | A | `FunnelEvent`, schema v3, catálogo com `events/handlers/chain` | `validate-catalog` + `validate-events-in-code` verdes |
 | **F2 — Ingress Greenfield** | B + C | `api-hotmart-ingress`, `api-funnel-ingress`, queue `decole-q-funnel-events` e DLQ | POST de fixture retorna `202` e mensagem chega ao dispatcher |
 | **F3 — Dispatcher + Dedupe** | C | execução ordered da chain + `event_id:handler` | reenvio mesmo `event_id` gera `skipped` sem duplicar efeitos |
@@ -729,7 +747,7 @@ Regra de coordenação:
 
 ### 12.3 Plano de execução sugerido por sprint
 
-1. **Sprint 1**: F0 + F1 + F2 (pipeline canônico no ar sem efeitos externos críticos).
+1. **Sprint 1**: F0.1 + F0.2 + F1 + F2 (pipeline canônico no ar sem efeitos externos críticos).
 2. **Sprint 2**: F3 + F4 (funil operacional com Brevo/n8n).
 3. **Sprint 3**: F5 + F6 (tracking robusto + identidade unificada).
 4. **Sprint 4**: F7 (cutover e estabilização assistida por observabilidade).
@@ -742,7 +760,13 @@ Regra de coordenação:
 
 ## Verificação E2E por fase
 
-### F0/F1 (contrato)
+### F0.1 (delivery piloto)
+
+1. Executar deploy incremental do worker piloto (`api-hotmart-ingress`) via script/workflow manual.
+2. Validar healthcheck pós-deploy.
+3. Validar rollback (redeploy da versão estável anterior ou branch de controle).
+
+### F0.2/F1 (contrato)
 
 1. `node scripts/heartbeat.mjs validate-catalog` -> `0`.
 2. `node scripts/heartbeat.mjs validate-events-in-code` -> `0`.

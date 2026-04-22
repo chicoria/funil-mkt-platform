@@ -1,0 +1,15 @@
+name = "decole-api-hotmart-ingress"
+main = "src/index.ts"
+compatibility_date = "2026-04-23"
+workers_dev = true
+
+[[queues.producers]]
+binding = "FUNNEL_EVENTS"
+queue = "decole-q-funnel-events"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+invocation_logs = true
