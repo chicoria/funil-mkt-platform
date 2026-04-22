@@ -1,6 +1,6 @@
 name = "decole-api-hotmart-ingress"
 main = "src/index.ts"
-compatibility_date = "2026-04-23"
+compatibility_date = "2026-04-22"
 workers_dev = true
 
 [[queues.producers]]
