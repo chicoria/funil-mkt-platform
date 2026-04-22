@@ -12,21 +12,21 @@ dead_letter_queue = "decole-q-funnel-events-dlq"
 
 [[kv_namespaces]]
 binding = "DEDUPE_KV"
-id = "placeholder_dedupe_kv_id"
+id = "aadb6b3ff1024cc5aeb3119e6c662863"
 
 [[kv_namespaces]]
 binding = "IDENTITY_KV"
-id = "placeholder_identity_kv_id"
+id = "88989e2e3492459eadb06e9da523dfae"
 
 [[d1_databases]]
 binding = "IDENTITY_DB"
 database_name = "decole-d1-identity"
-database_id = "placeholder_identity_db_id"
+database_id = "e71a266a-b400-4970-a056-bf7223799f25"
 
 [[d1_databases]]
 binding = "EVENT_STORE_DB"
 database_name = "decole-d1-event-store"
-database_id = "placeholder_event_store_db_id"
+database_id = "f5c19aac-2bdc-4fe4-b560-e1c49199ff4c"
 
 [observability]
 enabled = true
