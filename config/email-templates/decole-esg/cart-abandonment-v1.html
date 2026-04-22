@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Seu checkout esta aguardando</title>
+  </head>
+  <body style="font-family: Arial, sans-serif; line-height: 1.5; color: #1f2937;">
+    <h1>Seu checkout ficou em aberto</h1>
+    <p>Oi {{ params.first_name | default("Profissional") }},</p>
+    <p>
+      Vimos que voce iniciou o checkout da mentoria DECOLE ESG, mas nao concluiu.
+    </p>
+    <p>
+      Se quiser retomar de onde parou, use o link abaixo:
+    </p>
+    <p>
+      <a href="{{ params.checkout_url }}" style="display:inline-block;padding:12px 18px;background:#111827;color:#fff;text-decoration:none;border-radius:6px;">
+        Retomar checkout
+      </a>
+    </p>
+    <p>Se precisar de ajuda, responda este email.</p>
+    <p>Equipe DECOLE</p>
+  </body>
+</html>

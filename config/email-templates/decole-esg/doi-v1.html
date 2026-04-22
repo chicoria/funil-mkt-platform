@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Confirme seu email</title>
+  </head>
+  <body style="font-family: Arial, sans-serif; line-height: 1.5; color: #1f2937;">
+    <h1>Confirme seu cadastro</h1>
+    <p>Oi {{ params.first_name | default("Profissional") }},</p>
+    <p>
+      Recebemos seu interesse na mentoria DECOLE ESG. Para confirmar seu cadastro,
+      clique no botao abaixo:
+    </p>
+    <p>
+      <a href="{{ params.confirmation_url }}" style="display:inline-block;padding:12px 18px;background:#0f766e;color:#fff;text-decoration:none;border-radius:6px;">
+        Confirmar email
+      </a>
+    </p>
+    <p>Se voce nao solicitou, pode ignorar esta mensagem.</p>
+    <p>Equipe DECOLE</p>
+  </body>
+</html>

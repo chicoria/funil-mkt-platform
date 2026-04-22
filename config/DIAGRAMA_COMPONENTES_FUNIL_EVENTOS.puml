@@ -1,0 +1,124 @@
+@startuml
+title DECOLE - Arquitetura de Componentes do Funil (Greenfield)
+
+skinparam shadowing false
+skinparam componentStyle rectangle
+skinparam linetype ortho
+
+package "Event Sources" {
+  [Landing Pages\n(site/*)] as src_site
+  [App Plano de Voo] as src_app
+  [Hotmart Webhooks] as src_hotmart
+}
+
+package "Cloudflare Ingress" {
+  [api-funnel-ingress\nPOST /funnel/*\nPOST /webhooks/v1/planovoo/app/event] as ingress_funnel
+  [api-hotmart-ingress\nPOST /webhooks/v1/{produto}/hotmart/*] as ingress_hotmart
+}
+
+package "Funnel Event Layer" {
+  [Event Normalizer\n-> FunnelEvent] as ev_norm
+  queue "Queue\n(decole-q-funnel-events)" as q_funnel
+  queue "DLQ\n(decole-q-funnel-events-dlq)" as q_dlq
+  [funnel-dispatcher] as ev_disp
+}
+
+package "Handler Chain (catalog-driven)" {
+  [resolve_identity] as h_resolve
+  [upsert_event_store] as h_store
+  [send_brevo_doi] as h_doi
+  [update_brevo_funnel] as h_brevo
+  [send_cart_abandonment_email] as h_cart
+  [forward_n8n] as h_n8n
+  [emit_tracking] as h_track
+  [sync_brevo_segments] as h_sync
+}
+
+package "Config & State" {
+  [products.catalog.json\n(events, delivery, chains)] as cfg_catalog
+  database "IDENTITY_DB (D1)\nidentity_links" as db_identity
+  database "EVENT_STORE_DB (D1)\nfunnel_events" as db_events
+  database "DEDUPE_KV\n(event_id:handler)" as kv_dedupe
+  database "IDENTITY_KV\n(anonymous_id -> profile_id cache)" as kv_identity
+}
+
+package "External Systems" {
+  [Brevo] as ext_brevo
+  [n8n] as ext_n8n
+  [GA4 MP + Meta CAPI] as ext_tracking
+  [GTM Web + sGTM] as ext_gtm
+}
+
+package "Observability Layer" {
+  [Workers Logs\n(Query Builder)] as obs_logs
+  [Workers Logpush] as obs_push
+  [R2 (long retention)] as obs_r2
+}
+
+interface "I_FunnelEvent" as I_EVENT
+interface "I_HandlerChainResolver\n(catalog.events[].chain)" as I_CHAIN
+
+src_site --> ingress_funnel : gtm_web_only / both events\n(precheckout, sign_up, app server events)
+src_site --> ext_gtm : gtm_web_only (alto volume)
+src_app --> ingress_funnel : app event webhook (HMAC)
+src_hotmart --> ingress_hotmart : purchase / checkout webhooks
+
+ingress_funnel --> ev_norm
+ingress_hotmart --> ev_norm
+ev_norm --> I_EVENT
+I_EVENT --> q_funnel
+q_funnel --> ev_disp
+
+ev_disp --> I_CHAIN
+I_CHAIN --> cfg_catalog
+
+ev_disp --> kv_dedupe : check/mark idempotencia
+ev_disp --> h_resolve
+ev_disp --> h_store
+ev_disp --> h_doi
+ev_disp --> h_brevo
+ev_disp --> h_cart
+ev_disp --> h_n8n
+ev_disp --> h_track
+ev_disp --> h_sync
+
+h_resolve --> db_identity
+h_resolve --> kv_identity
+h_store --> db_events
+h_doi --> ext_brevo
+h_brevo --> ext_brevo
+h_cart --> ext_brevo
+h_n8n --> ext_n8n
+h_track --> ext_tracking
+h_sync --> ext_brevo
+ev_disp --> q_dlq : falha definitiva
+
+note right of I_EVENT
+FunnelEvent (canonico):
+- event_id
+- event_type
+- product_code
+- source
+- occurred_at
+- identity(anonymous_id, session_id, lead_id, email_hash)
+- attribution(fbp,fbc,gclid,wbraid,gbraid,utm_*)
+- lead(email/phone/lead_id)
+- payload/context
+end note
+
+note right of I_CHAIN
+Exemplos de chain:
+GENERATE_LEAD ->
+[resolve_identity, upsert_event_store,
+ send_brevo_doi, update_brevo_funnel, emit_tracking]
+SIGN_UP -> [update_brevo_funnel, emit_tracking]
+PURCHASE_OUT_OF_SHOPPING_CART ->
+[update_brevo_funnel, send_cart_abandonment_email]
+PURCHASE_APPROVED -> [update_brevo_funnel, forward_n8n]
+end note
+
+ev_disp ..> obs_logs : console JSON estruturado
+obs_logs --> obs_push
+obs_push --> obs_r2
+
+@enduml

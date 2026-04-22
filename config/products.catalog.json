@@ -25,7 +25,17 @@
     },
     "brevo": {
       "replyToEmail": "contato@decolesuacarreiraesg.com.br",
-      "replyToEmailEnvVar": "BREVO_REPLY_TO_EMAIL"
+      "replyToEmailEnvVar": "BREVO_REPLY_TO_EMAIL",
+      "templateRepository": {
+        "path": "backend/cloudflare/config/email-templates/",
+        "syncPolicy": "manual_dashboard_sync_required"
+      },
+      "governance": {
+        "sourceOfTruth": "products.catalog.json",
+        "managedVia": "manual_dashboard",
+        "apiManaged": false,
+        "notes": "Listas, segmentos e automacoes do Brevo sao configurados manualmente no painel. O catalogo documenta estado operacional esperado."
+      }
     }
   },
 
@@ -74,6 +84,12 @@
       },
 
       "brevo": {
+        "opsModel": {
+          "managedVia": "manual_dashboard",
+          "apiManaged": false,
+          "owner": "marketing_ops",
+          "lastReviewedAt": "2026-04-22"
+        },
         "funnelPrefix": "DECOLE_ESG",
         "funnelFields": {
           "steps": "DECOLE_ESG_FUNIL_STEPS",
@@ -89,15 +105,137 @@
         "templates": {
           "doi": {
             "id": "1",
-            "description": "Double Opt-In confirmation"
+            "description": "Double Opt-In confirmation",
+            "localFile": "backend/cloudflare/config/email-templates/decole-esg/doi-v1.html",
+            "version": "v1"
           },
           "cartAbandonment": {
             "id": "8",
-            "description": "Email carrinho abandonado"
+            "description": "Email carrinho abandonado",
+            "localFile": "backend/cloudflare/config/email-templates/decole-esg/cart-abandonment-v1.html",
+            "version": "v1"
           }
         },
-        "segments": {},
-        "automations": {}
+        "transactionalEmails": [
+          {
+            "key": "doi",
+            "templateId": "1",
+            "triggerEvent": "GENERATE_LEAD",
+            "description": "Confirmação Double Opt-In para lead de precheckout.",
+            "managedVia": "manual_dashboard",
+            "localTemplateFile": "backend/cloudflare/config/email-templates/decole-esg/doi-v1.html"
+          },
+          {
+            "key": "cartAbandonment",
+            "templateId": "8",
+            "triggerEvent": "PURCHASE_OUT_OF_SHOPPING_CART",
+            "description": "Recuperação de carrinho abandonado.",
+            "managedVia": "manual_dashboard",
+            "localTemplateFile": "backend/cloudflare/config/email-templates/decole-esg/cart-abandonment-v1.html"
+          }
+        ],
+        "segments": [
+          {
+            "key": "esg_precheckout_leads",
+            "id": "",
+            "name": "Leads Precheckout DECOLE ESG",
+            "description": "Contatos de precheckout sem compra aprovada.",
+            "managedVia": "manual_dashboard"
+          }
+        ],
+        "automations": [
+          {
+            "key": "esg_precheckout_nurture",
+            "id": "",
+            "name": "Nurture Precheckout DECOLE ESG",
+            "description": "Fluxo de nutrição pós lead com avanço por estágio de funil.",
+            "entryCondition": "Contato entra em lista precheckout e confirma DOI.",
+            "expectedActions": [
+              "Enviar sequencia de emails de nutricao",
+              "Atualizar score/atributos de funil",
+              "Encerrar ao detectar compra aprovada"
+            ],
+            "managedVia": "manual_dashboard"
+          }
+        ]
+      },
+
+      "funnelEventArchitecture": {
+        "managedBy": "catalog",
+        "systems": {
+          "ingresses": ["api-funnel-ingress", "api-hotmart-ingress"],
+          "dispatcher": "funnel-dispatcher",
+          "queue": {
+            "name": "decole-q-funnel-events",
+            "dlq": "decole-q-funnel-events-dlq"
+          },
+          "state": {
+            "identityD1Binding": "IDENTITY_DB",
+            "identityKvBinding": "IDENTITY_KV",
+            "eventStoreD1Binding": "EVENT_STORE_DB",
+            "dedupeKvBinding": "DEDUPE_KV"
+          },
+          "observability": {
+            "workersLogs": true,
+            "logpushR2": true
+          }
+        },
+        "events": [
+          {
+            "eventType": "GENERATE_LEAD",
+            "delivery": "both",
+            "source": "site",
+            "ingress": "api-funnel-ingress",
+            "queue": "decole-q-funnel-events",
+            "chain": [
+              "resolve_identity",
+              "upsert_event_store",
+              "send_brevo_doi",
+              "update_brevo_funnel",
+              "emit_tracking",
+              "sync_brevo_segments"
+            ],
+            "destinations": ["Brevo", "GA4 MP", "Meta CAPI"],
+            "brevoConfig": {
+              "listId": "7",
+              "doiTemplateId": "1",
+              "funnelPrefix": "DECOLE_ESG"
+            },
+            "trackingConfigRef": "products.DECOLE_ESG_MENTORIA.tracking"
+          },
+          {
+            "eventType": "SIGN_UP",
+            "delivery": "both",
+            "source": "site",
+            "ingress": "api-funnel-ingress",
+            "queue": "decole-q-funnel-events",
+            "chain": ["update_brevo_funnel", "emit_tracking"],
+            "destinations": ["Brevo", "GA4 MP", "Meta CAPI"],
+            "trackingConfigRef": "products.DECOLE_ESG_MENTORIA.tracking"
+          },
+          {
+            "eventType": "PURCHASE_OUT_OF_SHOPPING_CART",
+            "delivery": "server_queue",
+            "source": "hotmart",
+            "ingress": "api-hotmart-ingress",
+            "queue": "decole-q-funnel-events",
+            "chain": ["update_brevo_funnel", "send_cart_abandonment_email", "emit_tracking"],
+            "destinations": ["Brevo", "GA4 MP", "Meta CAPI"],
+            "brevoConfig": {
+              "cartAbandonmentTemplateId": "8",
+              "funnelPrefix": "DECOLE_ESG"
+            }
+          },
+          {
+            "eventType": "PURCHASE_APPROVED",
+            "delivery": "server_queue",
+            "source": "hotmart",
+            "ingress": "api-hotmart-ingress",
+            "queue": "decole-q-funnel-events",
+            "chain": ["resolve_identity", "upsert_event_store", "update_brevo_funnel", "emit_tracking", "forward_n8n"],
+            "destinations": ["Brevo", "GA4 MP", "Meta CAPI", "n8n"]
+          }
+        ]
       },
 
       "meta": {
@@ -275,6 +413,12 @@
       },
 
       "brevo": {
+        "opsModel": {
+          "managedVia": "manual_dashboard",
+          "apiManaged": false,
+          "owner": "marketing_ops",
+          "lastReviewedAt": "2026-04-22"
+        },
         "funnelPrefix": "DECOLE_PLANOVOO",
         "funnelFields": {
           "steps": "DECOLE_PLANOVOO_FUNIL_STEPS",
@@ -291,11 +435,122 @@
           "doi": {
             "id": "10",
             "tag": "optin",
-            "description": "Double Opt-In confirmation - Plano de Voo"
+            "description": "Double Opt-In confirmation - Plano de Voo",
+            "localFile": "backend/cloudflare/config/email-templates/planovoo/doi-v1.html",
+            "version": "v1"
           }
         },
-        "segments": {},
-        "automations": {}
+        "transactionalEmails": [
+          {
+            "key": "doi",
+            "templateId": "10",
+            "triggerEvent": "GENERATE_LEAD",
+            "description": "Confirmação Double Opt-In para lead de precheckout Plano de Voo.",
+            "managedVia": "manual_dashboard",
+            "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/doi-v1.html"
+          }
+        ],
+        "segments": [
+          {
+            "key": "planovoo_precheckout_leads",
+            "id": "",
+            "name": "Leads Precheckout Plano de Voo",
+            "description": "Contatos de precheckout sem compra aprovada.",
+            "managedVia": "manual_dashboard"
+          }
+        ],
+        "automations": [
+          {
+            "key": "planovoo_precheckout_nurture",
+            "id": "",
+            "name": "Nurture Precheckout Plano de Voo",
+            "description": "Fluxo de nutrição e retomada de checkout para Plano de Voo.",
+            "entryCondition": "Contato entra em lista precheckout e confirma DOI.",
+            "expectedActions": [
+              "Enviar sequencia de emails de nutricao",
+              "Atualizar atributos de funil",
+              "Encerrar ao detectar compra aprovada"
+            ],
+            "managedVia": "manual_dashboard"
+          }
+        ]
+      },
+
+      "funnelEventArchitecture": {
+        "managedBy": "catalog",
+        "systems": {
+          "ingresses": ["api-funnel-ingress", "api-hotmart-ingress"],
+          "dispatcher": "funnel-dispatcher",
+          "queue": {
+            "name": "decole-q-funnel-events",
+            "dlq": "decole-q-funnel-events-dlq"
+          },
+          "state": {
+            "identityD1Binding": "IDENTITY_DB",
+            "identityKvBinding": "IDENTITY_KV",
+            "eventStoreD1Binding": "EVENT_STORE_DB",
+            "dedupeKvBinding": "DEDUPE_KV"
+          },
+          "observability": {
+            "workersLogs": true,
+            "logpushR2": true
+          }
+        },
+        "events": [
+          {
+            "eventType": "GENERATE_LEAD",
+            "delivery": "both",
+            "source": "site",
+            "ingress": "api-funnel-ingress",
+            "queue": "decole-q-funnel-events",
+            "chain": [
+              "resolve_identity",
+              "upsert_event_store",
+              "send_brevo_doi",
+              "update_brevo_funnel",
+              "emit_tracking",
+              "sync_brevo_segments"
+            ],
+            "destinations": ["Brevo", "GA4 MP", "Meta CAPI"],
+            "brevoConfig": {
+              "listId": "8",
+              "doiTemplateId": "10",
+              "funnelPrefix": "DECOLE_PLANOVOO"
+            },
+            "trackingConfigRef": "products.DECOLE_PLANOVOO.tracking"
+          },
+          {
+            "eventType": "SIGN_UP",
+            "delivery": "both",
+            "source": "site",
+            "ingress": "api-funnel-ingress",
+            "queue": "decole-q-funnel-events",
+            "chain": ["update_brevo_funnel", "emit_tracking"],
+            "destinations": ["Brevo", "GA4 MP", "Meta CAPI"],
+            "trackingConfigRef": "products.DECOLE_PLANOVOO.tracking"
+          },
+          {
+            "eventType": "PURCHASE_OUT_OF_SHOPPING_CART",
+            "delivery": "server_queue",
+            "source": "hotmart",
+            "ingress": "api-hotmart-ingress",
+            "queue": "decole-q-funnel-events",
+            "chain": ["update_brevo_funnel", "send_cart_abandonment_email", "emit_tracking"],
+            "destinations": ["Brevo", "GA4 MP", "Meta CAPI"],
+            "brevoConfig": {
+              "funnelPrefix": "DECOLE_PLANOVOO"
+            }
+          },
+          {
+            "eventType": "PURCHASE_APPROVED",
+            "delivery": "server_queue",
+            "source": "hotmart",
+            "ingress": "api-hotmart-ingress",
+            "queue": "decole-q-funnel-events",
+            "chain": ["resolve_identity", "upsert_event_store", "update_brevo_funnel", "emit_tracking", "forward_n8n"],
+            "destinations": ["Brevo", "GA4 MP", "Meta CAPI", "n8n"]
+          }
+        ]
       },
 
       "meta": {
