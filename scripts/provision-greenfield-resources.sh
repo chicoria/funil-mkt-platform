@@ -4,7 +4,6 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 CONFIG_FILE="${ROOT_DIR}/backend/cloudflare/config/cloudflare-greenfield.resources.json"
 OUT_FILE="${ROOT_DIR}/backend/cloudflare/config/generated/cloudflare-greenfield.ids.json"
-WRANGLER_CWD="${ROOT_DIR}/backend/cloudflare/workers/api-hotmart-ingress"
 APPLY=0
 SUFFIX=""
 
@@ -15,7 +14,7 @@ Usage:
 
 Modes:
   default   Only prints the plan (no API calls).
-  --apply   Creates missing resources in Cloudflare and writes IDs JSON.
+  --apply   Creates missing resources via Cloudflare API and writes IDs JSON.
 
 Required for --apply:
   - CLOUDFLARE_API_TOKEN
@@ -64,10 +63,6 @@ with_suffix() {
   printf "%s%s" "$name" "$SUFFIX"
 }
 
-wr() {
-  (cd "$WRANGLER_CWD" && npx wrangler "$@")
-}
-
 QUEUE_MAIN="$(with_suffix "$(jq -r '.resources.queues.funnel_main' "$CONFIG_FILE")")"
 QUEUE_DLQ="$(with_suffix "$(jq -r '.resources.queues.funnel_dlq' "$CONFIG_FILE")")"
 KV_DEDUPE="$(with_suffix "$(jq -r '.resources.kv.dedupe' "$CONFIG_FILE")")"
@@ -92,42 +87,82 @@ if [[ -z "${CLOUDFLARE_API_TOKEN:-}" || -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]]; then
   exit 1
 fi
 
-mkdir -p "$(dirname "$OUT_FILE")"
+cf_api() {
+  local method="$1"
+  local path="$2"
+  local body="${3:-}"
+
+  if [[ -n "$body" ]]; then
+    curl -sS -X "$method" "https://api.cloudflare.com/client/v4${path}" \
+      -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+      -H "Content-Type: application/json" \
+      --data "$body"
+  else
+    curl -sS -X "$method" "https://api.cloudflare.com/client/v4${path}" \
+      -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+      -H "Content-Type: application/json"
+  fi
+}
+
+assert_success() {
+  local response="$1"
+  local op="$2"
+  if ! echo "$response" | jq -e '.success == true' >/dev/null 2>&1; then
+    echo "[error] $op failed" >&2
+    echo "$response" | jq -c '{success, errors, messages}' >&2 || true
+    exit 1
+  fi
+}
 
 ensure_queue() {
   local name="$1"
-  local list_json
-  list_json="$(wr queues list --json)"
-  if echo "$list_json" | jq -e --arg n "$name" '.[] | select((.name // .queue_name // .queueName) == $n)' >/dev/null; then
+  local list_response
+  list_response="$(cf_api GET "/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/queues")"
+  assert_success "$list_response" "queues list"
+
+  if echo "$list_response" | jq -e --arg n "$name" '.result[]? | select((.queue_name // .name) == $n)' >/dev/null; then
     echo "[ok] queue exists: $name"
-  else
-    echo "[create] queue: $name"
-    wr queues create "$name" >/dev/null
+    return
   fi
+
+  echo "[create] queue: $name"
+  local create_response
+  create_response="$(cf_api POST "/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/queues" "$(jq -cn --arg n "$name" '{queue_name:$n}')")"
+  assert_success "$create_response" "queue create $name"
 }
 
 ensure_kv() {
   local title="$1"
-  local list_json
-  list_json="$(wr kv namespace list --json)"
-  if echo "$list_json" | jq -e --arg n "$title" '.[] | select((.title // .name) == $n)' >/dev/null; then
+  local list_response
+  list_response="$(cf_api GET "/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces?per_page=100")"
+  assert_success "$list_response" "kv list"
+
+  if echo "$list_response" | jq -e --arg n "$title" '.result[]? | select((.title // .name) == $n)' >/dev/null; then
     echo "[ok] kv exists: $title"
-  else
-    echo "[create] kv: $title"
-    wr kv namespace create "$title" >/dev/null
+    return
   fi
+
+  echo "[create] kv: $title"
+  local create_response
+  create_response="$(cf_api POST "/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces" "$(jq -cn --arg n "$title" '{title:$n}')")"
+  assert_success "$create_response" "kv create $title"
 }
 
 ensure_d1() {
   local name="$1"
-  local list_json
-  list_json="$(wr d1 list --json)"
-  if echo "$list_json" | jq -e --arg n "$name" '.[] | select((.name // .database_name) == $n)' >/dev/null; then
+  local list_response
+  list_response="$(cf_api GET "/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database")"
+  assert_success "$list_response" "d1 list"
+
+  if echo "$list_response" | jq -e --arg n "$name" '.result[]? | select((.name // .database_name) == $n)' >/dev/null; then
     echo "[ok] d1 exists: $name"
-  else
-    echo "[create] d1: $name"
-    wr d1 create "$name" >/dev/null
+    return
   fi
+
+  echo "[create] d1: $name"
+  local create_response
+  create_response="$(cf_api POST "/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database" "$(jq -cn --arg n "$name" '{name:$n}')")"
+  assert_success "$create_response" "d1 create $name"
 }
 
 ensure_queue "$QUEUE_MAIN"
@@ -137,22 +172,33 @@ ensure_kv "$KV_IDENTITY"
 ensure_d1 "$D1_IDENTITY"
 ensure_d1 "$D1_EVENT_STORE"
 
-KV_LIST_JSON="$(wr kv namespace list --json)"
-D1_LIST_JSON="$(wr d1 list --json)"
+QUEUE_LIST_RESPONSE="$(cf_api GET "/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/queues")"
+KV_LIST_RESPONSE="$(cf_api GET "/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces?per_page=100")"
+D1_LIST_RESPONSE="$(cf_api GET "/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database")"
 
-KV_DEDUPE_ID="$(echo "$KV_LIST_JSON" | jq -r --arg n "$KV_DEDUPE" '.[] | select((.title // .name) == $n) | (.id // .namespace_id)' | head -n1)"
-KV_IDENTITY_ID="$(echo "$KV_LIST_JSON" | jq -r --arg n "$KV_IDENTITY" '.[] | select((.title // .name) == $n) | (.id // .namespace_id)' | head -n1)"
-D1_IDENTITY_ID="$(echo "$D1_LIST_JSON" | jq -r --arg n "$D1_IDENTITY" '.[] | select((.name // .database_name) == $n) | (.uuid // .id // .database_id)' | head -n1)"
-D1_EVENT_STORE_ID="$(echo "$D1_LIST_JSON" | jq -r --arg n "$D1_EVENT_STORE" '.[] | select((.name // .database_name) == $n) | (.uuid // .id // .database_id)' | head -n1)"
+assert_success "$QUEUE_LIST_RESPONSE" "queues list"
+assert_success "$KV_LIST_RESPONSE" "kv list"
+assert_success "$D1_LIST_RESPONSE" "d1 list"
 
-if [[ -z "$KV_DEDUPE_ID" || -z "$KV_IDENTITY_ID" || -z "$D1_IDENTITY_ID" || -z "$D1_EVENT_STORE_ID" ]]; then
+QUEUE_MAIN_ID="$(echo "$QUEUE_LIST_RESPONSE" | jq -r --arg n "$QUEUE_MAIN" '.result[]? | select((.queue_name // .name) == $n) | (.queue_id // .id // .uuid)' | head -n1)"
+QUEUE_DLQ_ID="$(echo "$QUEUE_LIST_RESPONSE" | jq -r --arg n "$QUEUE_DLQ" '.result[]? | select((.queue_name // .name) == $n) | (.queue_id // .id // .uuid)' | head -n1)"
+KV_DEDUPE_ID="$(echo "$KV_LIST_RESPONSE" | jq -r --arg n "$KV_DEDUPE" '.result[]? | select((.title // .name) == $n) | (.id // .namespace_id)' | head -n1)"
+KV_IDENTITY_ID="$(echo "$KV_LIST_RESPONSE" | jq -r --arg n "$KV_IDENTITY" '.result[]? | select((.title // .name) == $n) | (.id // .namespace_id)' | head -n1)"
+D1_IDENTITY_ID="$(echo "$D1_LIST_RESPONSE" | jq -r --arg n "$D1_IDENTITY" '.result[]? | select((.name // .database_name) == $n) | (.uuid // .id // .database_id)' | head -n1)"
+D1_EVENT_STORE_ID="$(echo "$D1_LIST_RESPONSE" | jq -r --arg n "$D1_EVENT_STORE" '.result[]? | select((.name // .database_name) == $n) | (.uuid // .id // .database_id)' | head -n1)"
+
+if [[ -z "$QUEUE_MAIN_ID" || -z "$QUEUE_DLQ_ID" || -z "$KV_DEDUPE_ID" || -z "$KV_IDENTITY_ID" || -z "$D1_IDENTITY_ID" || -z "$D1_EVENT_STORE_ID" ]]; then
   echo "Failed to resolve one or more resource IDs" >&2
   exit 1
 fi
 
+mkdir -p "$(dirname "$OUT_FILE")"
+
 jq -n \
   --arg queueMain "$QUEUE_MAIN" \
+  --arg queueMainId "$QUEUE_MAIN_ID" \
   --arg queueDlq "$QUEUE_DLQ" \
+  --arg queueDlqId "$QUEUE_DLQ_ID" \
   --arg kvDedupe "$KV_DEDUPE" \
   --arg kvDedupeId "$KV_DEDUPE_ID" \
   --arg kvIdentity "$KV_IDENTITY" \
@@ -163,9 +209,10 @@ jq -n \
   --arg d1EventStoreId "$D1_EVENT_STORE_ID" \
   '{
     generated_at: (now | todateiso8601),
+    account_id: "masked",
     queues: {
-      funnel_main: { name: $queueMain },
-      funnel_dlq: { name: $queueDlq }
+      funnel_main: { name: $queueMain, id: $queueMainId },
+      funnel_dlq: { name: $queueDlq, id: $queueDlqId }
     },
     kv: {
       DEDUPE_KV: { title: $kvDedupe, id: $kvDedupeId },
