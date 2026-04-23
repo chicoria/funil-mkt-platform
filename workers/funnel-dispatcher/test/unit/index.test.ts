@@ -130,4 +130,50 @@ describe("funnel-dispatcher", () => {
     );
     expect(hasEventInsert).toBe(true);
   });
+
+  it("envia confirmation_url no DOI a partir do catalog", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const env = makeEnv({
+      BREVO_API_KEY: "set",
+      BREVO_DOI_TEMPLATE_ID: "1",
+      CATALOG_JSON: JSON.stringify({
+        products: {
+          DECOLE_ESG_MENTORIA: {
+            funnelEventArchitecture: {
+              events: [
+                {
+                  eventType: "GENERATE_LEAD",
+                  chain: ["send_brevo_doi"],
+                  brevoConfig: { doiRedirectUrl: "https://decolesuacarreiraesg.com.br/confirmacao.html" },
+                },
+              ],
+            },
+          },
+        },
+      }),
+    });
+
+    const event: any = {
+      event_id: "evt-doi-1",
+      event_type: "GENERATE_LEAD",
+      product_code: "DECOLE_ESG_MENTORIA",
+      source: "site",
+      occurred_at: new Date().toISOString(),
+      lead: { email: "qa.doi@example.com" },
+      payload: {},
+    };
+
+    await worker.queue({ messages: [{ body: event }] }, env);
+
+    const emailCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/smtp/email"));
+    expect(emailCall).toBeTruthy();
+    const body = JSON.parse(String((emailCall?.[1] as RequestInit)?.body || "{}")) as {
+      params?: Record<string, string>;
+    };
+    expect(body.params?.confirmation_url).toBe("https://decolesuacarreiraesg.com.br/confirmacao.html");
+
+    vi.unstubAllGlobals();
+  });
 });

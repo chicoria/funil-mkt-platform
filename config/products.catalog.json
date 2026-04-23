@@ -210,6 +210,7 @@
             "brevoConfig": {
               "listId": "7",
               "doiTemplateId": "1",
+              "doiRedirectUrl": "https://decolesuacarreiraesg.com.br/confirmacao.html",
               "funnelPrefix": "DECOLE_ESG"
             },
             "trackingConfigRef": "products.DECOLE_ESG_MENTORIA.tracking"
@@ -562,6 +563,7 @@
             "brevoConfig": {
               "listId": "8",
               "doiTemplateId": "10",
+              "doiRedirectUrl": "https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html",
               "funnelPrefix": "DECOLE_PLANOVOO"
             },
             "trackingConfigRef": "products.DECOLE_PLANOVOO.tracking"

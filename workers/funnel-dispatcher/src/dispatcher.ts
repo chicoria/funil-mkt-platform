@@ -15,6 +15,7 @@ export interface DispatcherEnv {
   BREVO_BASE_URL?: string;
   BREVO_SANDBOX?: string;
   BREVO_DOI_TEMPLATE_ID?: string;
+  BREVO_DOI_REDIRECT_URL?: string;
   BREVO_CART_ABANDON_TEMPLATE_ID?: string;
   BREVO_CART_ABANDONMENT_TEMPLATE_ID?: string;
   N8N_WEBHOOK_URL?: string;
