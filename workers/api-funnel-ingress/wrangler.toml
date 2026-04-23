@@ -1,11 +1,18 @@
 name = "decole-api-funnel-ingress"
 main = "src/index.ts"
 compatibility_date = "2026-04-22"
-workers_dev = true
+workers_dev = false
+routes = [
+  "api.decolesuacarreiraesg.com.br/funnel/*",
+  "api.decolesuacarreiraesg.com.br/webhooks/v1/planovoo/app/event"
+]
 
 [[queues.producers]]
 binding = "FUNNEL_EVENTS"
 queue = "decole-q-funnel-events"
+
+[vars]
+ALLOWED_ORIGINS = "https://decolesuacarreiraesg.com.br"
 
 [observability]
 enabled = true

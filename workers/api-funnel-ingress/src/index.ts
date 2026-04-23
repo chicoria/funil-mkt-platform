@@ -7,6 +7,7 @@ interface QueueBinding {
 interface Env {
   FUNNEL_EVENTS?: QueueBinding;
   APP_EVENTS_HMAC?: string;
+  ALLOWED_ORIGINS?: string;
 }
 
 function asString(value: unknown): string {
@@ -17,8 +18,54 @@ function asString(value: unknown): string {
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json; charset=utf-8" },
   });
+}
+
+function parseAllowedOrigins(raw: string): string[] {
+  return raw
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function isOriginAllowed(request: Request, env: Env): boolean {
+  const origin = asString(request.headers.get("origin"));
+  if (!origin) return true;
+  const configured = parseAllowedOrigins(asString(env.ALLOWED_ORIGINS));
+  if (!configured.length) return true;
+  return configured.includes(origin);
+}
+
+function corsHeaders(request: Request, env: Env): Record<string, string> {
+  const origin = asString(request.headers.get("origin"));
+  const configured = parseAllowedOrigins(asString(env.ALLOWED_ORIGINS));
+  const allowOrigin =
+    origin && configured.includes(origin) ? origin : configured[0] || "https://decolesuacarreiraesg.com.br";
+  return {
+    "access-control-allow-origin": allowOrigin,
+    "access-control-allow-methods": "POST, OPTIONS",
+    "access-control-allow-headers": "content-type, x-app-signature",
+    "access-control-max-age": "86400",
+    vary: "Origin",
+  };
+}
+
+function withCors(response: Response, request: Request, env: Env): Response {
+  const headers = new Headers(response.headers);
+  const cors = corsHeaders(request, env);
+  for (const [key, value] of Object.entries(cors)) {
+    headers.set(key, value);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+function logIngress(data: Record<string, unknown>): void {
+  console.log(JSON.stringify({ worker: "api-funnel-ingress", ...data }));
 }
 
 async function parseBody(request: Request): Promise<Record<string, unknown>> {
@@ -66,16 +113,31 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const { pathname } = new URL(request.url);
 
+    if (request.method === "OPTIONS" && pathname.startsWith("/funnel/")) {
+      if (!isOriginAllowed(request, env)) {
+        logIngress({ stage: "preflight_blocked", pathname, status: 403 });
+        return withCors(jsonResponse({ ok: false, error: "origin_not_allowed" }, 403), request, env);
+      }
+      logIngress({ stage: "preflight_ok", pathname, status: 204 });
+      return withCors(new Response(null, { status: 204 }), request, env);
+    }
+
     if (pathname === "/health") {
       return jsonResponse({ ok: true, worker: "api-funnel-ingress" }, 200);
     }
 
     if (request.method !== "POST") {
-      return jsonResponse({ ok: false, error: "method_not_allowed" }, 405);
+      return withCors(jsonResponse({ ok: false, error: "method_not_allowed" }, 405), request, env);
     }
 
     if (!env.FUNNEL_EVENTS) {
-      return jsonResponse({ ok: false, error: "queue_not_configured" }, 500);
+      logIngress({ stage: "error", pathname, error: "queue_not_configured", status: 500 });
+      return withCors(jsonResponse({ ok: false, error: "queue_not_configured" }, 500), request, env);
+    }
+
+    if (pathname.startsWith("/funnel/") && !isOriginAllowed(request, env)) {
+      logIngress({ stage: "blocked", pathname, error: "origin_not_allowed", status: 403 });
+      return withCors(jsonResponse({ ok: false, error: "origin_not_allowed" }, 403), request, env);
     }
 
     const payload = await parseBody(request);
@@ -83,24 +145,49 @@ export default {
     if (pathname === "/funnel/precheckout") {
       const event = fromPrecheckoutForm(payload, productCodeFromBody(payload, "UNKNOWN_PRODUCT"));
       await env.FUNNEL_EVENTS.send(event);
-      return jsonResponse({ ok: true, event_id: event.event_id, event_type: event.event_type }, 202);
+      logIngress({
+        stage: "queued",
+        pathname,
+        event_id: event.event_id,
+        event_type: event.event_type,
+        product_code: event.product_code,
+        status: 202,
+      });
+      return withCors(jsonResponse({ ok: true, event_id: event.event_id, event_type: event.event_type }, 202), request, env);
     }
 
     if (pathname === "/funnel/event") {
       const event = fromBrowserTracking(payload, productCodeFromBody(payload, "UNKNOWN_PRODUCT"));
       await env.FUNNEL_EVENTS.send(event);
-      return jsonResponse({ ok: true, event_id: event.event_id, event_type: event.event_type }, 202);
+      logIngress({
+        stage: "queued",
+        pathname,
+        event_id: event.event_id,
+        event_type: event.event_type,
+        product_code: event.product_code,
+        status: 202,
+      });
+      return withCors(jsonResponse({ ok: true, event_id: event.event_id, event_type: event.event_type }, 202), request, env);
     }
 
     if (pathname === "/webhooks/v1/planovoo/app/event") {
       if (!verifyAppSignature(request, env)) {
-        return jsonResponse({ ok: false, error: "unauthorized" }, 401);
+        logIngress({ stage: "blocked", pathname, error: "unauthorized", status: 401 });
+        return withCors(jsonResponse({ ok: false, error: "unauthorized" }, 401), request, env);
       }
       const event = fromAppEvent(payload, productCodeFromBody(payload, "DECOLE_PLANOVOO"));
       await env.FUNNEL_EVENTS.send(event);
-      return jsonResponse({ ok: true, event_id: event.event_id, event_type: event.event_type }, 202);
+      logIngress({
+        stage: "queued",
+        pathname,
+        event_id: event.event_id,
+        event_type: event.event_type,
+        product_code: event.product_code,
+        status: 202,
+      });
+      return withCors(jsonResponse({ ok: true, event_id: event.event_id, event_type: event.event_type }, 202), request, env);
     }
 
-    return jsonResponse({ ok: false, error: "not_found" }, 404);
+    return withCors(jsonResponse({ ok: false, error: "not_found" }, 404), request, env);
   },
 };

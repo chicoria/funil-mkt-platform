@@ -21,6 +21,10 @@ function jsonResponse(body: unknown, status: number): Response {
   });
 }
 
+function logIngress(data: Record<string, unknown>): void {
+  console.log(JSON.stringify({ worker: "api-hotmart-ingress", ...data }));
+}
+
 function parsePath(pathname: string): { ok: boolean; productSlug: string; operation: string } {
   const parts = pathname.replace(/^\/+|\/+$/g, "").toLowerCase().split("/").filter(Boolean);
   if (parts.length !== 5 || parts[0] !== "webhooks" || parts[1] !== "v1" || parts[3] !== "hotmart") {
@@ -76,19 +80,23 @@ export default {
     }
 
     if (request.method !== "POST") {
+      logIngress({ stage: "error", pathname, error: "method_not_allowed", status: 405 });
       return jsonResponse({ ok: false, error: "method_not_allowed" }, 405);
     }
 
     const parsed = parsePath(pathname);
     if (!parsed.ok) {
+      logIngress({ stage: "error", pathname, error: "not_found", status: 404 });
       return jsonResponse({ ok: false, error: "not_found" }, 404);
     }
 
     if (!isAuthorized(request, env)) {
+      logIngress({ stage: "blocked", pathname, product_slug: parsed.productSlug, error: "unauthorized", status: 401 });
       return jsonResponse({ ok: false, error: "unauthorized" }, 401);
     }
 
     if (!env.FUNNEL_EVENTS) {
+      logIngress({ stage: "error", pathname, product_slug: parsed.productSlug, error: "queue_not_configured", status: 500 });
       return jsonResponse({ ok: false, error: "queue_not_configured" }, 500);
     }
 
@@ -100,6 +108,15 @@ export default {
 
     const normalized = fromHotmartWebhook(raw, productCodeFromSlug(parsed.productSlug));
     await env.FUNNEL_EVENTS.send(normalized);
+    logIngress({
+      stage: "queued",
+      pathname,
+      product_slug: parsed.productSlug,
+      event_id: normalized.event_id,
+      event_type: normalized.event_type,
+      product_code: normalized.product_code,
+      status: 202,
+    });
 
     return jsonResponse({ ok: true, event_id: normalized.event_id, event_type: normalized.event_type }, 202);
   },

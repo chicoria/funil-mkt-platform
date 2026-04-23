@@ -1,7 +1,12 @@
 name = "decole-api-hotmart-ingress"
 main = "src/index.ts"
 compatibility_date = "2026-04-22"
-workers_dev = true
+workers_dev = false
+routes = [
+  "api.decolesuacarreiraesg.com.br/webhooks/v1/decole-esg/hotmart/*",
+  "api.decolesuacarreiraesg.com.br/webhooks/v1/planovoo/hotmart/*",
+  "api.decolesuacarreiraesg.com.br/webhooks/v1/plano-de-voo/hotmart/*"
+]
 
 [[queues.producers]]
 binding = "FUNNEL_EVENTS"

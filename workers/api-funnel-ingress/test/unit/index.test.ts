@@ -5,6 +5,7 @@ function makeEnv(overrides: Record<string, unknown> = {}): any {
   return {
     FUNNEL_EVENTS: { send: vi.fn(async () => undefined) },
     APP_EVENTS_HMAC: "",
+    ALLOWED_ORIGINS: "https://decolesuacarreiraesg.com.br",
     ...overrides,
   };
 }
@@ -19,7 +20,7 @@ describe("api-funnel-ingress", () => {
     const send = vi.fn(async () => undefined);
     const req = new Request("https://x/funnel/precheckout", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", origin: "https://decolesuacarreiraesg.com.br" },
       body: JSON.stringify({ event_type: "generate_lead", email: "lead@example.com", product_code: "DECOLE_PLANOVOO" }),
     });
 
@@ -30,6 +31,27 @@ describe("api-funnel-ingress", () => {
     const evt = (firstCall?.[0] ?? {}) as { event_type?: string; product_code?: string };
     expect(evt.event_type).toBe("GENERATE_LEAD");
     expect(evt.product_code).toBe("DECOLE_PLANOVOO");
+  });
+
+  it("retorna preflight para origem permitida", async () => {
+    const req = new Request("https://x/funnel/precheckout", {
+      method: "OPTIONS",
+      headers: { origin: "https://decolesuacarreiraesg.com.br" },
+    });
+    const res = await worker.fetch(req, makeEnv());
+    expect(res.status).toBe(204);
+    expect(res.headers.get("access-control-allow-origin")).toBe("https://decolesuacarreiraesg.com.br");
+  });
+
+  it("bloqueia origem nao permitida nos endpoints /funnel", async () => {
+    const req = new Request("https://x/funnel/event", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "https://evil.example" },
+      body: JSON.stringify({ event_type: "page_view", product_code: "DECOLE_PLANOVOO" }),
+    });
+
+    const res = await worker.fetch(req, makeEnv());
+    expect(res.status).toBe(403);
   });
 
   it("valida assinatura no app ingress", async () => {

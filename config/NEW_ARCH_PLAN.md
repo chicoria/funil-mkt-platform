@@ -860,6 +860,311 @@ Regra de coordenação:
 - dashboards/queries mínimas atualizadas quando a fase mexer com observabilidade
 - rollback documentado (como desativar rota/handler recém-introduzido)
 
+### 12.5 Plano executável por ticket (com diagnóstico atual)
+
+Snapshot de diagnóstico (2026-04-23):
+
+- `api-funnel-ingress`, `api-hotmart-ingress` e `funnel-dispatcher` já existem com queue canônica (`decole-q-funnel-events`) e observabilidade `enabled=true`.
+- esses três workers estão com `workers_dev = true` e sem `routes` de domínio custom.
+- tráfego de lead em produção ainda entra por `api-precheckout` na rota `api.decolesuacarreiraesg.com.br/brevo*`.
+- webhook Hotmart atual em produção ainda aponta para `decole-api-external-webhooks` (rota `/webhooks/hotmart*`).
+- landing pages (`site/index.html` e `site/planodevoo/index.html`) ainda fazem `POST` para `https://api.decolesuacarreiraesg.com.br/brevo`.
+- eventos de alto volume (`page_view`, `button_click`, `cta_click`) estão no `dataLayer`, sem POST para `api-funnel-ingress`.
+- `CLOUDFLARE_API_TOKEN` atual autentica no Wrangler (`whoami`), porém operações de account (`queues list`, `d1 list`, `secret list`, `deployments list`) retornam erro `10000` (scope/permissão insuficiente).
+- em `.env.local`: `BREVO_API_KEY`, `HOTMART_WEBHOOK_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_ZONE_ID` e URLs base estão `set`; `TURNSTILE_SECRET` está `missing` (avaliar se ficará só como secret remoto).
+
+#### Ticket GO-LIVE-001 — Matriz de Domínios/Rotas/CORS
+
+Objetivo: fechar contratos de entrada HTTP para o pipeline canônico.
+
+Implementação:
+
+1. Definir rotas finais:
+`api-funnel-ingress`:
+`api.decolesuacarreiraesg.com.br/funnel/*`
+`api.decolesuacarreiraesg.com.br/webhooks/v1/planovoo/app/event`
+
+2. Definir rota final:
+`api-hotmart-ingress`:
+`api.decolesuacarreiraesg.com.br/webhooks/v1/*/hotmart/*`
+
+3. Atualizar `wrangler.toml` dos ingress:
+`workers_dev = false` + bloco `routes`.
+
+4. Implementar CORS explícito no `api-funnel-ingress`:
+- `OPTIONS` preflight
+- `ALLOWED_ORIGINS` (CSV) com validação de `Origin`
+- headers mínimos: `content-type`, `x-app-signature`
+
+Gate:
+
+- `curl -i -X OPTIONS` retorna headers CORS corretos.
+- `POST` de origem permitida retorna `202`.
+- `POST` de origem não permitida retorna `403`.
+
+#### Ticket GO-LIVE-002 — Configuração final de Workers (Bindings/Secrets/Permissões)
+
+Objetivo: garantir deploy/release reproduzível e auditável.
+
+Implementação:
+
+1. Corrigir token Cloudflare usado no CI/local com escopos de account para:
+- Workers Scripts (read/edit)
+- Workers Routes (read/edit)
+- Queues (read/edit)
+- D1 (read/edit)
+- KV (read/edit)
+- Workers Tail/Observability (read)
+
+2. Publicar checklist de bindings obrigatórios por worker:
+- `api-funnel-ingress`: `FUNNEL_EVENTS`, `APP_EVENTS_HMAC`
+- `api-hotmart-ingress`: `FUNNEL_EVENTS`, `HOTMART_WEBHOOK_TOKEN`
+- `funnel-dispatcher`: `DEDUPE_KV`, `IDENTITY_KV`, `IDENTITY_DB`, `EVENT_STORE_DB` + secrets de Brevo/n8n/tracking
+
+3. Formalizar source de truth:
+- `wrangler.toml` versionado para bindings/rotas
+- `wrangler secret put` para valores sensíveis
+
+Gate:
+
+- `wrangler secret list --name <worker>` funcionando.
+- `wrangler deployments list --name <worker>` funcionando.
+- deploy incremental (`scripts/deploy-incremental.sh`) verde para os 3 workers canônicos.
+
+#### Ticket GO-LIVE-003 — Refatoração das Landing Pages para arquitetura nova
+
+Objetivo: trocar ingest legado (`/brevo`) pelo ingress canônico sem quebrar UX.
+
+Implementação:
+
+1. Alterar `form.action` em:
+- `site/index.html`
+- `site/planodevoo/index.html`
+de:
+`https://api.decolesuacarreiraesg.com.br/brevo`
+para:
+`https://api.decolesuacarreiraesg.com.br/funnel/precheckout`
+
+2. Garantir payload canônico no submit:
+- `event_type=GENERATE_LEAD`
+- `product_code`
+- `anonymous_id`
+- `session_id`
+- `lead_id`
+- metadados de atribuição (`fbp`, `fbc`, `gclid` quando houver)
+
+3. Introduzir utilitário compartilhado client-side para identidade:
+- gera/persiste `anonymous_id` (cookie/localStorage)
+- gera `session_id` por sessão
+- mantém `lead_id` para deduplicação client/server
+
+4. Confirmar estratégia de trilhos:
+- `gtm_web_only`: continua só `dataLayer`/GTM
+- `both`: `dataLayer` + POST para `api-funnel-ingress`
+
+Gate:
+
+- submit válido retorna `202` sem regressão de redirect para checkout.
+- retry/reenvio não duplica efeitos downstream (`event_id:handler`).
+- eventos `sign_up` continuam com `event_id` consistente.
+
+#### Ticket GO-LIVE-004 — URL e segurança de Webhook Hotmart
+
+Objetivo: migrar webhook de `api-external-webhooks` para `api-hotmart-ingress`.
+
+Implementação:
+
+1. Definir URL por produto no Hotmart:
+- `.../webhooks/v1/decole-esg/hotmart/purchase`
+- `.../webhooks/v1/planovoo/hotmart/purchase`
+
+2. Padronizar token no Hotmart e no worker:
+- `HOTMART_WEBHOOK_TOKEN` (secret)
+- bloquear chamadas sem token (`401`)
+
+3. Congelar whitelist inicial de eventos:
+- `PURCHASE_APPROVED`
+- `PURCHASE_OUT_OF_SHOPPING_CART`
+- `BEGIN_CHECKOUT` (se disponível no payload operacional)
+
+4. Manter rollback preparado:
+- rota antiga ativa por janela curta de convivência
+- chave de corte para desligar producer legado
+
+Gate:
+
+- webhook real/teste Hotmart retorna `202`.
+- evento aparece em `decole-q-funnel-events`.
+- dispatcher executa chain esperada por `event_type`.
+
+#### Ticket GO-LIVE-005 — Teste E2E em produção controlada
+
+Objetivo: validar pipeline fim-a-fim com critérios objetivos de aceite.
+
+Implementação:
+
+1. Evoluir `scripts/e2e-funnel-staging.sh` para modo produção controlada:
+- parametrizar URLs custom domain
+- validar healthchecks dos 3 workers
+- executar cenário `GENERATE_LEAD` + `PURCHASE_APPROVED`
+
+2. Incluir validações automáticas:
+- `funnel_events` (D1 event store)
+- `identity_links` (D1 identity)
+- dedupe por `event_id`
+
+3. Incluir checklist manual complementar:
+- DOI recebido no Brevo
+- evento em GA4 DebugView
+- evento em Meta Test Events (com `test_event_code`)
+
+Gate:
+
+- suíte E2E roda 2x sem regressão.
+- sem crescimento anômalo de DLQ após janela de teste.
+
+#### Ticket GO-LIVE-006 — Observabilidade e handover operacional
+
+Objetivo: operação contínua com troubleshooting rápido.
+
+Implementação:
+
+1. Padronizar logs JSON em todos os handlers com:
+- `event_id`, `event_type`, `product_code`, `handler`, `status`, `duration_ms`
+
+2. Ativar consulta integrada:
+- Workers Logs (Query Builder) para análise online
+- Logpush para retenção longa (R2 ou destino externo) quando habilitado no account plan
+
+3. Criar runbook de incidentes:
+- falha de secret
+- fila acumulando
+- DLQ crescendo
+- destino externo indisponível (Brevo/Meta/GA4/n8n)
+
+Gate:
+
+- consulta por `event_id` retorna trilha completa ingress -> dispatcher -> handler.
+- alerta básico de erro por worker ativo.
+
+#### Pré-requisitos de execução imediata (bloqueadores)
+
+1. Atualizar scope do `CLOUDFLARE_API_TOKEN` para operações de account (hoje bloqueado com erro `10000`).
+2. Confirmar se `TURNSTILE_SECRET` ficará somente como secret remoto ou também em `.env.local` para testes locais.
+3. Confirmar data/hora da janela de cutover para troca de rotas de ingress e webhook Hotmart.
+
+### 12.6 Sequência operacional (runbook executável)
+
+Executar na ordem abaixo. Só avançar para o próximo bloco com gate verde do bloco atual.
+
+1. Preparação de ambiente local:
+```bash
+set -a
+source .env.local
+set +a
+npx wrangler whoami
+```
+Evidência esperada: autenticação válida no Wrangler.
+
+2. Validar se o token já tem escopo de account:
+```bash
+npx wrangler queues list
+npx wrangler d1 list
+npx wrangler kv namespace list
+```
+Evidência esperada: comandos retornam inventário sem erro `10000`.
+Rollback: não executar deploy; voltar para ajuste de API token.
+
+3. GO-LIVE-001 (rotas/cors) — implementar:
+```bash
+git checkout -b chore/go-live-001-routes-cors
+```
+Arquivos-alvo:
+- `backend/cloudflare/workers/api-funnel-ingress/wrangler.toml`
+- `backend/cloudflare/workers/api-hotmart-ingress/wrangler.toml`
+- `backend/cloudflare/workers/api-funnel-ingress/src/index.ts`
+
+Checklist técnico:
+- `workers_dev=false` nos dois ingress.
+- `routes` de domínio custom configuradas.
+- suporte a `OPTIONS` + `ALLOWED_ORIGINS` no `api-funnel-ingress`.
+
+Validação:
+```bash
+cd backend/cloudflare/workers/api-funnel-ingress
+npm test && npm run typecheck
+cd ../api-hotmart-ingress
+npm test && npm run typecheck
+```
+
+4. GO-LIVE-002 (bindings/secrets/deploy) — publicar config:
+```bash
+./backend/cloudflare/scripts/deploy-incremental.sh --worker api-funnel-ingress --dry-run
+./backend/cloudflare/scripts/deploy-incremental.sh --worker api-hotmart-ingress --dry-run
+./backend/cloudflare/scripts/deploy-incremental.sh --worker funnel-dispatcher --dry-run
+```
+Se tudo verde:
+```bash
+./backend/cloudflare/scripts/deploy-incremental.sh --worker api-funnel-ingress
+./backend/cloudflare/scripts/deploy-incremental.sh --worker api-hotmart-ingress
+./backend/cloudflare/scripts/deploy-incremental.sh --worker funnel-dispatcher
+```
+Evidência esperada: deploy concluído e healthcheck respondendo.
+
+5. GO-LIVE-003 (LPs no ingress canônico) — migrar formulários:
+```bash
+git checkout -b feat/go-live-003-landing-ingress
+```
+Arquivos-alvo:
+- `site/index.html`
+- `site/planodevoo/index.html`
+
+Checklist técnico:
+- `form.action` aponta para `/funnel/precheckout`.
+- submit envia `event_type=GENERATE_LEAD` e IDs de identidade (`anonymous_id`, `session_id`, `lead_id`).
+- redirect de checkout preservado.
+
+Validação:
+```bash
+rg -n "action=\"https://api.decolesuacarreiraesg.com.br/funnel/precheckout\"" site/index.html site/planodevoo/index.html
+```
+
+6. GO-LIVE-004 (Hotmart webhook cutover) — trocar endpoint no fornecedor:
+- atualizar URL no painel Hotmart para `/webhooks/v1/{produto}/hotmart/purchase`.
+- confirmar token configurado (`HOTMART_WEBHOOK_TOKEN`) no worker.
+
+Teste direto no ingress:
+```bash
+curl -i -X POST "https://api.decolesuacarreiraesg.com.br/webhooks/v1/planovoo/hotmart/purchase" \
+  -H "content-type: application/json" \
+  -H "x-hotmart-hottok: <TOKEN>" \
+  --data '{"event":"PURCHASE_APPROVED","buyer":{"email":"qa@example.com"}}'
+```
+Evidência esperada: `202`.
+
+7. GO-LIVE-005 (E2E produção controlada):
+```bash
+HOTMART_INGRESS_URL="https://api.decolesuacarreiraesg.com.br" \
+FUNNEL_INGRESS_URL="https://api.decolesuacarreiraesg.com.br" \
+./backend/cloudflare/scripts/e2e-funnel-staging.sh
+```
+Evidência esperada: script conclui com `[ok] E2E staging passed` (rodar 2 vezes).
+
+8. GO-LIVE-006 (observabilidade/runbook):
+- confirmar logs estruturados por `event_id` no ingress e dispatcher.
+- documentar query padrão de troubleshooting por `event_id` e `event_type`.
+- validar plano de rollback:
+`reverter LP para /brevo` + `despublicar rota ingress nova` + `reativar webhook legado`.
+
+9. Encerramento da rodada:
+```bash
+git status --short
+```
+Checklist final:
+- sem secrets versionados.
+- `products.catalog.json` e `NEW_ARCH_PLAN.md` coerentes com rotas finais.
+- evidências de gate anexadas no ticket correspondente.
+
 ## Verificação E2E por fase
 
 ### F0.1 (delivery piloto)
