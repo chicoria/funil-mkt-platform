@@ -165,6 +165,19 @@ Bump `products.catalog.json` para `schemaVersion: 3`. Adiciona globalmente:
 }
 ```
 
+Mapeamento canônico `event_type -> funnelStage` (ordenado por `funnelStages.order`):
+
+| funnelStage      | event_type                                                                                                            |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `AWARENESS`      | `PAGE_VIEW`                                                                                                           |
+| `CONSIDERATION`  | `SECTION_VIEW`, `SECTION_ENGAGED`, `CTA_CLICK`, `BUTTON_CLICK`, `PRECHECKOUT_FORM_STARTED`, `PRECHECKOUT_FORM_PROGRESS`, `GENERATE_LEAD` |
+| `CONVERSION`     | `PRECHECKOUT_SUBMIT_SUCCESS`, `PRECHECKOUT_SUBMIT_ERROR`, `SIGN_UP`, `BEGIN_CHECKOUT`, `PURCHASE_OUT_OF_SHOPPING_CART` |
+| `PURCHASE`       | `PURCHASE_APPROVED`                                                                                                   |
+| `ACTIVATION`     | `FIRST_USE`                                                                                                           |
+| `RETENTION`      | `RENEWAL`, `REENGAGEMENT`                                                                                             |
+
+Regra de catálogo: cada item em `products.<PRODUCT_CODE>.funnelEventArchitecture.events[]` deve carregar `funnelStage` e a lista deve ser apresentada nesta ordem de estágio.
+
 ### 1A. Governança Brevo no catálogo (componentes e operação)
 
 O catálogo deve explicitar, por produto, quais componentes do Brevo estão em uso e como são operados:
@@ -245,8 +258,8 @@ Por produto, `events[]` com schema completo:
 ```jsonc
 // Evento server_queue (transição de funil)
 {
-  "id": "GENERATE_LEAD",
-  "stage": "CONSIDERATION",
+  "funnelStage": "CONSIDERATION",
+  "eventType": "GENERATE_LEAD",
   "delivery": "both",
   "source": "site",
   "payload": {
@@ -271,8 +284,8 @@ Por produto, `events[]` com schema completo:
 },
 // Evento gtm_web_only (engajamento)
 {
-  "id": "section_engaged",
-  "stage": "CONSIDERATION",
+  "funnelStage": "CONSIDERATION",
+  "eventType": "SECTION_ENGAGED",
   "delivery": "gtm_web_only",
   "source": "site",
   "clientSide": { "gtm_web": "section_engaged", "sgtm": { "ga4": "section_engaged" } },
@@ -280,8 +293,8 @@ Por produto, `events[]` com schema completo:
 },
 // Evento gtm_web_only (pré-submit)
 {
-  "id": "precheckout_form_started",
-  "stage": "CONSIDERATION",
+  "funnelStage": "CONSIDERATION",
+  "eventType": "PRECHECKOUT_FORM_STARTED",
   "delivery": "gtm_web_only",
   "source": "site",
   "clientSide": { "gtm_web": "precheckout_form_started", "sgtm": { "ga4": "precheckout_form_started", "metaCapi": "InitiateCheckout" } },
@@ -465,7 +478,8 @@ O `DIAGRAMA_COMPONENTES_FUNIL_EVENTOS.puml` (alvo do usuário) permanece **hand-
 
 ```jsonc
 {
-  "id": "PURCHASE_APPROVED",
+  "funnelStage": "PURCHASE",
+  "eventType": "PURCHASE_APPROVED",
   "emit_tracking": {
     "ga4_event": "purchase",
     "meta_event": "Purchase",

@@ -155,6 +155,40 @@
         },
         "events": [
           {
+            "funnelStage": "AWARENESS",
+            "eventType": "PAGE_VIEW",
+            "delivery": "gtm_web_only",
+            "source": "site",
+            "destinations": [
+              "GA4",
+              "Meta Pixel"
+            ],
+            "trackingConfigRef": "products.DECOLE_ESG_MENTORIA.tracking"
+          },
+          {
+            "funnelStage": "CONSIDERATION",
+            "eventType": "BUTTON_CLICK",
+            "delivery": "gtm_web_only",
+            "source": "site",
+            "destinations": [
+              "GA4",
+              "Meta Pixel"
+            ],
+            "trackingConfigRef": "products.DECOLE_ESG_MENTORIA.tracking"
+          },
+          {
+            "funnelStage": "CONSIDERATION",
+            "eventType": "CTA_CLICK",
+            "delivery": "gtm_web_only",
+            "source": "site",
+            "destinations": [
+              "GA4",
+              "Meta Pixel"
+            ],
+            "trackingConfigRef": "products.DECOLE_ESG_MENTORIA.tracking"
+          },
+          {
+            "funnelStage": "CONSIDERATION",
             "eventType": "GENERATE_LEAD",
             "delivery": "both",
             "source": "site",
@@ -181,23 +215,7 @@
             "trackingConfigRef": "products.DECOLE_ESG_MENTORIA.tracking"
           },
           {
-            "eventType": "SIGN_UP",
-            "delivery": "both",
-            "source": "site",
-            "ingress": "api-funnel-ingress",
-            "queue": "decole-q-funnel-events",
-            "chain": [
-              "update_brevo_funnel",
-              "emit_tracking"
-            ],
-            "destinations": [
-              "Brevo",
-              "GA4 MP",
-              "Meta CAPI"
-            ],
-            "trackingConfigRef": "products.DECOLE_ESG_MENTORIA.tracking"
-          },
-          {
+            "funnelStage": "CONVERSION",
             "eventType": "PURCHASE_OUT_OF_SHOPPING_CART",
             "delivery": "server_queue",
             "source": "hotmart",
@@ -219,6 +237,25 @@
             }
           },
           {
+            "funnelStage": "CONVERSION",
+            "eventType": "SIGN_UP",
+            "delivery": "both",
+            "source": "site",
+            "ingress": "api-funnel-ingress",
+            "queue": "decole-q-funnel-events",
+            "chain": [
+              "update_brevo_funnel",
+              "emit_tracking"
+            ],
+            "destinations": [
+              "Brevo",
+              "GA4 MP",
+              "Meta CAPI"
+            ],
+            "trackingConfigRef": "products.DECOLE_ESG_MENTORIA.tracking"
+          },
+          {
+            "funnelStage": "PURCHASE",
             "eventType": "PURCHASE_APPROVED",
             "delivery": "server_queue",
             "source": "hotmart",
@@ -273,6 +310,66 @@
       },
       "landingPages": [
         {
+          "name": "Bio Instagram",
+          "url": "https://decolesuacarreiraesg.com.br/bio-insta.html",
+          "repo": "decolesuacarreiraesg",
+          "folder": "site/",
+          "indexFile": "site/bio-insta.html",
+          "gtm": "GTM-58CQ9K7X",
+          "ga4": "G-BQQB6X5XN1",
+          "metaPixel": "",
+          "events": [
+            {
+              "name": "page_view",
+              "produto": "DECOLE_ESG_MENTORIA",
+              "google": {
+                "channel": "ga4_via_gtm",
+                "eventName": "page_view"
+              },
+              "meta": {
+                "channel": "pixel_via_gtm",
+                "eventName": "PageView"
+              }
+            },
+            {
+              "name": "button_click",
+              "produto": "DECOLE_ESG_MENTORIA",
+              "google": {
+                "channel": "ga4_via_gtm",
+                "eventName": "button_click"
+              },
+              "meta": {
+                "channel": "pixel_via_gtm",
+                "eventName": "button_click"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Página de confirmação DOI",
+          "url": "https://decolesuacarreiraesg.com.br/confirmacao.html",
+          "repo": "decolesuacarreiraesg",
+          "folder": "site/",
+          "indexFile": "site/confirmacao.html",
+          "gtm": "GTM-58CQ9K7X",
+          "ga4": "G-BQQB6X5XN1",
+          "metaPixel": "",
+          "events": [
+            {
+              "name": "sign_up",
+              "produto": "DECOLE_ESG_MENTORIA",
+              "google": {
+                "channel": "ga4_via_gtm",
+                "eventName": "sign_up"
+              },
+              "meta": {
+                "channel": "pixel_via_gtm",
+                "eventName": "CompleteRegistration"
+              }
+            }
+          ]
+        },
+        {
           "name": "Landing page principal",
           "url": "https://decolesuacarreiraesg.com.br",
           "repo": "decolesuacarreiraesg",
@@ -304,30 +401,6 @@
               "meta": {
                 "channel": "pixel_via_gtm",
                 "eventName": "cta_click"
-              }
-            }
-          ]
-        },
-        {
-          "name": "Página de confirmação DOI",
-          "url": "https://decolesuacarreiraesg.com.br/confirmacao.html",
-          "repo": "decolesuacarreiraesg",
-          "folder": "site/",
-          "indexFile": "site/confirmacao.html",
-          "gtm": "GTM-58CQ9K7X",
-          "ga4": "G-BQQB6X5XN1",
-          "metaPixel": "",
-          "events": [
-            {
-              "name": "sign_up",
-              "produto": "DECOLE_ESG_MENTORIA",
-              "google": {
-                "channel": "ga4_via_gtm",
-                "eventName": "sign_up"
-              },
-              "meta": {
-                "channel": "pixel_via_gtm",
-                "eventName": "CompleteRegistration"
               }
             }
           ]
@@ -456,6 +529,18 @@
         },
         "events": [
           {
+            "funnelStage": "CONSIDERATION",
+            "eventType": "CTA_CLICK",
+            "delivery": "gtm_web_only",
+            "source": "site",
+            "destinations": [
+              "GA4",
+              "Meta Pixel"
+            ],
+            "trackingConfigRef": "products.DECOLE_PLANOVOO.tracking"
+          },
+          {
+            "funnelStage": "CONSIDERATION",
             "eventType": "GENERATE_LEAD",
             "delivery": "both",
             "source": "site",
@@ -482,23 +567,7 @@
             "trackingConfigRef": "products.DECOLE_PLANOVOO.tracking"
           },
           {
-            "eventType": "SIGN_UP",
-            "delivery": "both",
-            "source": "site",
-            "ingress": "api-funnel-ingress",
-            "queue": "decole-q-funnel-events",
-            "chain": [
-              "update_brevo_funnel",
-              "emit_tracking"
-            ],
-            "destinations": [
-              "Brevo",
-              "GA4 MP",
-              "Meta CAPI"
-            ],
-            "trackingConfigRef": "products.DECOLE_PLANOVOO.tracking"
-          },
-          {
+            "funnelStage": "CONVERSION",
             "eventType": "PURCHASE_OUT_OF_SHOPPING_CART",
             "delivery": "server_queue",
             "source": "hotmart",
@@ -519,6 +588,25 @@
             }
           },
           {
+            "funnelStage": "CONVERSION",
+            "eventType": "SIGN_UP",
+            "delivery": "both",
+            "source": "site",
+            "ingress": "api-funnel-ingress",
+            "queue": "decole-q-funnel-events",
+            "chain": [
+              "update_brevo_funnel",
+              "emit_tracking"
+            ],
+            "destinations": [
+              "Brevo",
+              "GA4 MP",
+              "Meta CAPI"
+            ],
+            "trackingConfigRef": "products.DECOLE_PLANOVOO.tracking"
+          },
+          {
+            "funnelStage": "PURCHASE",
             "eventType": "PURCHASE_APPROVED",
             "delivery": "server_queue",
             "source": "hotmart",
