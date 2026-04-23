@@ -78,15 +78,15 @@ async function updateBrevoFunnel(event: FunnelEvent, env: DispatcherEnv): Promis
     return;
   }
 
-  const encodedEmail = encodeURIComponent(email);
-  const url = `${asString(env.BREVO_BASE_URL) || BREVO_BASE_URL}/contacts/${encodedEmail}`;
+  const url = `${asString(env.BREVO_BASE_URL) || BREVO_BASE_URL}/contacts`;
   await postJson(url, {
-    method: "PUT",
+    method: "POST",
     headers: {
       "content-type": "application/json",
       "api-key": apiKey,
     },
     body: JSON.stringify({
+      email,
       attributes: {
         FUNNEL_LAST_STEP: event.event_type,
         FUNNEL_LAST_STEP_AT: event.occurred_at,
@@ -201,7 +201,11 @@ export function createHandlers(): HandlerMap {
 
     async send_cart_abandonment_email(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
       console.log(JSON.stringify({ stage: "handler", handler: "send_cart_abandonment_email", event_id: event.event_id }));
-      await sendBrevoEmail(event, env, asString(env.BREVO_CART_ABANDON_TEMPLATE_ID));
+      await sendBrevoEmail(
+        event,
+        env,
+        asString(env.BREVO_CART_ABANDON_TEMPLATE_ID || env.BREVO_CART_ABANDONMENT_TEMPLATE_ID)
+      );
     },
 
     async forward_n8n(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
