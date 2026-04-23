@@ -1,45 +1,45 @@
 import { describe, expect, it, vi } from "vitest";
-import worker from "../src/index";
+import worker from "../../src/index";
 
 function makeEnv(overrides: Record<string, unknown> = {}): any {
   return {
     FUNNEL_EVENTS: { send: vi.fn(async () => undefined) },
-    APP_EVENTS_HMAC: "",
+    HOTMART_WEBHOOK_TOKEN: "",
     ...overrides,
   };
 }
 
-describe("api-funnel-ingress", () => {
+describe("api-hotmart-ingress", () => {
   it("retorna health", async () => {
     const res = await worker.fetch(new Request("https://x/health", { method: "GET" }), makeEnv());
     expect(res.status).toBe(200);
   });
 
-  it("enfileira precheckout", async () => {
+  it("enfileira evento normalizado", async () => {
     const send = vi.fn(async () => undefined);
-    const req = new Request("https://x/funnel/precheckout", {
+    const req = new Request("https://x/webhooks/v1/decole-esg/hotmart/purchase-approved", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ event_type: "generate_lead", email: "lead@example.com", product_code: "DECOLE_PLANOVOO" }),
+      body: JSON.stringify({ id: "evt-1", buyer: { email: "lead@example.com" } }),
     });
 
     const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send } }));
     expect(res.status).toBe(202);
     expect(send).toHaveBeenCalledTimes(1);
     const firstCall = send.mock.calls[0] as unknown[] | undefined;
-    const evt = (firstCall?.[0] ?? {}) as { event_type?: string; product_code?: string };
-    expect(evt.event_type).toBe("GENERATE_LEAD");
-    expect(evt.product_code).toBe("DECOLE_PLANOVOO");
+    const payload = (firstCall?.[0] ?? {}) as { event_type?: string; product_code?: string };
+    expect(payload.event_type).toBe("PURCHASE_APPROVED");
+    expect(payload.product_code).toBe("DECOLE_ESG_MENTORIA");
   });
 
-  it("valida assinatura no app ingress", async () => {
-    const req = new Request("https://x/webhooks/v1/planovoo/app/event", {
+  it("valida token quando configurado", async () => {
+    const req = new Request("https://x/webhooks/v1/decole-esg/hotmart/events", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ event_type: "app_plano_view" }),
+      body: "{}",
     });
 
-    const res = await worker.fetch(req, makeEnv({ APP_EVENTS_HMAC: "abc" }));
+    const res = await worker.fetch(req, makeEnv({ HOTMART_WEBHOOK_TOKEN: "secret" }));
     expect(res.status).toBe(401);
   });
 });

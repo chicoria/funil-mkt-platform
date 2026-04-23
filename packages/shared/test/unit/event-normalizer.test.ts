@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fromAppEvent, fromBrowserTracking, fromHotmartWebhook, fromPrecheckoutForm } from "./event-normalizer";
+import { fromAppEvent, fromBrowserTracking, fromHotmartWebhook, fromPrecheckoutForm } from "../../src/event-normalizer";
 
 describe("event-normalizer", () => {
   it("normaliza webhook hotmart", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import worker from "../src/index";
+import worker from "../../src/index";
 
 function makeD1Stub() {
   const prepared: string[] = [];

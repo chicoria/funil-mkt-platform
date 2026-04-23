@@ -587,6 +587,57 @@ Meta mínima recomendada:
 - 85%+ de cobertura em `packages/shared`
 - 80%+ de cobertura em `workers/funnel-dispatcher/src/handlers`
 
+#### 11.1A Organização de testes em pastas `test/` (padrão obrigatório)
+
+Padronizar organização para reduzir acoplamento e facilitar manutenção:
+
+- cada pacote/worker mantém sua própria pasta `test/`
+- separar por tipo dentro de `test/`: `unit/`, `integration/`, `e2e/`
+- fixtures compartilhadas ficam em `backend/cloudflare/tests/fixtures/`
+
+Estrutura alvo:
+
+```text
+backend/cloudflare/packages/shared/
+  src/
+  test/
+    unit/
+      event-normalizer.test.ts
+
+backend/cloudflare/workers/api-hotmart-ingress/
+  src/
+  test/
+    unit/
+      index.test.ts
+    integration/
+      ingress-queue.test.ts
+
+backend/cloudflare/workers/api-funnel-ingress/
+  src/
+  test/
+    unit/
+      index.test.ts
+    integration/
+      precheckout-flow.test.ts
+
+backend/cloudflare/workers/funnel-dispatcher/
+  src/
+  test/
+    unit/
+      dispatcher.test.ts
+      handlers.test.ts
+    integration/
+      queue-processing.test.ts
+    e2e/
+      staging-smoke.test.ts
+```
+
+Regras:
+
+- testes unitários não devem depender de rede/serviços externos
+- testes de integração podem usar bindings/stubs locais
+- testes E2E ficam no script/workflow dedicado (`e2e-funnel-staging.sh` + CI manual)
+
 #### 11.2 Testes de contrato (catálogo e schema)
 
 Automatizar validações:
@@ -715,9 +766,14 @@ Sugestão de workflows:
 - `backend/cloudflare/tests/fixtures/purchase_out_of_shopping_cart.json`
 - `backend/cloudflare/tests/fixtures/generate_lead.json`
 - `backend/cloudflare/tests/fixtures/app_event.json`
-- `backend/cloudflare/tests/unit/`
-- `backend/cloudflare/tests/integration/`
-- `backend/cloudflare/tests/e2e/`
+- `backend/cloudflare/packages/shared/test/unit/`
+- `backend/cloudflare/workers/api-hotmart-ingress/test/unit/`
+- `backend/cloudflare/workers/api-hotmart-ingress/test/integration/`
+- `backend/cloudflare/workers/api-funnel-ingress/test/unit/`
+- `backend/cloudflare/workers/api-funnel-ingress/test/integration/`
+- `backend/cloudflare/workers/funnel-dispatcher/test/unit/`
+- `backend/cloudflare/workers/funnel-dispatcher/test/integration/`
+- `backend/cloudflare/workers/funnel-dispatcher/test/e2e/`
 - `backend/cloudflare/scripts/deploy-incremental.sh`
 - `backend/cloudflare/scripts/healthcheck-worker.sh`
 - `backend/cloudflare/scripts/provision-greenfield-resources.sh`

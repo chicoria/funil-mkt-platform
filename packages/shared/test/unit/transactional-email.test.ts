@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { BrevoTransactionalEmailSender } from "./index";
+import { BrevoTransactionalEmailSender } from "../../transactional-email/index";
 
 describe("BrevoTransactionalEmailSender", () => {
   it("envia payload correto para o Brevo", async () => {
