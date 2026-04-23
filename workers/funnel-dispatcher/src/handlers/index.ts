@@ -4,6 +4,17 @@ import { DispatcherEnv, HandlerFn } from "../dispatcher";
 const BREVO_BASE_URL = "https://api.brevo.com/v3";
 
 type HandlerMap = Record<string, HandlerFn>;
+type SqlBindable = string | number | null;
+
+interface D1StatementLike {
+  bind(...values: SqlBindable[]): D1StatementLike;
+  run(): Promise<unknown>;
+  first<T = Record<string, unknown>>(): Promise<T | null>;
+}
+
+interface D1DatabaseLike {
+  prepare(query: string): D1StatementLike;
+}
 
 function asString(value: unknown): string {
   if (value === undefined || value === null) return "";
@@ -41,6 +52,147 @@ function numberFromPayload(payload: Record<string, unknown>, keys: string[]): nu
     if (Number.isFinite(value)) return value;
   }
   return undefined;
+}
+
+function getIdentityDb(env: DispatcherEnv): D1DatabaseLike | null {
+  if (!env.IDENTITY_DB || typeof env.IDENTITY_DB !== "object") return null;
+  const db = env.IDENTITY_DB as D1DatabaseLike;
+  if (typeof db.prepare !== "function") return null;
+  return db;
+}
+
+function getEventStoreDb(env: DispatcherEnv): D1DatabaseLike | null {
+  if (!env.EVENT_STORE_DB || typeof env.EVENT_STORE_DB !== "object") return null;
+  const db = env.EVENT_STORE_DB as D1DatabaseLike;
+  if (typeof db.prepare !== "function") return null;
+  return db;
+}
+
+function ensureIdentity(event: FunnelEvent): { anonymousId: string; emailHash: string; profileId?: string } {
+  const anonymousId = asString(event.identity?.anonymous_id) || `anon-${event.event_id}`;
+  const emailHash = asString(event.identity?.email_hash);
+  const payloadProfileId = asString((event.payload || {}).profile_id);
+  const profileId = payloadProfileId || undefined;
+  return { anonymousId, emailHash, profileId };
+}
+
+async function ensureIdentitySchema(db: D1DatabaseLike): Promise<void> {
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS identity_links (
+        profile_id TEXT PRIMARY KEY,
+        anonymous_id TEXT,
+        email_hash TEXT,
+        updated_at TEXT NOT NULL
+      )`
+    )
+    .run();
+  await db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_identity_links_anonymous_id ON identity_links(anonymous_id)`).run();
+  await db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_identity_links_email_hash ON identity_links(email_hash)`).run();
+}
+
+async function ensureEventStoreSchema(db: D1DatabaseLike): Promise<void> {
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS funnel_events (
+        event_id TEXT PRIMARY KEY,
+        profile_id TEXT,
+        anonymous_id TEXT,
+        email_hash TEXT,
+        event_type TEXT NOT NULL,
+        product_code TEXT NOT NULL,
+        source TEXT NOT NULL,
+        occurred_at TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )`
+    )
+    .run();
+  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_funnel_events_profile ON funnel_events(profile_id, occurred_at)`).run();
+}
+
+async function resolveIdentityState(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
+  const state = ensureIdentity(event);
+  const now = new Date().toISOString();
+  const email = asString(event.lead?.email).toLowerCase();
+  const computedEmailHash = state.emailHash || (email ? await sha256Hex(email) : "");
+
+  const anonKey = `identity:anon:${state.anonymousId}`;
+  const emailKey = computedEmailHash ? `identity:email:${computedEmailHash}` : "";
+  const profileIdFromAnon = asString((await env.IDENTITY_KV?.get(anonKey)) || "");
+  const profileIdFromEmail = emailKey ? asString((await env.IDENTITY_KV?.get(emailKey)) || "") : "";
+  const profileId = state.profileId || profileIdFromAnon || profileIdFromEmail || crypto.randomUUID();
+
+  event.identity = {
+    ...(event.identity || {}),
+    anonymous_id: state.anonymousId,
+    email_hash: computedEmailHash || undefined,
+  };
+  event.payload = { ...(event.payload || {}), profile_id: profileId };
+
+  if (env.IDENTITY_KV) {
+    await env.IDENTITY_KV.put(anonKey, profileId, { expirationTtl: 365 * 24 * 60 * 60 });
+    if (emailKey) {
+      await env.IDENTITY_KV.put(emailKey, profileId, { expirationTtl: 365 * 24 * 60 * 60 });
+    }
+  }
+
+  const identityDb = getIdentityDb(env);
+  if (!identityDb) {
+    return;
+  }
+
+  await ensureIdentitySchema(identityDb);
+  await identityDb
+    .prepare(
+      `INSERT INTO identity_links (profile_id, anonymous_id, email_hash, updated_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(profile_id) DO UPDATE SET
+         anonymous_id = excluded.anonymous_id,
+         email_hash = COALESCE(excluded.email_hash, identity_links.email_hash),
+         updated_at = excluded.updated_at`
+    )
+    .bind(profileId, state.anonymousId, computedEmailHash || null, now)
+    .run();
+}
+
+async function upsertEventStoreRecord(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
+  const db = getEventStoreDb(env);
+  if (!db) {
+    return;
+  }
+
+  await ensureEventStoreSchema(db);
+
+  const profileId = asString((event.payload || {}).profile_id) || null;
+  const anonymousId = asString(event.identity?.anonymous_id) || null;
+  const emailHash = asString(event.identity?.email_hash) || null;
+  const payloadJson = JSON.stringify(event.payload || {});
+
+  await db
+    .prepare(
+      `INSERT INTO funnel_events (
+        event_id, profile_id, anonymous_id, email_hash, event_type, product_code, source, occurred_at, payload_json, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(event_id) DO UPDATE SET
+        profile_id = COALESCE(excluded.profile_id, funnel_events.profile_id),
+        anonymous_id = COALESCE(excluded.anonymous_id, funnel_events.anonymous_id),
+        email_hash = COALESCE(excluded.email_hash, funnel_events.email_hash),
+        payload_json = excluded.payload_json`
+    )
+    .bind(
+      event.event_id,
+      profileId,
+      anonymousId,
+      emailHash,
+      event.event_type,
+      event.product_code,
+      event.source,
+      event.occurred_at,
+      payloadJson,
+      new Date().toISOString()
+    )
+    .run();
 }
 
 async function postJson(url: string, init: RequestInit): Promise<void> {
@@ -203,12 +355,14 @@ async function forwardN8n(event: FunnelEvent, env: DispatcherEnv): Promise<void>
 
 export function createHandlers(): HandlerMap {
   return {
-    async resolve_identity(event: FunnelEvent): Promise<void> {
+    async resolve_identity(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
       console.log(JSON.stringify({ stage: "handler", handler: "resolve_identity", event_id: event.event_id }));
+      await resolveIdentityState(event, env);
     },
 
-    async upsert_event_store(event: FunnelEvent): Promise<void> {
+    async upsert_event_store(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
       console.log(JSON.stringify({ stage: "handler", handler: "upsert_event_store", event_id: event.event_id }));
+      await upsertEventStoreRecord(event, env);
     },
 
     async send_brevo_doi(event: FunnelEvent, env: DispatcherEnv): Promise<void> {

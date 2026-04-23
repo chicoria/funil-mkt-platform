@@ -722,6 +722,9 @@ Sugestão de workflows:
 - `backend/cloudflare/scripts/healthcheck-worker.sh`
 - `backend/cloudflare/scripts/provision-greenfield-resources.sh`
 - `backend/cloudflare/scripts/apply-greenfield-bindings.sh`
+- `backend/cloudflare/scripts/apply-d1-schema.sh`
+- `backend/cloudflare/scripts/e2e-funnel-staging.sh`
+- `backend/cloudflare/config/RUNBOOK_CUTOVER_FUNNEL.md`
 - `backend/cloudflare/config/cloudflare-greenfield.resources.json`
 - `backend/cloudflare/config/generated/.gitkeep`
 - `.github/workflows/deploy-incremental-hotmart-ingress.yml`

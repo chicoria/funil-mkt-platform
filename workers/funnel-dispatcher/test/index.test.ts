@@ -1,8 +1,43 @@
 import { describe, expect, it, vi } from "vitest";
 import worker from "../src/index";
 
+function makeD1Stub() {
+  const prepared: string[] = [];
+  const runs: Array<{ query: string; binds: unknown[] }> = [];
+  return {
+    prepared,
+    runs,
+    db: {
+      prepare: vi.fn((query: string) => {
+        prepared.push(query);
+        const state = { binds: [] as unknown[] };
+        return {
+          bind: vi.fn((...values: unknown[]) => {
+            state.binds = values;
+            return {
+              run: vi.fn(async () => {
+                runs.push({ query, binds: state.binds });
+                return {};
+              }),
+              first: vi.fn(async () => null),
+            };
+          }),
+          run: vi.fn(async () => {
+            runs.push({ query, binds: [] });
+            return {};
+          }),
+          first: vi.fn(async () => null),
+        };
+      }),
+    },
+  };
+}
+
 function makeEnv(overrides: Record<string, unknown> = {}): any {
   const kvStore = new Map<string, string>();
+  const identityStore = new Map<string, string>();
+  const identityDb = makeD1Stub();
+  const eventStoreDb = makeD1Stub();
   return {
     DEDUPE_KV: {
       get: vi.fn(async (key: string) => kvStore.get(key) ?? null),
@@ -10,6 +45,14 @@ function makeEnv(overrides: Record<string, unknown> = {}): any {
         kvStore.set(key, value);
       }),
     },
+    IDENTITY_KV: {
+      get: vi.fn(async (key: string) => identityStore.get(key) ?? null),
+      put: vi.fn(async (key: string, value: string) => {
+        identityStore.set(key, value);
+      }),
+    },
+    IDENTITY_DB: identityDb.db,
+    EVENT_STORE_DB: eventStoreDb.db,
     ...overrides,
   };
 }
@@ -63,5 +106,28 @@ describe("funnel-dispatcher", () => {
 
     await worker.queue({ messages: [{ body: event }] }, env);
     expect((env.DEDUPE_KV.put as any).mock.calls.length).toBe(1);
+  });
+
+  it("resolve identity e grava event_store com profile_id", async () => {
+    const env = makeEnv();
+    const event: any = {
+      event_id: "evt-identity-1",
+      event_type: "GENERATE_LEAD",
+      product_code: "DECOLE_ESG_MENTORIA",
+      source: "site",
+      occurred_at: new Date().toISOString(),
+      lead: { email: "qa.identity@example.com" },
+      identity: { anonymous_id: "anon-identity-1" },
+      payload: {},
+    };
+
+    await worker.queue({ messages: [{ body: event }] }, env);
+
+    expect(event.payload.profile_id).toBeTruthy();
+    expect(env.IDENTITY_KV.put).toHaveBeenCalled();
+    const hasEventInsert = (env.EVENT_STORE_DB.prepare as any).mock.calls.some((call: any[]) =>
+      String(call[0]).includes("INSERT INTO funnel_events")
+    );
+    expect(hasEventInsert).toBe(true);
   });
 });
