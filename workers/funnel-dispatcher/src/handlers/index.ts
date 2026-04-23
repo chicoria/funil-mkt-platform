@@ -33,6 +33,16 @@ function eventToMetaName(eventType: string): string {
   return eventType;
 }
 
+function numberFromPayload(payload: Record<string, unknown>, keys: string[]): number | undefined {
+  for (const key of keys) {
+    const raw = payload[key];
+    if (raw === undefined || raw === null || raw === "") continue;
+    const value = Number(raw);
+    if (Number.isFinite(value)) return value;
+  }
+  return undefined;
+}
+
 async function postJson(url: string, init: RequestInit): Promise<void> {
   const response = await fetch(url, init);
   if (!response.ok) {
@@ -98,6 +108,14 @@ async function updateBrevoFunnel(event: FunnelEvent, env: DispatcherEnv): Promis
 }
 
 async function emitTracking(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
+  const payload = event.payload || {};
+  const currency =
+    asString(payload.currency) ||
+    asString(payload.currency_code) ||
+    asString(payload.currencyCode) ||
+    "BRL";
+  const value = numberFromPayload(payload, ["value", "amount", "price", "purchase_value", "total_value"]) ?? 0;
+
   const ga4MeasurementId = asString(env.GA4_MEASUREMENT_ID);
   const ga4Secret = asString(env.GA4_API_SECRET);
 
@@ -115,6 +133,8 @@ async function emitTracking(event: FunnelEvent, env: DispatcherEnv): Promise<voi
               event_id: event.event_id,
               product_code: event.product_code,
               source: event.source,
+              currency,
+              value,
             },
           },
         ],
@@ -143,6 +163,8 @@ async function emitTracking(event: FunnelEvent, env: DispatcherEnv): Promise<voi
           user_data: userData,
           custom_data: {
             product_code: event.product_code,
+            currency,
+            value,
           },
         },
       ],
