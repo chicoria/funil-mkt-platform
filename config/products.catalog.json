@@ -1,8 +1,7 @@
 {
-  "schemaVersion": 2,
-  "updatedAt": "2026-04-20",
+  "schemaVersion": 3,
+  "updatedAt": "2026-04-23",
   "description": "Catálogo central de produtos — cada produto declara seus subsistemas.",
-
   "global": {
     "hotmart": {
       "auth": {
@@ -12,7 +11,10 @@
           "X-HOTMART-TOKEN",
           "X-WEBHOOK-TOKEN"
         ],
-        "acceptedQueryParams": ["hottok", "token"]
+        "acceptedQueryParams": [
+          "hottok",
+          "token"
+        ]
       },
       "docs": {
         "responseCodes": "https://developers.hotmart.com/docs/pt-BR/1.0.0/webhook/http-response-codes-webhook/",
@@ -38,51 +40,20 @@
       }
     }
   },
-
   "products": {
     "DECOLE_ESG_MENTORIA": {
       "name": "DECOLE sua Carreira ESG",
-      "aliases": ["DECOLE_ESG", "MENTORIA", "ESG"],
-
+      "aliases": [
+        "DECOLE_ESG",
+        "MENTORIA",
+        "ESG"
+      ],
       "hotmart": {
         "productId": "5083704",
         "productName": "DECOLE sua Carreira ESG",
         "checkoutCode": "K98068530F",
         "defaultOfferCode": "3j6lto4t"
       },
-
-      "webhooks": {
-        "hotmart": {
-          "ingresses": [
-            {
-              "ingressUrl": "https://api.decolesuacarreiraesg.com.br/webhooks/v1/decole-esg/hotmart/events",
-              "events": [
-                {
-                  "event": "PURCHASE_APPROVED",
-                  "handler": "cloudflare-queue",
-                  "description": "Compra aprovada → fila → atualiza Brevo"
-                },
-                {
-                  "event": "PURCHASE_OUT_OF_SHOPPING_CART",
-                  "handler": "cloudflare-queue",
-                  "description": "Carrinho abandonado → fila → email transacional"
-                },
-                {
-                  "event": "BEGIN_CHECKOUT",
-                  "handler": "cloudflare-queue",
-                  "description": "Início de checkout → fila → atualiza funil Brevo"
-                },
-                {
-                  "event": "GENERATE_LEAD",
-                  "handler": "cloudflare-queue",
-                  "description": "Lead gerado → fila → atualiza funil Brevo"
-                }
-              ]
-            }
-          ]
-        }
-      },
-
       "brevo": {
         "opsModel": {
           "managedVia": "manual_dashboard",
@@ -159,11 +130,13 @@
           }
         ]
       },
-
       "funnelEventArchitecture": {
         "managedBy": "catalog",
         "systems": {
-          "ingresses": ["api-funnel-ingress", "api-hotmart-ingress"],
+          "ingresses": [
+            "api-funnel-ingress",
+            "api-hotmart-ingress"
+          ],
           "dispatcher": "funnel-dispatcher",
           "queue": {
             "name": "decole-q-funnel-events",
@@ -195,7 +168,11 @@
               "emit_tracking",
               "sync_brevo_segments"
             ],
-            "destinations": ["Brevo", "GA4 MP", "Meta CAPI"],
+            "destinations": [
+              "Brevo",
+              "GA4 MP",
+              "Meta CAPI"
+            ],
             "brevoConfig": {
               "listId": "7",
               "doiTemplateId": "1",
@@ -209,8 +186,15 @@
             "source": "site",
             "ingress": "api-funnel-ingress",
             "queue": "decole-q-funnel-events",
-            "chain": ["update_brevo_funnel", "emit_tracking"],
-            "destinations": ["Brevo", "GA4 MP", "Meta CAPI"],
+            "chain": [
+              "update_brevo_funnel",
+              "emit_tracking"
+            ],
+            "destinations": [
+              "Brevo",
+              "GA4 MP",
+              "Meta CAPI"
+            ],
             "trackingConfigRef": "products.DECOLE_ESG_MENTORIA.tracking"
           },
           {
@@ -219,8 +203,16 @@
             "source": "hotmart",
             "ingress": "api-hotmart-ingress",
             "queue": "decole-q-funnel-events",
-            "chain": ["update_brevo_funnel", "send_cart_abandonment_email", "emit_tracking"],
-            "destinations": ["Brevo", "GA4 MP", "Meta CAPI"],
+            "chain": [
+              "update_brevo_funnel",
+              "send_cart_abandonment_email",
+              "emit_tracking"
+            ],
+            "destinations": [
+              "Brevo",
+              "GA4 MP",
+              "Meta CAPI"
+            ],
             "brevoConfig": {
               "cartAbandonmentTemplateId": "8",
               "funnelPrefix": "DECOLE_ESG"
@@ -232,18 +224,27 @@
             "source": "hotmart",
             "ingress": "api-hotmart-ingress",
             "queue": "decole-q-funnel-events",
-            "chain": ["resolve_identity", "upsert_event_store", "update_brevo_funnel", "emit_tracking", "forward_n8n"],
-            "destinations": ["Brevo", "GA4 MP", "Meta CAPI", "n8n"]
+            "chain": [
+              "resolve_identity",
+              "upsert_event_store",
+              "update_brevo_funnel",
+              "emit_tracking",
+              "forward_n8n"
+            ],
+            "destinations": [
+              "Brevo",
+              "GA4 MP",
+              "Meta CAPI",
+              "n8n"
+            ]
           }
         ]
       },
-
       "meta": {
         "pixelIdEnvVar": "META_PIXEL_ID_DECOLE_ESG",
         "capiTokenEnvVar": "META_CAPI_ACCESS_TOKEN_DECOLE_ESG",
         "testEventCodeEnvVar": "META_TEST_EVENT_CODE_DECOLE_ESG"
       },
-
       "tracking": {
         "productCode": "DECOLE_ESG_MENTORIA",
         "gtm": {
@@ -265,13 +266,11 @@
           "differentiationValue": "1329973348435032"
         }
       },
-
       "links": {
         "checkoutPath": "/decole-esg/checkout",
         "checkoutOfferPathTemplate": "/decole-esg/checkout/offer/{offerCode}",
         "checkoutBaseUrl": "https://pay.hotmart.com/K98068530F?off=3j6lto4t"
       },
-
       "landingPages": [
         {
           "name": "Landing page principal",
@@ -334,84 +333,41 @@
           ]
         }
       ],
-
       "backend": {
         "workers": [
-          "api-external-webhooks",
-          "api-events-consumer",
+          "api-hotmart-ingress",
+          "api-funnel-ingress",
+          "funnel-dispatcher",
           "api-precheckout",
           "links-redirect"
         ],
         "queue": {
-          "name": "decole-q-hotmart-events",
-          "dlq": "decole-q-hotmart-events-dlq"
+          "name": "decole-q-funnel-events",
+          "dlq": "decole-q-funnel-events-dlq"
         },
         "kv": {
-          "dedupeBinding": "DEDUPE_KV"
+          "dedupeBinding": "DEDUPE_KV",
+          "identityBinding": "IDENTITY_KV"
+        },
+        "d1": {
+          "identityBinding": "IDENTITY_DB",
+          "eventStoreBinding": "EVENT_STORE_DB"
         }
       }
     },
-
     "DECOLE_PLANOVOO": {
       "name": "Plano de Voo",
-      "aliases": ["PLANOVOO", "PLANO_VOO", "PLANO VOO"],
-
+      "aliases": [
+        "PLANOVOO",
+        "PLANO_VOO",
+        "PLANO VOO"
+      ],
       "hotmart": {
         "productId": "7592718",
         "productName": "DECOLE - Plano de Voo",
         "checkoutCode": "R105463680A",
         "defaultOfferCode": "f3yweqek"
       },
-
-      "webhooks": {
-        "hotmart": {
-          "ingresses": [
-            {
-              "ingressUrl": "https://api.decolesuacarreiraesg.com.br/webhooks/v1/planodevoo/hotmart/purchase-approved",
-              "forwardTargetUrl": "https://n8n.decolesuacarreiraesg.com.br/webhook/plano-de-voo/hotmart",
-              "events": [
-                {
-                  "event": "PURCHASE_APPROVED",
-                  "handler": "cloudflare-queue",
-                  "description": "Compra aprovada → ingress worker (forward n8n + fila)"
-                }
-              ]
-            },
-            {
-              "ingressUrl": "https://api.decolesuacarreiraesg.com.br/webhooks/v1/planodevoo/hotmart/purchase-out-of-shopping-cart",
-              "events": [
-                {
-                  "event": "PURCHASE_OUT_OF_SHOPPING_CART",
-                  "handler": "cloudflare-queue",
-                  "description": "Carrinho abandonado → fila → envio de email transacional"
-                }
-              ]
-            }
-          ]
-        },
-        "app": {
-          "submeter": {
-            "url": "https://n8n.decolesuacarreiraesg.com.br/webhook/plano-de-voo/submeter",
-            "method": "POST",
-            "contentType": "multipart/form-data",
-            "fields": [
-              "token",
-              "nome",
-              "email",
-              "curriculo_texto",
-              "descricao_vaga"
-            ],
-            "description": "Submissão do formulário Plano de Voo → n8n gera plano"
-          },
-          "validarToken": {
-            "url": "https://n8n.decolesuacarreiraesg.com.br/webhook/validar-token",
-            "method": "GET",
-            "params": ["token"],
-            "description": "Valida token de acesso do comprador"
-          }
-        }
-      },
-
       "brevo": {
         "opsModel": {
           "managedVia": "manual_dashboard",
@@ -475,11 +431,13 @@
           }
         ]
       },
-
       "funnelEventArchitecture": {
         "managedBy": "catalog",
         "systems": {
-          "ingresses": ["api-funnel-ingress", "api-hotmart-ingress"],
+          "ingresses": [
+            "api-funnel-ingress",
+            "api-hotmart-ingress"
+          ],
           "dispatcher": "funnel-dispatcher",
           "queue": {
             "name": "decole-q-funnel-events",
@@ -511,7 +469,11 @@
               "emit_tracking",
               "sync_brevo_segments"
             ],
-            "destinations": ["Brevo", "GA4 MP", "Meta CAPI"],
+            "destinations": [
+              "Brevo",
+              "GA4 MP",
+              "Meta CAPI"
+            ],
             "brevoConfig": {
               "listId": "8",
               "doiTemplateId": "10",
@@ -525,8 +487,15 @@
             "source": "site",
             "ingress": "api-funnel-ingress",
             "queue": "decole-q-funnel-events",
-            "chain": ["update_brevo_funnel", "emit_tracking"],
-            "destinations": ["Brevo", "GA4 MP", "Meta CAPI"],
+            "chain": [
+              "update_brevo_funnel",
+              "emit_tracking"
+            ],
+            "destinations": [
+              "Brevo",
+              "GA4 MP",
+              "Meta CAPI"
+            ],
             "trackingConfigRef": "products.DECOLE_PLANOVOO.tracking"
           },
           {
@@ -535,8 +504,16 @@
             "source": "hotmart",
             "ingress": "api-hotmart-ingress",
             "queue": "decole-q-funnel-events",
-            "chain": ["update_brevo_funnel", "send_cart_abandonment_email", "emit_tracking"],
-            "destinations": ["Brevo", "GA4 MP", "Meta CAPI"],
+            "chain": [
+              "update_brevo_funnel",
+              "send_cart_abandonment_email",
+              "emit_tracking"
+            ],
+            "destinations": [
+              "Brevo",
+              "GA4 MP",
+              "Meta CAPI"
+            ],
             "brevoConfig": {
               "funnelPrefix": "DECOLE_PLANOVOO"
             }
@@ -547,18 +524,27 @@
             "source": "hotmart",
             "ingress": "api-hotmart-ingress",
             "queue": "decole-q-funnel-events",
-            "chain": ["resolve_identity", "upsert_event_store", "update_brevo_funnel", "emit_tracking", "forward_n8n"],
-            "destinations": ["Brevo", "GA4 MP", "Meta CAPI", "n8n"]
+            "chain": [
+              "resolve_identity",
+              "upsert_event_store",
+              "update_brevo_funnel",
+              "emit_tracking",
+              "forward_n8n"
+            ],
+            "destinations": [
+              "Brevo",
+              "GA4 MP",
+              "Meta CAPI",
+              "n8n"
+            ]
           }
         ]
       },
-
       "meta": {
         "pixelIdEnvVar": "META_PIXEL_ID_PLANOVOO",
         "capiTokenEnvVar": "META_CAPI_ACCESS_TOKEN_PLANOVOO",
         "testEventCodeEnvVar": "META_TEST_EVENT_CODE_PLANOVOO"
       },
-
       "tracking": {
         "productCode": "DECOLE_PLANOVOO",
         "gtm": {
@@ -580,13 +566,11 @@
           "differentiationValue": "2220600768748665"
         }
       },
-
       "links": {
         "checkoutPath": "/plano-de-voo/checkout",
         "checkoutOfferPathTemplate": "/plano-de-voo/checkout/offer/{offerCode}",
         "checkoutBaseUrl": "https://pay.hotmart.com/R105463680A?off=f3yweqek"
       },
-
       "landingPages": [
         {
           "name": "Landing page Plano de Voo",
@@ -649,7 +633,6 @@
           ]
         }
       ],
-
       "app": {
         "name": "Plano de Voo App",
         "url": "https://plano.decolesuacarreiraesg.com.br",
@@ -662,7 +645,6 @@
         "ga4": "",
         "metaPixel": ""
       },
-
       "n8nAutomation": {
         "name": "Plano de Voo n8n Workflows",
         "repo": "decole-plano-de-voo",
@@ -674,9 +656,26 @@
           "subfluxoParserUpload": "kFZdrwLM6jdtwJ8G"
         }
       },
-
       "backend": {
-        "workers": ["api-precheckout", "links-redirect"],
+        "workers": [
+          "api-hotmart-ingress",
+          "api-funnel-ingress",
+          "funnel-dispatcher",
+          "api-precheckout",
+          "links-redirect"
+        ],
+        "queue": {
+          "name": "decole-q-funnel-events",
+          "dlq": "decole-q-funnel-events-dlq"
+        },
+        "kv": {
+          "dedupeBinding": "DEDUPE_KV",
+          "identityBinding": "IDENTITY_KV"
+        },
+        "d1": {
+          "identityBinding": "IDENTITY_DB",
+          "eventStoreBinding": "EVENT_STORE_DB"
+        },
         "n8nWorkflows": [
           "plano-de-voo/hotmart",
           "plano-de-voo/submeter",
@@ -685,19 +684,40 @@
       }
     }
   },
-
   "workerViews": {
-    "api-external-webhooks": {
-      "description": "Recebe webhooks externos, valida auth e enfileira. Padrao: /webhooks/v1/{produto}/{subsistema}/{operacao}.",
-      "secrets": ["HOTMART_WEBHOOK_TOKEN"]
+    "api-hotmart-ingress": {
+      "description": "Recebe webhooks Hotmart, normaliza para FunnelEvent e publica na queue canônica.",
+      "secrets": [
+        "HOTMART_WEBHOOK_TOKEN"
+      ]
     },
-    "api-events-consumer": {
-      "description": "Consome fila, resolve produto, atualiza Brevo, envia emails.",
-      "envVarMapping": {
-        "HOTMART_PRODUCTS": "Para cada produto com webhooks.hotmart.ingresses[].events[].handler=cloudflare-queue → {id, name, prefix, checkoutCode, offerCode, checkoutPath}",
-        "BREVO_CART_ABANDONMENT_TEMPLATE_ID": "produto.brevo.templates.cartAbandonment.id",
-        "BREVO_REPLY_TO_EMAIL": "global.brevo.replyToEmail"
-      }
+    "api-funnel-ingress": {
+      "description": "Recebe eventos de precheckout/browser/app e publica na queue canônica.",
+      "secrets": [
+        "APP_EVENTS_HMAC"
+      ]
+    },
+    "funnel-dispatcher": {
+      "description": "Consome queue canônica e executa chain por evento/produto com dedupe event_id:handler.",
+      "bindings": [
+        "DEDUPE_KV",
+        "IDENTITY_KV",
+        "IDENTITY_DB",
+        "EVENT_STORE_DB"
+      ],
+      "secrets": [
+        "BREVO_API_KEY",
+        "BREVO_DOI_TEMPLATE_ID",
+        "BREVO_CART_ABANDONMENT_TEMPLATE_ID",
+        "N8N_WEBHOOK_URL",
+        "GA4_MEASUREMENT_ID",
+        "GA4_API_SECRET",
+        "META_PIXEL_ID",
+        "META_CAPI_ACCESS_TOKEN",
+        "META_TEST_EVENT_CODE",
+        "BREVO_SANDBOX",
+        "N8N_DISABLE_FORWARD"
+      ]
     },
     "api-precheckout": {
       "description": "Lead capture via Brevo DOI. Resolve produto por aliases → funnelPrefix.",
@@ -710,6 +730,75 @@
         "DECOLE_MENTORIA_CHECKOUT_URL": "products.DECOLE_ESG_MENTORIA.links.checkoutBaseUrl",
         "PLANO_DE_VOO_CHECKOUT_URL": "products.DECOLE_PLANOVOO.links.checkoutBaseUrl"
       }
+    }
+  },
+  "funnelStages": {
+    "AWARENESS": {
+      "order": 1,
+      "goal": "visit"
+    },
+    "CONSIDERATION": {
+      "order": 2,
+      "goal": "engage"
+    },
+    "CONVERSION": {
+      "order": 3,
+      "goal": "checkout"
+    },
+    "PURCHASE": {
+      "order": 4,
+      "goal": "approved"
+    },
+    "ACTIVATION": {
+      "order": 5,
+      "goal": "first_use"
+    },
+    "RETENTION": {
+      "order": 6,
+      "goal": "repeat_use"
+    }
+  },
+  "handlers": {
+    "resolve_identity": {
+      "worker": "funnel-dispatcher",
+      "bindings": [
+        "IDENTITY_KV",
+        "IDENTITY_DB"
+      ]
+    },
+    "upsert_event_store": {
+      "worker": "funnel-dispatcher",
+      "binding": "EVENT_STORE_DB"
+    },
+    "send_brevo_doi": {
+      "worker": "funnel-dispatcher",
+      "binding": "BREVO_API_KEY"
+    },
+    "update_brevo_funnel": {
+      "worker": "funnel-dispatcher",
+      "binding": "BREVO_API_KEY"
+    },
+    "send_cart_abandonment_email": {
+      "worker": "funnel-dispatcher",
+      "binding": "BREVO_API_KEY"
+    },
+    "forward_n8n": {
+      "worker": "funnel-dispatcher",
+      "binding": "N8N_WEBHOOK_URL"
+    },
+    "emit_tracking": {
+      "worker": "funnel-dispatcher",
+      "bindings": [
+        "GA4_MEASUREMENT_ID",
+        "GA4_API_SECRET",
+        "META_PIXEL_ID",
+        "META_CAPI_ACCESS_TOKEN",
+        "META_TEST_EVENT_CODE"
+      ]
+    },
+    "sync_brevo_segments": {
+      "worker": "funnel-dispatcher",
+      "binding": "BREVO_API_KEY"
     }
   }
 }

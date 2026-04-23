@@ -36,6 +36,17 @@ Regras:
 - Cada deploy incremental deve ter rollback documentado.
 - Sem misturar estratégias de entrega no mesmo componente: escolher `Wrangler deploy` **ou** `Cloudflare Builds API` por worker/ambiente.
 
+### Modo sem staging dedicado (temporário)
+
+Enquanto não existir ambiente staging isolado por conta/recursos:
+
+- usar `workers.dev` como ambiente de validação controlada
+- ativar proteções para dependências externas durante testes:
+  - `BREVO_SANDBOX=true` para não enviar emails reais (`X-Sib-Sandbox: drop`)
+  - `META_TEST_EVENT_CODE` para Meta CAPI em modo de teste
+  - `N8N_DISABLE_FORWARD=true` para bloquear envio ao n8n quando necessário
+- executar `backend/cloudflare/scripts/e2e-funnel-staging.sh` como gate antes de qualquer promoção
+
 ## Arquitetura alvo (do diagrama)
 
 ```

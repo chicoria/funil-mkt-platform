@@ -13,10 +13,12 @@ export interface DispatcherEnv {
   CATALOG_JSON?: string;
   BREVO_API_KEY?: string;
   BREVO_BASE_URL?: string;
+  BREVO_SANDBOX?: string;
   BREVO_DOI_TEMPLATE_ID?: string;
   BREVO_CART_ABANDON_TEMPLATE_ID?: string;
   BREVO_CART_ABANDONMENT_TEMPLATE_ID?: string;
   N8N_WEBHOOK_URL?: string;
+  N8N_DISABLE_FORWARD?: string;
   GA4_MEASUREMENT_ID?: string;
   GA4_API_SECRET?: string;
   META_PIXEL_ID?: string;

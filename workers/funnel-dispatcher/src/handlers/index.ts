@@ -21,6 +21,11 @@ function asString(value: unknown): string {
   return String(value).trim();
 }
 
+function isTruthyFlag(value: unknown): boolean {
+  const normalized = asString(value).toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+}
+
 function unixTime(value: string): number {
   const ms = Date.parse(value);
   return Number.isFinite(ms) ? Math.floor(ms / 1000) : Math.floor(Date.now() / 1000);
@@ -214,12 +219,17 @@ async function sendBrevoEmail(event: FunnelEvent, env: DispatcherEnv, templateId
   }
 
   const url = `${asString(env.BREVO_BASE_URL) || BREVO_BASE_URL}/smtp/email`;
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+    "api-key": apiKey,
+  };
+  if (isTruthyFlag(env.BREVO_SANDBOX)) {
+    headers["X-Sib-Sandbox"] = "drop";
+  }
+
   await postJson(url, {
     method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "api-key": apiKey,
-    },
+    headers,
     body: JSON.stringify({
       to: [{ email }],
       templateId,
@@ -340,6 +350,11 @@ async function emitTracking(event: FunnelEvent, env: DispatcherEnv): Promise<voi
 }
 
 async function forwardN8n(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
+  if (isTruthyFlag(env.N8N_DISABLE_FORWARD)) {
+    console.log(JSON.stringify({ stage: "handler_skip", handler: "forward_n8n", reason: "disabled_by_flag" }));
+    return;
+  }
+
   const webhookUrl = asString(env.N8N_WEBHOOK_URL);
   if (!webhookUrl) {
     console.log(JSON.stringify({ stage: "handler_skip", handler: "forward_n8n", reason: "missing_webhook" }));
