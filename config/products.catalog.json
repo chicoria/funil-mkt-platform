@@ -468,6 +468,12 @@
             "description": "Double Opt-In confirmation - Plano de Voo",
             "localFile": "backend/cloudflare/config/email-templates/planovoo/doi-v1.html",
             "version": "v1"
+          },
+          "cartAbandonment": {
+            "id": "11",
+            "description": "Email carrinho abandonado - Plano de Voo",
+            "localFile": "backend/cloudflare/config/email-templates/planovoo/cart-abandonment-v1.html",
+            "version": "v1"
           }
         },
         "transactionalEmails": [
@@ -478,6 +484,14 @@
             "description": "Confirmação Double Opt-In para lead de precheckout Plano de Voo.",
             "managedVia": "manual_dashboard",
             "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/doi-v1.html"
+          },
+          {
+            "key": "cartAbandonment",
+            "templateId": "11",
+            "triggerEvent": "PURCHASE_OUT_OF_SHOPPING_CART",
+            "description": "Recuperação de carrinho abandonado do Plano de Voo.",
+            "managedVia": "api",
+            "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/cart-abandonment-v1.html"
           }
         ],
         "segments": [
@@ -586,6 +600,7 @@
               "Meta CAPI"
             ],
             "brevoConfig": {
+              "cartAbandonmentTemplateId": "11",
               "funnelPrefix": "DECOLE_PLANOVOO"
             }
           },

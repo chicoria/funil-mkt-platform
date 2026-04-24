@@ -21,12 +21,17 @@ interface CatalogEventConfig {
   id?: string;
   brevoConfig?: {
     doiRedirectUrl?: string;
+    cartAbandonmentTemplateId?: string;
   };
 }
 
 interface CatalogProductConfig {
+  name?: string;
   brevo?: {
     doiRedirectUrl?: string;
+  };
+  links?: {
+    checkoutBaseUrl?: string;
   };
   funnelEventArchitecture?: {
     events?: CatalogEventConfig[];
@@ -272,6 +277,52 @@ function resolveDoiConfirmationUrl(event: FunnelEvent, env: DispatcherEnv): stri
   return asString(env.BREVO_DOI_REDIRECT_URL);
 }
 
+function resolveCartAbandonmentTemplateId(event: FunnelEvent, env: DispatcherEnv): string {
+  const fromEventConfig = asString(resolveCatalogEvent(event, env)?.brevoConfig?.cartAbandonmentTemplateId);
+  if (fromEventConfig) return fromEventConfig;
+  return asString(env.BREVO_CART_ABANDON_TEMPLATE_ID || env.BREVO_CART_ABANDONMENT_TEMPLATE_ID);
+}
+
+function resolveCartAbandonmentParams(event: FunnelEvent, env: DispatcherEnv): Record<string, unknown> {
+  const payload = event.payload || {};
+  const catalog = parseCatalog(env.CATALOG_JSON);
+  const product = catalog.products?.[event.product_code];
+  const checkoutUrl =
+    asString(payload.checkout_url) ||
+    asString(payload.checkoutUrl) ||
+    asString(payload.checkout_url_recovery) ||
+    asString(product?.links?.checkoutBaseUrl);
+  const productName =
+    asString(payload.product_name) ||
+    asString(payload.productName) ||
+    asString(product?.name);
+  const firstName =
+    asString(payload.first_name) ||
+    asString(payload.firstName) ||
+    asString(payload.nome) ||
+    asString(payload.name);
+
+  if (!checkoutUrl) {
+    console.log(
+      JSON.stringify({
+        stage: "handler_warn",
+        handler: "send_cart_abandonment_email",
+        reason: "missing_checkout_url",
+        product_code: event.product_code,
+      })
+    );
+  }
+
+  return {
+    checkout_url: checkoutUrl,
+    checkoutUrl,
+    product_name: productName,
+    productName,
+    first_name: firstName,
+    firstName,
+  };
+}
+
 async function sendBrevoEmail(
   event: FunnelEvent,
   env: DispatcherEnv,
@@ -476,11 +527,7 @@ export function createHandlers(): HandlerMap {
 
     async send_cart_abandonment_email(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
       console.log(JSON.stringify({ stage: "handler", handler: "send_cart_abandonment_email", event_id: event.event_id }));
-      await sendBrevoEmail(
-        event,
-        env,
-        asString(env.BREVO_CART_ABANDON_TEMPLATE_ID || env.BREVO_CART_ABANDONMENT_TEMPLATE_ID)
-      );
+      await sendBrevoEmail(event, env, resolveCartAbandonmentTemplateId(event, env), resolveCartAbandonmentParams(event, env));
     },
 
     async forward_n8n(event: FunnelEvent, env: DispatcherEnv): Promise<void> {

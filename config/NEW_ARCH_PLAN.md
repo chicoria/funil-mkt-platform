@@ -178,7 +178,26 @@ Mapeamento canônico `event_type -> funnelStage` (ordenado por `funnelStages.ord
 
 Regra de catálogo: cada item em `products.<PRODUCT_CODE>.funnelEventArchitecture.events[]` deve carregar `funnelStage` e a lista deve ser apresentada nesta ordem de estágio.
 
-### 1A. Governança Brevo no catálogo (componentes e operação)
+### 1A. Mapeamento canônico -> analytics (GA4/Meta)
+
+Tabela única para operação e QA E2E, refletindo o comportamento atual (`funnel-dispatcher` + catálogo das LPs):
+
+| event_type                      | delivery         | GA4 event_name                     | Meta event_name                  | status |
+| ------------------------------ | ---------------- | ---------------------------------- | -------------------------------- | ------ |
+| `PAGE_VIEW`                    | `gtm_web_only`   | `page_view`                        | `PageView`                       | oficial |
+| `BUTTON_CLICK`                 | `gtm_web_only`   | `button_click`                     | `button_click`                   | custom |
+| `CTA_CLICK`                    | `gtm_web_only`   | `cta_click`                        | `cta_click`                      | custom |
+| `GENERATE_LEAD`                | `both`           | `generate_lead`                    | `Lead`                           | oficial |
+| `SIGN_UP`                      | `both`           | `sign_up`                          | `CompleteRegistration`           | oficial |
+| `PURCHASE_OUT_OF_SHOPPING_CART`| `server_queue`   | `purchase_out_of_shopping_cart`    | `PURCHASE_OUT_OF_SHOPPING_CART`  | custom |
+| `PURCHASE_APPROVED`            | `server_queue`   | `purchase`                         | `Purchase`                       | oficial |
+
+Notas operacionais:
+
+- `PURCHASE_COMPLETE` (Hotmart) deve ser normalizado no ingress para `PURCHASE_APPROVED` antes de entrar na queue canônica.
+- Eventos `custom` são válidos, mas não entram automaticamente em relatórios padrão de ecommerce; exigem exploração custom em GA4/Meta.
+
+### 1B. Governança Brevo no catálogo (componentes e operação)
 
 O catálogo deve explicitar, por produto, quais componentes do Brevo estão em uso e como são operados:
 

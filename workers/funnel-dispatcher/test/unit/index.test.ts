@@ -132,7 +132,9 @@ describe("funnel-dispatcher", () => {
   });
 
   it("envia confirmation_url no DOI a partir do catalog", async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
     vi.stubGlobal("fetch", fetchMock);
 
     const env = makeEnv({
@@ -173,6 +175,60 @@ describe("funnel-dispatcher", () => {
       params?: Record<string, string>;
     };
     expect(body.params?.confirmation_url).toBe("https://decolesuacarreiraesg.com.br/confirmacao.html");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("envia email de carrinho abandonado usando templateId do catalog por produto", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const env = makeEnv({
+      BREVO_API_KEY: "set",
+      CATALOG_JSON: JSON.stringify({
+        products: {
+          DECOLE_PLANOVOO: {
+            name: "DECOLE - Plano de Voo",
+            links: { checkoutBaseUrl: "https://pay.hotmart.com/R105463680A?off=f3yweqek" },
+            funnelEventArchitecture: {
+              events: [
+                {
+                  eventType: "PURCHASE_OUT_OF_SHOPPING_CART",
+                  chain: ["send_cart_abandonment_email"],
+                  brevoConfig: { cartAbandonmentTemplateId: "11" },
+                },
+              ],
+            },
+          },
+        },
+      }),
+    });
+
+    const event: any = {
+      event_id: "evt-cart-1",
+      event_type: "PURCHASE_OUT_OF_SHOPPING_CART",
+      product_code: "DECOLE_PLANOVOO",
+      source: "hotmart",
+      occurred_at: new Date().toISOString(),
+      lead: { email: "qa.cart@example.com" },
+      payload: {},
+    };
+
+    await worker.queue({ messages: [{ body: event }] }, env);
+
+    const emailCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/smtp/email"));
+    expect(emailCall).toBeTruthy();
+    const body = JSON.parse(String((emailCall?.[1] as RequestInit)?.body || "{}")) as {
+      templateId?: number;
+      params?: Record<string, string>;
+    };
+    expect(body.templateId).toBe(11);
+    expect(body.params?.checkout_url).toBe("https://pay.hotmart.com/R105463680A?off=f3yweqek");
+    expect(body.params?.checkoutUrl).toBe("https://pay.hotmart.com/R105463680A?off=f3yweqek");
+    expect(body.params?.product_name).toBe("DECOLE - Plano de Voo");
+    expect(body.params?.productName).toBe("DECOLE - Plano de Voo");
 
     vi.unstubAllGlobals();
   });
