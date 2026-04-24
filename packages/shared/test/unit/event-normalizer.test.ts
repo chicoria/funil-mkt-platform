@@ -18,6 +18,39 @@ describe("event-normalizer", () => {
     expect(evt.lead?.email).toBe("buyer@example.com");
   });
 
+  it("projeta campos aninhados do webhook Hotmart v2 para payload canonico", () => {
+    const evt = fromHotmartWebhook(
+      {
+        id: "d4366093-936c-4bf9-b4ee-8ec64fd560d7",
+        creation_date: 1777044436358,
+        event: "PURCHASE_APPROVED",
+        data: {
+          buyer: {
+            email: "testeComprador271101postman15@example.com",
+            checkout_phone: "99999999900",
+          },
+          purchase: {
+            transaction: "HP16015479281022",
+            price: {
+              value: 1500,
+              currency_value: "BRL",
+            },
+          },
+        },
+      },
+      "DECOLE_ESG_MENTORIA"
+    );
+
+    expect(evt.event_id).toBe("d4366093-936c-4bf9-b4ee-8ec64fd560d7");
+    expect(evt.occurred_at).toBe(new Date(1777044436358).toISOString());
+    expect(evt.lead?.email).toBe("testeComprador271101postman15@example.com");
+    expect(evt.lead?.phone).toBe("99999999900");
+    expect(evt.payload.occurred_at).toBe(new Date(1777044436358).toISOString());
+    expect(evt.payload.value).toBe(1500);
+    expect(evt.payload.currency).toBe("BRL");
+    expect(evt.payload.transaction).toBe("HP16015479281022");
+  });
+
   it("normaliza precheckout", () => {
     const evt = fromPrecheckoutForm(
       {

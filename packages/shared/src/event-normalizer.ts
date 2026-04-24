@@ -23,6 +23,37 @@ function pick(data: Record<string, unknown>, paths: string[]): string {
   return "";
 }
 
+function pickRaw(data: Record<string, unknown>, paths: string[]): unknown {
+  for (const path of paths) {
+    const value = getByPath(data, path);
+    if (value !== undefined && value !== null && value !== "") return value;
+  }
+  return undefined;
+}
+
+function normalizeTimestamp(value: unknown): string {
+  if (value === undefined || value === null || value === "") return "";
+
+  if (typeof value === "number") {
+    const ms = value > 10_000_000_000 ? value : value * 1000;
+    const date = new Date(ms);
+    return Number.isFinite(date.getTime()) ? date.toISOString() : "";
+  }
+
+  const raw = asString(value);
+  if (/^\d+$/.test(raw)) {
+    const numeric = Number(raw);
+    if (Number.isFinite(numeric)) {
+      const ms = numeric > 10_000_000_000 ? numeric : numeric * 1000;
+      const date = new Date(ms);
+      return Number.isFinite(date.getTime()) ? date.toISOString() : "";
+    }
+  }
+
+  const date = new Date(raw);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : raw;
+}
+
 function normalizeProductCode(productCode: string): string {
   return asString(productCode).toUpperCase() || "UNKNOWN_PRODUCT";
 }
@@ -43,8 +74,19 @@ function normalizeEventId(data: Record<string, unknown>): string {
 }
 
 function normalizeOccurredAt(data: Record<string, unknown>): string {
-  const raw = pick(data, ["occurred_at", "occurredAt", "created_at", "createdAt", "data.created_at"]);
-  return raw || new Date().toISOString();
+  const raw = pickRaw(data, [
+    "occurred_at",
+    "occurredAt",
+    "created_at",
+    "createdAt",
+    "creation_date",
+    "creationDate",
+    "data.created_at",
+    "data.createdAt",
+    "data.purchase.approved_date",
+    "data.purchase.order_date",
+  ]);
+  return normalizeTimestamp(raw) || new Date().toISOString();
 }
 
 function baseFunnelEvent(
@@ -66,10 +108,43 @@ function baseFunnelEvent(
 export function fromHotmartWebhook(raw: Record<string, unknown>, productCode: string): FunnelEvent {
   const eventType = pick(raw, ["event", "event_name", "type", "name", "data.event"]) || "HOTMART_EVENT";
   const email = pick(raw, ["buyer.email", "customer.email", "email", "data.buyer.email"]);
-  const phone = pick(raw, ["buyer.phone", "phone", "data.buyer.phone"]);
+  const phone = pick(raw, [
+    "buyer.phone",
+    "buyer.checkout_phone",
+    "phone",
+    "data.buyer.phone",
+    "data.buyer.checkout_phone",
+  ]);
+  const value = pickRaw(raw, [
+    "value",
+    "amount",
+    "price",
+    "purchase_value",
+    "total_value",
+    "data.purchase.price.value",
+    "data.purchase.full_price.value",
+    "data.purchase.original_offer_price.value",
+  ]);
+  const currency = pick(raw, [
+    "currency",
+    "currency_code",
+    "currencyCode",
+    "data.purchase.price.currency_value",
+    "data.purchase.full_price.currency_value",
+    "data.purchase.original_offer_price.currency_value",
+  ]);
+  const transaction = pick(raw, ["transaction", "data.transaction", "data.purchase.transaction"]);
+  const occurredAt = normalizeOccurredAt(raw);
+  const payload = {
+    ...raw,
+    occurred_at: occurredAt,
+    ...(value !== undefined ? { value } : {}),
+    ...(currency ? { currency } : {}),
+    ...(transaction ? { transaction } : {}),
+  };
 
   return {
-    ...baseFunnelEvent("hotmart", productCode, eventType, raw),
+    ...baseFunnelEvent("hotmart", productCode, eventType, payload),
     lead: {
       email: email || undefined,
       phone: phone || undefined,
