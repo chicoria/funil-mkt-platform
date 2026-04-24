@@ -51,6 +51,26 @@ describe("event-normalizer", () => {
     expect(evt.payload.transaction).toBe("HP16015479281022");
   });
 
+  it("normaliza PURCHASE_COMPLETE da Hotmart para PURCHASE_APPROVED", () => {
+    const evt = fromHotmartWebhook(
+      {
+        id: "evt-complete-1",
+        event: "PURCHASE_COMPLETE",
+        data: {
+          purchase: {
+            transaction: "HP-COMPLETE-1",
+            price: { value: 297, currency_value: "BRL" },
+          },
+        },
+      },
+      "DECOLE_PLANOVOO"
+    );
+
+    expect(evt.event_type).toBe("PURCHASE_APPROVED");
+    expect(evt.product_code).toBe("DECOLE_PLANOVOO");
+    expect(evt.payload.transaction).toBe("HP-COMPLETE-1");
+  });
+
   it("normaliza precheckout", () => {
     const evt = fromPrecheckoutForm(
       {

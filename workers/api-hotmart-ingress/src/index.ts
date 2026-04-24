@@ -59,12 +59,6 @@ function productCodeFromSlug(slug: string): string {
   return slug.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
 }
 
-function canonicalHotmartEvent(value: unknown): string {
-  const normalized = asString(value).toUpperCase().replace(/[^A-Z0-9]+/g, "_");
-  if (normalized === "PURCHASE_COMPLETE") return "PURCHASE_APPROVED";
-  return normalized;
-}
-
 async function parseBody(request: Request): Promise<Record<string, unknown>> {
   try {
     const payload = await request.json();
@@ -113,7 +107,7 @@ export default {
     }
     const incomingEvent =
       asString(raw.event) || asString(raw.event_name) || asString(raw.type) || asString(raw.name) || fallbackEventType;
-    raw.event = canonicalHotmartEvent(incomingEvent);
+    raw.event = incomingEvent;
 
     const normalized = fromHotmartWebhook(raw, productCodeFromSlug(parsed.productSlug));
     await env.FUNNEL_EVENTS.send(normalized);

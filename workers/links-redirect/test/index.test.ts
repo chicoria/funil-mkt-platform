@@ -7,6 +7,7 @@ type Env = {
   DECOLE_MENTORIA_CHECKOUT_URL?: string;
   PLANO_DE_VOO_CHECKOUT_URL?: string;
   LINKS_PRODUCTS?: string;
+  FUNNEL_EVENTS?: { send(body: unknown): Promise<void> };
 };
 
 function makeEnv(overrides: Partial<Env> = {}): Env {
@@ -73,6 +74,35 @@ describe("links-redirect worker", () => {
     expect(url.searchParams.get("utm_source")).toBe("ig");
   });
 
+  it("enfileira BEGIN_CHECKOUT antes de redirecionar para checkout", async () => {
+    const sent: unknown[] = [];
+    const res = await worker.fetch(
+      makeRequest("plano-de-voo/checkout?utm_source=ig&anonymous_id=anon-123&fbp=fb.1.123&event_id=evt-begin-1"),
+      makeEnv({
+        FUNNEL_EVENTS: {
+          send: async (body: unknown) => {
+            sent.push(body);
+          },
+        },
+      })
+    );
+
+    expect(res.status).toBe(302);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({
+      event_id: "evt-begin-1",
+      event_type: "BEGIN_CHECKOUT",
+      product_code: "DECOLE_PLANOVOO",
+      source: "site",
+      identity: { anonymous_id: "anon-123" },
+      attribution: { fbp: "fb.1.123", utm_source: "ig" },
+      payload: {
+        checkout_path: "plano-de-voo/checkout",
+        offer_code: "f3yweqek",
+      },
+    });
+  });
+
   it("padroniza oferta via parametro offer", async () => {
     const res = await worker.fetch(makeRequest("checkout?offer=n82b9jqz&utm_source=ig"), makeEnv());
     const location = res.headers.get("location") || "";
@@ -117,6 +147,7 @@ describe("links-redirect worker", () => {
   });
 
   it("resolve checkout por LINKS_PRODUCTS para produtos novos", async () => {
+    const sent: unknown[] = [];
     const res = await worker.fetch(
       makeRequest("novo-produto/checkout?utm_campaign=multi"),
       makeEnv({
@@ -124,8 +155,14 @@ describe("links-redirect worker", () => {
           {
             checkoutPath: "/novo-produto/checkout",
             checkoutBaseUrl: "https://pay.hotmart.com/KNOVO999",
+            productCode: "NOVO_PRODUTO",
           },
         ]),
+        FUNNEL_EVENTS: {
+          send: async (body: unknown) => {
+            sent.push(body);
+          },
+        },
       })
     );
     expect(res.status).toBe(302);
@@ -133,6 +170,10 @@ describe("links-redirect worker", () => {
     const url = new URL(location);
     expect(url.pathname).toBe("/KNOVO999");
     expect(url.searchParams.get("utm_campaign")).toBe("multi");
+    expect(sent[0]).toMatchObject({
+      event_type: "BEGIN_CHECKOUT",
+      product_code: "NOVO_PRODUTO",
+    });
   });
 
   it("recusa metodos nao permitidos", async () => {

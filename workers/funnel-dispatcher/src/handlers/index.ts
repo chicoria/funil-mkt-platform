@@ -1,4 +1,5 @@
 import { FunnelEvent } from "../../../../packages/shared/src/funnel-event";
+import bundledCatalogJson from "../../../../config/products.catalog.json";
 import { DispatcherEnv, HandlerFn } from "../dispatcher";
 
 const BREVO_BASE_URL = "https://api.brevo.com/v3";
@@ -27,11 +28,39 @@ interface CatalogEventConfig {
 
 interface CatalogProductConfig {
   name?: string;
+  aliases?: string[];
   brevo?: {
     doiRedirectUrl?: string;
+    funnelFields?: {
+      steps?: string;
+      lastStep?: string;
+      lastStepTimestamp?: string;
+    };
   };
   links?: {
     checkoutBaseUrl?: string;
+  };
+  tracking?: {
+    sgtm?: {
+      endpointUrl?: string;
+      endpointEnvVar?: string;
+    };
+    ga4?: {
+      measurementId?: string;
+      measurementIdEnvVar?: string;
+      apiSecretEnvVar?: string;
+    };
+    metaPixel?: {
+      pixelId?: string;
+      pixelIdEnvVar?: string;
+      capiTokenEnvVar?: string;
+      testEventCodeEnvVar?: string;
+    };
+  };
+  meta?: {
+    pixelIdEnvVar?: string;
+    capiTokenEnvVar?: string;
+    testEventCodeEnvVar?: string;
   };
   funnelEventArchitecture?: {
     events?: CatalogEventConfig[];
@@ -42,9 +71,26 @@ interface ParsedCatalog {
   products?: Record<string, CatalogProductConfig>;
 }
 
+const bundledCatalog = bundledCatalogJson as ParsedCatalog;
+
+interface TrackingDestinationConfig {
+  sgtmEndpointUrl: string;
+}
+
+interface BrevoFunnelFieldsConfig {
+  stepsField: string;
+  lastStepField: string;
+  lastStepTimestampField: string;
+}
+
 function asString(value: unknown): string {
   if (value === undefined || value === null) return "";
   return String(value).trim();
+}
+
+function envString(env: DispatcherEnv, key: string | undefined): string {
+  if (!key) return "";
+  return asString(env[key]);
 }
 
 function isTruthyFlag(value: unknown): boolean {
@@ -64,13 +110,16 @@ async function sha256Hex(value: string): Promise<string> {
 }
 
 function eventToGa4Name(eventType: string): string {
+  if (eventType === "BEGIN_CHECKOUT") return "begin_checkout";
   if (eventType === "PURCHASE_APPROVED") return "purchase";
   if (eventType === "GENERATE_LEAD" || eventType === "PRECHECKOUT_SUBMIT_SUCCESS") return "generate_lead";
+  if (eventType === "PURCHASE_OUT_OF_SHOPPING_CART") return "purchase_out_of_shopping_cart";
   return eventType.toLowerCase();
 }
 
 function eventToMetaName(eventType: string): string {
   if (eventType === "PURCHASE_APPROVED") return "Purchase";
+  if (eventType === "BEGIN_CHECKOUT") return "InitiateCheckout";
   if (eventType === "GENERATE_LEAD" || eventType === "PRECHECKOUT_SUBMIT_SUCCESS") return "Lead";
   return eventType;
 }
@@ -83,6 +132,14 @@ function numberFromPayload(payload: Record<string, unknown>, keys: string[]): nu
     if (Number.isFinite(value)) return value;
   }
   return undefined;
+}
+
+function payloadString(payload: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    const value = asString(payload[key]);
+    if (value) return value;
+  }
+  return "";
 }
 
 function getIdentityDb(env: DispatcherEnv): D1DatabaseLike | null {
@@ -245,8 +302,36 @@ function parseCatalog(raw: string | undefined): ParsedCatalog {
   }
 }
 
+function getCatalog(env: DispatcherEnv): ParsedCatalog {
+  const fromEnv = parseCatalog(env.CATALOG_JSON);
+  if (fromEnv.products) return fromEnv;
+  return bundledCatalog;
+}
+
+function getCatalogProduct(catalog: ParsedCatalog, productCode: string): CatalogProductConfig | undefined {
+  const products = catalog.products || {};
+  const direct = products[productCode];
+  if (direct) return direct;
+
+  const normalizedProductCode = productCode.toUpperCase();
+  return Object.values(products).find((product) =>
+    (product.aliases || []).some((alias) => alias.toUpperCase() === normalizedProductCode)
+  );
+}
+
+function resolveTrackingConfig(event: FunnelEvent, env: DispatcherEnv): TrackingDestinationConfig {
+  const product = getCatalogProduct(getCatalog(env), event.product_code);
+  const tracking = product?.tracking;
+  const sgtmEndpointUrl =
+    envString(env, tracking?.sgtm?.endpointEnvVar) ||
+    asString(tracking?.sgtm?.endpointUrl) ||
+    asString(env.SGTM_ENDPOINT_URL);
+
+  return { sgtmEndpointUrl };
+}
+
 function resolveCatalogEvent(event: FunnelEvent, env: DispatcherEnv): CatalogEventConfig | null {
-  const product = parseCatalog(env.CATALOG_JSON).products?.[event.product_code];
+  const product = getCatalogProduct(getCatalog(env), event.product_code);
   const events = product?.funnelEventArchitecture?.events || [];
   const target = event.event_type.toUpperCase();
   return (
@@ -266,8 +351,8 @@ function resolveDoiConfirmationUrl(event: FunnelEvent, env: DispatcherEnv): stri
     asString(payload.doiRedirectUrl);
   if (fromPayload) return fromPayload;
 
-  const catalog = parseCatalog(env.CATALOG_JSON);
-  const product = catalog.products?.[event.product_code];
+  const catalog = getCatalog(env);
+  const product = getCatalogProduct(catalog, event.product_code);
   const fromEventConfig = asString(resolveCatalogEvent(event, env)?.brevoConfig?.doiRedirectUrl);
   if (fromEventConfig) return fromEventConfig;
 
@@ -285,8 +370,8 @@ function resolveCartAbandonmentTemplateId(event: FunnelEvent, env: DispatcherEnv
 
 function resolveCartAbandonmentParams(event: FunnelEvent, env: DispatcherEnv): Record<string, unknown> {
   const payload = event.payload || {};
-  const catalog = parseCatalog(env.CATALOG_JSON);
-  const product = catalog.products?.[event.product_code];
+  const catalog = getCatalog(env);
+  const product = getCatalogProduct(catalog, event.product_code);
   const checkoutUrl =
     asString(payload.checkout_url) ||
     asString(payload.checkoutUrl) ||
@@ -321,6 +406,65 @@ function resolveCartAbandonmentParams(event: FunnelEvent, env: DispatcherEnv): R
     first_name: firstName,
     firstName,
   };
+}
+
+function resolveBrevoFunnelFields(event: FunnelEvent, env: DispatcherEnv): BrevoFunnelFieldsConfig | null {
+  const product = getCatalogProduct(getCatalog(env), event.product_code);
+  const fields = product?.brevo?.funnelFields;
+  const stepsField = asString(fields?.steps);
+  const lastStepField = asString(fields?.lastStep);
+  const lastStepTimestampField = asString(fields?.lastStepTimestamp);
+
+  if (!stepsField || !lastStepField || !lastStepTimestampField) {
+    return null;
+  }
+
+  return {
+    stepsField,
+    lastStepField,
+    lastStepTimestampField,
+  };
+}
+
+async function resolveBrevoFunnelSteps(event: FunnelEvent, env: DispatcherEnv): Promise<string> {
+  const profileId = asString((event.payload || {}).profile_id);
+  const eventStoreDb = getEventStoreDb(env);
+  if (!profileId || !eventStoreDb) {
+    return event.event_type;
+  }
+
+  const row = await eventStoreDb
+    .prepare(
+      `SELECT group_concat(event_type, '|') AS steps
+       FROM (
+         SELECT event_type
+         FROM funnel_events
+         WHERE profile_id = ?
+         GROUP BY event_type
+         ORDER BY MIN(occurred_at)
+       )`
+    )
+    .bind(profileId)
+    .first<{ steps?: string }>();
+
+  const fromStore = asString(row?.steps);
+  if (!fromStore) {
+    return event.event_type;
+  }
+
+  const seen = new Set<string>();
+  const ordered = fromStore
+    .split("|")
+    .map((entry) => entry.trim())
+    .filter((entry) => {
+      if (!entry || seen.has(entry)) return false;
+      seen.add(entry);
+      return true;
+    });
+  if (!seen.has(event.event_type)) {
+    ordered.push(event.event_type);
+  }
+  return ordered.join("|");
 }
 
 async function sendBrevoEmail(
@@ -371,6 +515,21 @@ async function updateBrevoFunnel(event: FunnelEvent, env: DispatcherEnv): Promis
     return;
   }
 
+  const fields = resolveBrevoFunnelFields(event, env);
+  if (!fields) {
+    console.log(
+      JSON.stringify({
+        stage: "handler_skip",
+        handler: "update_brevo_funnel",
+        reason: "missing_product_funnel_fields",
+        product_code: event.product_code,
+      })
+    );
+    return;
+  }
+
+  const steps = await resolveBrevoFunnelSteps(event, env);
+
   const url = `${asString(env.BREVO_BASE_URL) || BREVO_BASE_URL}/contacts`;
   await postJson(url, {
     method: "POST",
@@ -381,8 +540,9 @@ async function updateBrevoFunnel(event: FunnelEvent, env: DispatcherEnv): Promis
     body: JSON.stringify({
       email,
       attributes: {
-        FUNNEL_LAST_STEP: event.event_type,
-        FUNNEL_LAST_STEP_AT: event.occurred_at,
+        [fields.stepsField]: steps,
+        [fields.lastStepField]: event.event_type,
+        [fields.lastStepTimestampField]: event.occurred_at,
         PRODUCT_CODE: event.product_code,
       },
       updateEnabled: true,
@@ -392,82 +552,71 @@ async function updateBrevoFunnel(event: FunnelEvent, env: DispatcherEnv): Promis
 
 async function emitTracking(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
   const payload = event.payload || {};
+  const tracking = resolveTrackingConfig(event, env);
   const currency =
     asString(payload.currency) ||
     asString(payload.currency_code) ||
     asString(payload.currencyCode) ||
     "BRL";
   const value = numberFromPayload(payload, ["value", "amount", "price", "purchase_value", "total_value"]) ?? 0;
+  const transactionId = payloadString(payload, ["transaction", "transaction_id", "transactionId"]);
+  const eventSourceUrl = payloadString(payload, ["event_source_url", "eventSourceUrl", "page_url", "checkout_url", "checkoutUrl"]);
 
-  const ga4MeasurementId = asString(env.GA4_MEASUREMENT_ID);
-  const ga4Secret = asString(env.GA4_API_SECRET);
-
-  if (ga4MeasurementId && ga4Secret) {
-    const ga4Url = `https://www.google-analytics.com/mp/collect?measurement_id=${encodeURIComponent(ga4MeasurementId)}&api_secret=${encodeURIComponent(ga4Secret)}`;
-    await postJson(ga4Url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        client_id: asString(event.identity?.anonymous_id) || event.event_id,
-        events: [
-          {
-            name: eventToGa4Name(event.event_type),
-            params: {
-              event_id: event.event_id,
-              product_code: event.product_code,
-              source: event.source,
-              currency,
-              value,
-            },
-          },
-        ],
-      }),
-    });
+  if (!tracking.sgtmEndpointUrl) {
+    console.log(
+      JSON.stringify({
+        stage: "handler_skip",
+        handler: "emit_tracking",
+        destination: "sgtm",
+        reason: "missing_product_tracking_config",
+        product_code: event.product_code,
+      })
+    );
+    return;
   }
 
-  const pixelId = asString(env.META_PIXEL_ID);
-  const metaToken = asString(env.META_CAPI_ACCESS_TOKEN);
-
-  if (pixelId && metaToken) {
-    const email = asString(event.lead?.email).toLowerCase();
-    const userData: Record<string, string[]> = {};
-    if (email) {
-      userData.em = [await sha256Hex(email)];
-    }
-
-    const metaUrl = `https://graph.facebook.com/v20.0/${encodeURIComponent(pixelId)}/events?access_token=${encodeURIComponent(metaToken)}`;
-    const body: Record<string, unknown> = {
-      data: [
-        {
-          event_name: eventToMetaName(event.event_type),
-          event_time: unixTime(event.occurred_at),
-          action_source: "website",
-          event_id: event.event_id,
-          user_data: userData,
-          custom_data: {
-            product_code: event.product_code,
-            currency,
-            value,
-          },
-        },
-      ],
-    };
-
-    const testCode = asString(env.META_TEST_EVENT_CODE);
-    if (testCode) {
-      body.test_event_code = testCode;
-    }
-
-    await postJson(metaUrl, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-    });
+  const email = asString(event.lead?.email).toLowerCase();
+  const userData: Record<string, string[]> = {};
+  if (email) {
+    userData.em = [await sha256Hex(email)];
+  } else if (asString(event.identity?.email_hash)) {
+    userData.em = [asString(event.identity?.email_hash)];
   }
 
-  if (!ga4MeasurementId && !pixelId) {
-    console.log(JSON.stringify({ stage: "handler_skip", handler: "emit_tracking", reason: "missing_destinations" }));
-  }
+  await postJson(tracking.sgtmEndpointUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      event_id: event.event_id,
+      event_type: event.event_type,
+      product_code: event.product_code,
+      source: event.source,
+      occurred_at: event.occurred_at,
+      ga4_event_name: eventToGa4Name(event.event_type),
+      meta_event_name: eventToMetaName(event.event_type),
+      client_id: asString(event.identity?.anonymous_id) || event.event_id,
+      session_id: asString(event.identity?.session_id) || undefined,
+      lead_id: asString(event.identity?.lead_id || event.lead?.lead_id) || undefined,
+      event_source_url: eventSourceUrl || undefined,
+      transaction_id: transactionId || undefined,
+      value,
+      currency,
+      attribution: {
+        fbp: asString(event.attribution?.fbp) || undefined,
+        fbc: asString(event.attribution?.fbc) || undefined,
+        gclid: asString(event.attribution?.gclid) || undefined,
+        wbraid: asString(event.attribution?.wbraid) || undefined,
+        gbraid: asString(event.attribution?.gbraid) || undefined,
+        utm_source: asString(event.attribution?.utm_source) || undefined,
+        utm_medium: asString(event.attribution?.utm_medium) || undefined,
+        utm_campaign: asString(event.attribution?.utm_campaign) || undefined,
+      },
+      user_data: userData,
+      payload,
+      sent_at: new Date().toISOString(),
+      event_time_unix: unixTime(event.occurred_at),
+    }),
+  });
 }
 
 async function forwardN8n(event: FunnelEvent, env: DispatcherEnv): Promise<void> {

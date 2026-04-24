@@ -199,13 +199,11 @@
               "upsert_event_store",
               "send_brevo_doi",
               "update_brevo_funnel",
-              "emit_tracking",
               "sync_brevo_segments"
             ],
             "destinations": [
               "Brevo",
-              "GA4 MP",
-              "Meta CAPI"
+              "Event Store"
             ],
             "brevoConfig": {
               "listId": "7",
@@ -217,20 +215,44 @@
           },
           {
             "funnelStage": "CONVERSION",
+            "eventType": "BEGIN_CHECKOUT",
+            "delivery": "server_queue",
+            "source": "site",
+            "ingress": "links-redirect",
+            "queue": "decole-q-funnel-events",
+            "chain": [
+              "resolve_identity",
+              "upsert_event_store",
+              "update_brevo_funnel",
+              "emit_tracking"
+            ],
+            "destinations": [
+              "Brevo",
+              "Event Store",
+              "sGTM"
+            ],
+            "brevoConfig": {
+              "funnelPrefix": "DECOLE_ESG"
+            }
+          },
+          {
+            "funnelStage": "CONVERSION",
             "eventType": "PURCHASE_OUT_OF_SHOPPING_CART",
             "delivery": "server_queue",
             "source": "hotmart",
             "ingress": "api-hotmart-ingress",
             "queue": "decole-q-funnel-events",
             "chain": [
+              "resolve_identity",
+              "upsert_event_store",
               "update_brevo_funnel",
               "send_cart_abandonment_email",
               "emit_tracking"
             ],
             "destinations": [
               "Brevo",
-              "GA4 MP",
-              "Meta CAPI"
+              "Event Store",
+              "sGTM"
             ],
             "brevoConfig": {
               "cartAbandonmentTemplateId": "8",
@@ -245,15 +267,14 @@
             "ingress": "api-funnel-ingress",
             "queue": "decole-q-funnel-events",
             "chain": [
-              "update_brevo_funnel",
-              "emit_tracking"
+              "resolve_identity",
+              "upsert_event_store",
+              "update_brevo_funnel"
             ],
             "destinations": [
               "Brevo",
-              "GA4 MP",
-              "Meta CAPI"
-            ],
-            "trackingConfigRef": "products.DECOLE_ESG_MENTORIA.tracking"
+              "Event Store"
+            ]
           },
           {
             "funnelStage": "PURCHASE",
@@ -271,20 +292,21 @@
             ],
             "destinations": [
               "Brevo",
-              "GA4 MP",
-              "Meta CAPI",
+              "Event Store",
+              "sGTM",
               "n8n"
             ]
           }
         ]
       },
       "meta": {
-        "pixelIdEnvVar": "META_PIXEL_ID_DECOLE_ESG",
-        "capiTokenEnvVar": "META_CAPI_ACCESS_TOKEN_DECOLE_ESG",
-        "testEventCodeEnvVar": "META_TEST_EVENT_CODE_DECOLE_ESG"
+        "pixelIdEnvVar": "META_PIXEL_ID_DECOLE_ESG"
       },
       "tracking": {
         "productCode": "DECOLE_ESG_MENTORIA",
+        "sgtm": {
+          "endpointEnvVar": "SGTM_ENDPOINT_URL_DECOLE_ESG"
+        },
         "gtm": {
           "containerPublicId": "GTM-58CQ9K7X",
           "differentiationKey": "produto",
@@ -566,13 +588,11 @@
               "upsert_event_store",
               "send_brevo_doi",
               "update_brevo_funnel",
-              "emit_tracking",
               "sync_brevo_segments"
             ],
             "destinations": [
               "Brevo",
-              "GA4 MP",
-              "Meta CAPI"
+              "Event Store"
             ],
             "brevoConfig": {
               "listId": "8",
@@ -584,20 +604,44 @@
           },
           {
             "funnelStage": "CONVERSION",
+            "eventType": "BEGIN_CHECKOUT",
+            "delivery": "server_queue",
+            "source": "site",
+            "ingress": "links-redirect",
+            "queue": "decole-q-funnel-events",
+            "chain": [
+              "resolve_identity",
+              "upsert_event_store",
+              "update_brevo_funnel",
+              "emit_tracking"
+            ],
+            "destinations": [
+              "Brevo",
+              "Event Store",
+              "sGTM"
+            ],
+            "brevoConfig": {
+              "funnelPrefix": "DECOLE_PLANOVOO"
+            }
+          },
+          {
+            "funnelStage": "CONVERSION",
             "eventType": "PURCHASE_OUT_OF_SHOPPING_CART",
             "delivery": "server_queue",
             "source": "hotmart",
             "ingress": "api-hotmart-ingress",
             "queue": "decole-q-funnel-events",
             "chain": [
+              "resolve_identity",
+              "upsert_event_store",
               "update_brevo_funnel",
               "send_cart_abandonment_email",
               "emit_tracking"
             ],
             "destinations": [
               "Brevo",
-              "GA4 MP",
-              "Meta CAPI"
+              "Event Store",
+              "sGTM"
             ],
             "brevoConfig": {
               "cartAbandonmentTemplateId": "11",
@@ -612,15 +656,14 @@
             "ingress": "api-funnel-ingress",
             "queue": "decole-q-funnel-events",
             "chain": [
-              "update_brevo_funnel",
-              "emit_tracking"
+              "resolve_identity",
+              "upsert_event_store",
+              "update_brevo_funnel"
             ],
             "destinations": [
               "Brevo",
-              "GA4 MP",
-              "Meta CAPI"
-            ],
-            "trackingConfigRef": "products.DECOLE_PLANOVOO.tracking"
+              "Event Store"
+            ]
           },
           {
             "funnelStage": "PURCHASE",
@@ -638,20 +681,21 @@
             ],
             "destinations": [
               "Brevo",
-              "GA4 MP",
-              "Meta CAPI",
+              "Event Store",
+              "sGTM",
               "n8n"
             ]
           }
         ]
       },
       "meta": {
-        "pixelIdEnvVar": "META_PIXEL_ID_PLANOVOO",
-        "capiTokenEnvVar": "META_CAPI_ACCESS_TOKEN_PLANOVOO",
-        "testEventCodeEnvVar": "META_TEST_EVENT_CODE_PLANOVOO"
+        "pixelIdEnvVar": "META_PIXEL_ID_PLANOVOO"
       },
       "tracking": {
         "productCode": "DECOLE_PLANOVOO",
+        "sgtm": {
+          "endpointEnvVar": "SGTM_ENDPOINT_URL_PLANOVOO"
+        },
         "gtm": {
           "containerPublicId": "GTM-58CQ9K7X",
           "differentiationKey": "produto",
@@ -815,11 +859,9 @@
         "BREVO_DOI_TEMPLATE_ID",
         "BREVO_CART_ABANDONMENT_TEMPLATE_ID",
         "N8N_WEBHOOK_URL",
-        "GA4_MEASUREMENT_ID",
-        "GA4_API_SECRET",
-        "META_PIXEL_ID",
-        "META_CAPI_ACCESS_TOKEN",
-        "META_TEST_EVENT_CODE",
+        "SGTM_ENDPOINT_URL",
+        "SGTM_ENDPOINT_URL_DECOLE_ESG",
+        "SGTM_ENDPOINT_URL_PLANOVOO",
         "BREVO_SANDBOX",
         "N8N_DISABLE_FORWARD"
       ]
@@ -829,9 +871,10 @@
       "derivedConfig": "Para cada produto → {code, aliases, listId: brevo.lists.precheckout.id, doiTemplateId: brevo.templates.doi.id, doiRedirectUrl}"
     },
     "links-redirect": {
-      "description": "Redirects de checkout. Para cada produto → checkoutPath : checkoutBaseUrl.",
+      "description": "Redirects de checkout. Emite BEGIN_CHECKOUT antes do redirect para a Hotmart.",
       "envVarMapping": {
-        "LINKS_PRODUCTS": "Para cada produto → {checkoutPath, checkoutBaseUrl}",
+        "LINKS_PRODUCTS": "Para cada produto → {checkoutPath, checkoutBaseUrl, productCode}",
+        "FUNNEL_EVENTS": "Fila canônica para BEGIN_CHECKOUT",
         "DECOLE_MENTORIA_CHECKOUT_URL": "products.DECOLE_ESG_MENTORIA.links.checkoutBaseUrl",
         "PLANO_DE_VOO_CHECKOUT_URL": "products.DECOLE_PLANOVOO.links.checkoutBaseUrl"
       }
@@ -893,12 +936,11 @@
     },
     "emit_tracking": {
       "worker": "funnel-dispatcher",
+      "status": "active_via_sgtm",
       "bindings": [
-        "GA4_MEASUREMENT_ID",
-        "GA4_API_SECRET",
-        "META_PIXEL_ID",
-        "META_CAPI_ACCESS_TOKEN",
-        "META_TEST_EVENT_CODE"
+        "SGTM_ENDPOINT_URL",
+        "SGTM_ENDPOINT_URL_DECOLE_ESG",
+        "SGTM_ENDPOINT_URL_PLANOVOO"
       ]
     },
     "sync_brevo_segments": {

@@ -43,7 +43,7 @@ Enquanto não existir ambiente staging isolado por conta/recursos:
 - usar `workers.dev` como ambiente de validação controlada
 - ativar proteções para dependências externas durante testes:
   - `BREVO_SANDBOX=true` para não enviar emails reais (`X-Sib-Sandbox: drop`)
-  - `META_TEST_EVENT_CODE` para Meta CAPI em modo de teste
+  - modo Preview/Test no GTM Server para validar GA4/Meta sem alterar produção
   - `N8N_DISABLE_FORWARD=true` para bloquear envio ao n8n quando necessário
 - executar `backend/cloudflare/scripts/e2e-funnel-staging.sh` como gate antes de qualquer promoção
 
@@ -100,7 +100,7 @@ A arquitetura orientada a eventos NÃO substitui o sGTM — ela coexiste. O sGTM
 **Três trilhos de entrega** (declarados no catálogo via `delivery`):
 
 - **`gtm_web_only`** — evento fica no trilho analytics: GTM Web → sGTM (Google Cloud) → GA4 + Meta CAPI. Não passa pela queue Cloudflare. Uso: sinais de engajamento de alto volume (page_view, cta_click, section_view, section_engaged, button_click).
-- **`server_queue`** — evento é normalizado para `FunnelEvent`, enfileirado e dispatchado. Atualiza Brevo, dispara n8n. Uso: webhooks Hotmart (BEGIN*CHECKOUT, PURCHASE*\*) e eventos de app.
+- **`server_queue`** — evento é normalizado para `FunnelEvent`, enfileirado e dispatchado. Atualiza Brevo, dispara n8n. Uso: redirects de checkout (`BEGIN_CHECKOUT` emitido pelo `links-redirect`), webhooks Hotmart (`PURCHASE_*`) e eventos de app.
 - **`both`** — dispara no GTM Web (→ sGTM → GA4/CAPI) **E** POSTa no ingress server-side (→ queue → Brevo). Mesmo `event_id` dos dois lados para deduplicação. Uso: `generate_lead` e `sign_up`.
 
 **Por que separar**: enfileirar `page_view` / `section_view` flodaria o dispatcher sem valor — Brevo só precisa saber transições de estágio. GA4/Meta via sGTM já cobrem engajamento com melhor fidelidade (first-party cookies, CAPI).
@@ -118,12 +118,12 @@ A arquitetura orientada a eventos NÃO substitui o sGTM — ela coexiste. O sGTM
 | `button_click`                  | `gtm_web_only`           | —                                                                   |
 | `precheckout_form_started`      | `gtm_web_only`           | —                                                                   |
 | `precheckout_form_progress`     | `gtm_web_only`           | —                                                                   |
-| `GENERATE_LEAD`                 | `both`                   | `[resolve_identity, upsert_event_store, send_brevo_doi, update_brevo_funnel, emit_tracking]` |
-| `PRECHECKOUT_SUBMIT_SUCCESS`    | `both`                   | `[resolve_identity, upsert_event_store, send_brevo_doi, update_brevo_funnel, emit_tracking]` |
+| `GENERATE_LEAD`                 | `both`                   | `[resolve_identity, upsert_event_store, send_brevo_doi, update_brevo_funnel, sync_brevo_segments]` |
+| `PRECHECKOUT_SUBMIT_SUCCESS`    | `both`                   | `[resolve_identity, upsert_event_store, send_brevo_doi, update_brevo_funnel, sync_brevo_segments]` |
 | `PRECHECKOUT_SUBMIT_ERROR`      | `gtm_web_only`           | —                                                                   |
-| `SIGN_UP`                       | `both`                   | `[update_brevo_funnel, emit_tracking]`                              |
-| `BEGIN_CHECKOUT`                | `server_queue` (Hotmart) | `[update_brevo_funnel, emit_tracking]`                              |
-| `PURCHASE_OUT_OF_SHOPPING_CART` | `server_queue`           | `[update_brevo_funnel, emit_tracking, send_cart_abandonment_email]` |
+| `SIGN_UP`                       | `both`                   | `[resolve_identity, upsert_event_store, update_brevo_funnel]`       |
+| `BEGIN_CHECKOUT`                | `server_queue` (`links-redirect`) | `[resolve_identity, upsert_event_store, update_brevo_funnel, emit_tracking]` |
+| `PURCHASE_OUT_OF_SHOPPING_CART` | `server_queue`           | `[resolve_identity, upsert_event_store, update_brevo_funnel, send_cart_abandonment_email, emit_tracking]` |
 | `PURCHASE_APPROVED`             | `server_queue`           | `[resolve_identity, upsert_event_store, update_brevo_funnel, emit_tracking, forward_n8n]` |
 
 Idempotência: chave `event_id:handler_name` no DEDUPE_KV — permite que um handler falhe e seja re-executado sem re-executar os que já completaram. Só se aplica a eventos `server_queue`/`both`.
@@ -160,7 +160,7 @@ Bump `products.catalog.json` para `schemaVersion: 3`. Adiciona globalmente:
   "update_brevo_funnel":        { "worker": "funnel-dispatcher", "binding": "BREVO_API_KEY" },
   "send_cart_abandonment_email":{ "worker": "funnel-dispatcher", "binding": "BREVO_API_KEY" },
   "forward_n8n":                { "worker": "funnel-dispatcher", "binding": "N8N_WEBHOOK_URL" },
-  "emit_tracking":              { "worker": "funnel-dispatcher", "bindings": ["GA4_API_SECRET_*", "META_CAPI_TOKEN_*"] },
+  "emit_tracking":              { "worker": "funnel-dispatcher", "bindings": ["SGTM_ENDPOINT_URL", "SGTM_ENDPOINT_URL_*"] },
   "sync_brevo_segments":        { "worker": "funnel-dispatcher", "binding": "BREVO_API_KEY" }
 }
 ```
@@ -189,12 +189,16 @@ Tabela única para operação e QA E2E, refletindo o comportamento atual (`funne
 | `CTA_CLICK`                    | `gtm_web_only`   | `cta_click`                        | `cta_click`                      | custom |
 | `GENERATE_LEAD`                | `both`           | `generate_lead`                    | `Lead`                           | oficial |
 | `SIGN_UP`                      | `both`           | `sign_up`                          | `CompleteRegistration`           | oficial |
+| `BEGIN_CHECKOUT`               | `server_queue` + GTM click | `begin_checkout`            | `InitiateCheckout`               | oficial |
 | `PURCHASE_OUT_OF_SHOPPING_CART`| `server_queue`   | `purchase_out_of_shopping_cart`    | `PURCHASE_OUT_OF_SHOPPING_CART`  | custom |
 | `PURCHASE_APPROVED`            | `server_queue`   | `purchase`                         | `Purchase`                       | oficial |
 
 Notas operacionais:
 
+- `BEGIN_CHECKOUT` não vem de webhook Hotmart; deve ser emitido pelo `links-redirect` antes do 302 para a Hotmart.
+- O `BEGIN_CHECKOUT` da queue é estado de funil/CRM. O evento analytics equivalente (`begin_checkout` / `InitiateCheckout`) deve ser disparado pelo GTM Web/sGTM no clique/submit que leva ao `links-redirect`, reaproveitando o mesmo `event_id` quando disponível.
 - `PURCHASE_COMPLETE` (Hotmart) deve ser normalizado no ingress para `PURCHASE_APPROVED` antes de entrar na queue canônica.
+- GA4 e Meta CAPI continuam roteados pelo sGTM. No caminho server-side, o `funnel-dispatcher` envia para sGTM via `emit_tracking`.
 - Eventos `custom` são válidos, mas não entram automaticamente em relatórios padrão de ecommerce; exigem exploração custom em GA4/Meta.
 
 ### 1B. Governança Brevo no catálogo (componentes e operação)
@@ -270,7 +274,7 @@ Essa seção consolida:
 
 - sistemas usados no trilho orientado a eventos (`ingress`, `dispatcher`, `queue`, `state`, `observability`)
 - mapa de eventos de funil (`eventType -> delivery -> chain -> destinations`)
-- referências de configuração por destino (ex.: Brevo templates/listas e tracking por produto)
+- referências de configuração por destino (ex.: Brevo templates/listas, n8n e links de checkout)
 
 Por produto, `events[]` com schema completo:
 
@@ -298,7 +302,7 @@ Por produto, `events[]` com schema completo:
     ]
   },
   "clientSide": { "gtm_web": "generate_lead", "sgtm": { "ga4": "generate_lead", "metaCapi": "Lead" } },
-  "chain": ["resolve_identity", "upsert_event_store", "send_brevo_doi", "update_brevo_funnel", "emit_tracking", "sync_brevo_segments"],
+  "chain": ["resolve_identity", "upsert_event_store", "send_brevo_doi", "update_brevo_funnel", "sync_brevo_segments"],
   "expectedResult": { "brevoAttr": "{PREFIX}_FUNIL_LAST_STEP=GENERATE_LEAD", "sla_ms": 5000 }
 },
 // Evento gtm_web_only (engajamento)
@@ -356,10 +360,17 @@ Ambos os workers de ingress importam daqui.
 - Valida regras locais no Identity Graph/Event Store (síncrono).
 - Normaliza para `FunnelEvent`, enfileira em `decole-q-funnel-events` e retorna `202`.
 
+**`links-redirect`**:
+
+- Recebe GETs de checkout em `links.decolesuacarreiraesg.com.br/{produto}/checkout`.
+- Resolve produto e oferta via `LINKS_PRODUCTS`/catálogo.
+- Emite `BEGIN_CHECKOUT` em `decole-q-funnel-events` antes do redirect.
+- Retorna `302` para a Hotmart mesmo se a fila estiver temporariamente indisponível.
+
 **`funnel-dispatcher`**:
 
 - Consome `decole-q-funnel-events`.
-- Executa a chain declarada no catálogo (`send_brevo_doi`, `update_brevo_funnel`, `emit_tracking`, etc).
+- Executa a chain declarada no catálogo (`resolve_identity`, `upsert_event_store`, `send_brevo_doi`, `update_brevo_funnel`, etc).
 
 ### 5A. Identity Graph + Event Store (novo componente)
 
@@ -379,7 +390,7 @@ Persistência sugerida:
 
 Regras de privacidade (LGPD) no design:
 
-- `email` em texto claro apenas no momento estritamente necessário para integrações (Brevo/Meta CAPI); no store analítico usar `email_hash`.
+- `email` em texto claro apenas no momento estritamente necessário para integrações (Brevo e, quando aplicável, GTM/sGTM no browser); no store analítico usar `email_hash`.
 - TTL explícito para dados de sessão anônima e política de retenção por tipo de evento.
 - Consentimento de marketing deve governar envio de `fbp`/`fbc` e ativação de CAPI.
 
@@ -458,84 +469,61 @@ Script `scripts/heartbeat.mjs` com subcomandos (Node ESM, zero deps):
 
 O `DIAGRAMA_COMPONENTES_FUNIL_EVENTOS.puml` (alvo do usuário) permanece **hand-edited** como especificação de arquitetura de componentes. Os gerados são complementares (jornada do cliente, chains operacionais).
 
-### 8. Centralização de tracking server-side (Hotmart → `emit_tracking`)
+### 8. Tracking e estado de funil sem dupla contagem
 
-**Problema atual**: cada produto Hotmart tem sua própria configuração de **Propriedade GA4** e **Pixel Meta** dentro do admin Hotmart. Isso significa:
+**Decisão arquitetural**: GA4 e Meta CAPI continuam no trilho **GTM Web -> sGTM**. O `funnel-dispatcher` usa `emit_tracking` para encaminhar eventos server-side para o **sGTM** (e não para GA4/Meta direto). A fila Cloudflare existe para estado de funil, Brevo, n8n, identidade, auditoria e replay operacional.
 
-- Config duplicada em 3 lugares (Hotmart product, landing page, sGTM).
-- Drift frequente (trocar Pixel exige editar 3 sistemas).
-- Tracking de checkout/purchase fica fora do controle do repo (auditar = abrir painel Hotmart).
-- Sem controle sobre `user_data` que sai para Meta (match rate baixo).
-- Impossível deduplicar com eventos client-side via `event_id` porque Hotmart gera seus próprios.
+Isso evita:
 
-**Alvo**: um único webhook Hotmart por produto (já existe — o que muda é o que fazemos com ele). A config de GA4 property e Meta Pixel é **removida do admin Hotmart** e passa a viver no catálogo. O handler `emit_tracking`, rodando no consumer, envia server-side:
+- duplicidade entre Pixel/GTM/sGTM e Worker;
+- segredos GA4/Meta em múltiplos runtimes;
+- drift entre Hotmart, GTM, sGTM e catálogo;
+- perda de deduplicação quando o browser já gerou `event_id` para o GTM.
 
-- **GA4 Measurement Protocol** — `POST https://www.google-analytics.com/mp/collect?measurement_id=...&api_secret=...` com `client_id` (capturado na landing e propagado via UTM/affiliate_id para Hotmart → volta no webhook) e `events[{ name: 'purchase', params: { value, currency, transaction_id } }]`.
-- **Meta Conversions API** — `POST https://graph.facebook.com/v18.0/{pixel_id}/events?access_token=...` com `user_data` SHA-256 (`em`, `ph`, `external_id`) e `fbp`/`fbc` se propagados via UTM/buyer_checkout_params.
+**BEGIN_CHECKOUT**
 
-**Config do catálogo por produto**:
+- A Hotmart não emite webhook operacional `BEGIN_CHECKOUT`.
+- O evento canônico `BEGIN_CHECKOUT` é emitido pelo `links-redirect` antes do `302` para a Hotmart.
+- A chain Cloudflare é: `[resolve_identity, upsert_event_store, update_brevo_funnel, emit_tracking]`.
+- O evento analytics equivalente deve ser entregue ao sGTM:
+  - GA4: `begin_checkout`
+  - Meta: `InitiateCheckout`
+- Quando o clique/submit já tiver `event_id`, o `links-redirect` deve reaproveitar esse valor para manter correlação entre analytics e event store.
 
-```jsonc
-"products": {
-  "DECOLE_ESG_MENTORIA": {
-    "tracking": {
-      "ga4": {
-        "measurement_id": "G-XXXXXXXX",
-        "api_secret_binding": "GA4_API_SECRET_ESG"
-      },
-      "meta": {
-        "pixel_id": "1234567890",
-        "access_token_binding": "META_CAPI_TOKEN_ESG",
-        "test_event_code": "TEST12345"     // só em staging
-      }
-    }
-  }
-}
-```
+**Hotmart purchase/cart**
 
-**Config por evento** (no catálogo):
+- Webhooks Hotmart entram por `api-hotmart-ingress`.
+- `PURCHASE_COMPLETE` deve ser normalizado para `PURCHASE_APPROVED`.
+- `PURCHASE_OUT_OF_SHOPPING_CART` alimenta recuperação de carrinho e event store.
+- Esses eventos passam por `emit_tracking` para sGTM no fluxo padrão. O Worker não deve falar GA4/Meta diretamente.
 
-```jsonc
-{
-  "funnelStage": "PURCHASE",
-  "eventType": "PURCHASE_APPROVED",
-  "emit_tracking": {
-    "ga4_event": "purchase",
-    "meta_event": "Purchase",
-    "value_from": "payload.transaction.price.value",
-    "currency_from": "payload.transaction.price.currency_value",
-    "transaction_id_from": "payload.transaction.transaction",
-  },
-}
-```
+**`update_brevo_funnel`**
 
-**`client_id` / `fbp` / `fbc` propagation**:
+- Deve resolver `products.<product_code>.brevo.funnelFields` no catálogo.
+- Campos de funil são por produto (ex.: `DECOLE_ESG_FUNIL_*`, `DECOLE_PLANOVOO_FUNIL_*`), não genéricos.
+- Se `funnelFields` estiver ausente/inválido para o produto, o handler faz `handler_skip` com motivo explícito.
 
-- Captura no primeiro touch (landing): `client_id` (GA4 `_ga` cookie) + `fbp` + `fbc` são lidos via browser e persistidos em cookie first-party + enviados para `api-funnel-ingress`.
-- Propagação para Hotmart: incluir nos parâmetros de checkout (`src`/`sck` ou custom params via query string do checkout link). Hotmart preserva nos webhooks.
-- Na ausência (tráfego direto para checkout), fazer match por `buyer.email` via lookup no Brevo (contato já teve `generate_lead` com `client_id` registrado como atributo).
+**`emit_tracking`**
 
-**Deduplicação**:
+`emit_tracking` é handler padrão para eventos server-side que precisam analytics (`BEGIN_CHECKOUT`, `PURCHASE_OUT_OF_SHOPPING_CART`, `PURCHASE_APPROVED`). O handler recebe `FunnelEvent` canônico e encaminha para sGTM, resolvendo endpoint por produto via catálogo.
 
-- `event_id` do `FunnelEvent` vai no payload GA4 MP e no `event_id` do Meta CAPI.
-- Se o Pixel client-side disparar também (no caso de `both`), Meta dedupa via `event_id`. Para `server_queue` (Hotmart), só o CAPI dispara — sem risco de dupla contagem.
+**Checklist de configuração alvo**
 
-**Checklist de configuração alvo (no Hotmart admin)**:
+- [ ] Garantir que as landing pages disparam `begin_checkout`/`InitiateCheckout` via GTM Web/sGTM no clique/submit para checkout.
+- [ ] Garantir que links para `links-redirect` carregam `event_id`, `anonymous_id`, `session_id`, `fbp`, `fbc`, `gclid` quando disponíveis.
+- [ ] Configurar `SGTM_ENDPOINT_URL_*` por produto no `funnel-dispatcher`.
+- [ ] Remover dependência de `GA4_API_SECRET_*` e `META_CAPI_ACCESS_TOKEN_*` da operação padrão do `funnel-dispatcher`.
+- [ ] Validar que o painel Hotmart não é source-of-truth para GA4/Meta; Hotmart deve apenas enviar webhooks operacionais de compra/carrinho.
 
-- [ ] Remover "Propriedade GA4" de cada produto.
-- [ ] Remover "Pixel Meta" de cada produto.
-- [ ] Remover tags de conversão Google Ads configuradas no produto (se houver — migrar para o mesmo handler `emit_tracking` via Google Ads API ou manter no sGTM).
-- [ ] Validar que landing pages continuam passando `client_id`/`fbp`/`fbc` para o checkout Hotmart via query string.
+**Risco & mitigação**
 
-**Risco & mitigação**:
-
-- Se o consumer cair, perde-se tracking → DLQ + alerta + replay script (`scripts/replay-dlq.mjs`) permitem reprocessar sem perda.
-- GA4 MP tem limite de 25 events/request e 500 events/sec por propriedade — dispatcher já é single-event, não há risco.
-- Meta CAPI rejeita eventos > 7 dias — retry com exponential backoff cap de 24h no consumer (já é o default do Queues).
+- Se o `links-redirect` falhar ao enfileirar `BEGIN_CHECKOUT`, o usuário ainda deve ser redirecionado; o evento pode ser reconstruído parcialmente por logs/UTMs se necessário.
+- Se o consumer cair, perde-se atualização de funil/CRM, não analytics primário; DLQ + replay script permitem reprocessar efeitos operacionais.
+- Qualquer replay/backfill de tracking deve preferir rota via sGTM e rodar dry-run antes de `--apply`.
 
 ### 9. Ingress de app events (contrato — sem implementação no app agora)
 
-Nova rota em `api-funnel-ingress`: `POST /webhooks/v1/planovoo/app/event`, autenticada por HMAC (`APP_EVENTS_HMAC`). Usa `fromAppEvent()` do normalizer. Enfileira para `decole-q-funnel-events`. Handler chain no catálogo: `[update_brevo_funnel, emit_tracking]`.
+Nova rota em `api-funnel-ingress`: `POST /webhooks/v1/planovoo/app/event`, autenticada por HMAC (`APP_EVENTS_HMAC`). Usa `fromAppEvent()` do normalizer. Enfileira para `decole-q-funnel-events`. Handler chain no catálogo: `[resolve_identity, upsert_event_store, update_brevo_funnel]`.
 
 O repo `decole-plano-de-voo-app` implementará o `track()` client em trabalho separado.
 
@@ -604,7 +592,7 @@ Definir alertas para:
 
 - erro por handler acima de limiar (5xx ou `status=error`)
 - crescimento da DLQ por janela de tempo
-- falha contínua em `send_brevo_doi` e `emit_tracking`
+- falha contínua em `send_brevo_doi`, `update_brevo_funnel` e `forward_n8n`
 - aumento anormal de latência (`p95 duration_ms`) por worker/handler
 
 #### 10.6 Artefatos de implementação
@@ -623,7 +611,7 @@ Cobrir:
 
 - `packages/shared/event-normalizer` (mapeamento de payloads para `FunnelEvent`)
 - `funnel-dispatcher/dispatcher` (resolução de chain, ordem, idempotência)
-- handlers puros (`resolve_identity`, `send_brevo_doi`, `emit_tracking`, etc) com dependências mockadas
+- handlers puros (`resolve_identity`, `send_brevo_doi`, `update_brevo_funnel`, etc) com dependências mockadas
 - utilitários críticos (`user-data` hashing, validação de schema, parser de UTM/cookies)
 
 Meta mínima recomendada:
@@ -717,15 +705,14 @@ Pipeline agendado e/ou pós-deploy:
 - envia evento de precheckout
 - valida efeitos esperados:
   - atributos no Brevo
-  - evento no GA4 DebugView (ou endpoint de validação)
-  - evento no Meta Test Events (`test_event_code`)
+  - evento equivalente no GTM/sGTM Preview quando o caso envolver analytics
   - ausência de duplicidade em reenvio do mesmo `event_id`
 
 #### 11.5 Testes de resiliência e caos controlado
 
 Automatizar cenários:
 
-- token inválido em destino externo (`emit_tracking`) gera DLQ sem quebrar demais handlers
+- token inválido em destino externo (`forward_n8n` ou Brevo) gera DLQ sem quebrar demais handlers
 - indisponibilidade temporária de Brevo (`send_brevo_doi`) com retry/backoff
 - replay de DLQ reprocessa somente handlers pendentes
 - latência alta em integração externa não bloqueia ingestão
@@ -740,7 +727,7 @@ Suite leve (pré-produção):
 
 Definir budget inicial:
 
-- p95 handler crítico (`emit_tracking`) < 400ms em cenário nominal
+- p95 handler crítico (`update_brevo_funnel`/`send_brevo_doi`) < 400ms em cenário nominal
 - erro total < 1% em carga de referência
 
 #### 11.7 Gates de CI recomendados
@@ -784,13 +771,13 @@ Sugestão de workflows:
 - `backend/cloudflare/workers/funnel-dispatcher/src/handlers/update-brevo-funnel.ts`
 - `backend/cloudflare/workers/funnel-dispatcher/src/handlers/send-cart-abandonment-email.ts`
 - `backend/cloudflare/workers/funnel-dispatcher/src/handlers/forward-n8n.ts`
-- `backend/cloudflare/workers/funnel-dispatcher/src/handlers/emit-tracking.ts` (GA4 MP + Meta CAPI)
+- `backend/cloudflare/workers/funnel-dispatcher/src/handlers/emit-tracking.ts` (opcional/compatibilidade para replay controlado)
 - `backend/cloudflare/workers/funnel-dispatcher/src/handlers/resolve-identity.ts`
 - `backend/cloudflare/workers/funnel-dispatcher/src/handlers/upsert-event-store.ts`
 - `backend/cloudflare/workers/funnel-dispatcher/src/handlers/send-brevo-doi.ts`
 - `backend/cloudflare/workers/funnel-dispatcher/src/handlers/sync-brevo-segments.ts`
-- `backend/cloudflare/workers/funnel-dispatcher/src/tracking/ga4-mp.ts`
-- `backend/cloudflare/workers/funnel-dispatcher/src/tracking/meta-capi.ts`
+- `backend/cloudflare/workers/links-redirect/src/index.ts` (`BEGIN_CHECKOUT` antes do redirect)
+- `backend/cloudflare/workers/funnel-dispatcher/src/tracking/sgtm-forward.ts` (somente se houver decisão futura de server-side analytics via sGTM)
 - `backend/cloudflare/workers/funnel-dispatcher/src/tracking/user-data.ts` (hash SHA-256 email/phone)
 - `backend/cloudflare/workers/funnel-dispatcher/src/identity/identity-graph.ts`
 - `backend/cloudflare/workers/funnel-dispatcher/src/store/event-store.ts`
@@ -843,7 +830,7 @@ Trabalhar por lotes pequenos, cada lote com escopo fechado e gate de aceite ante
 - **Agente A (Core)**: `FunnelEvent`, normalizers, catálogo/schema.
 - **Agente B (Ingress)**: `api-hotmart-ingress` e `api-funnel-ingress`.
 - **Agente C (Dispatcher)**: `funnel-dispatcher`, chain runner, dedupe, DLQ.
-- **Agente D (Destinos)**: Brevo, GA4 MP, Meta CAPI, n8n.
+- **Agente D (Destinos)**: Brevo, n8n e sGTM como destino de analytics server-side.
 - **Agente E (Qualidade)**: heartbeat, testes, e2e, observabilidade.
 
 Regra de coordenação:
@@ -862,7 +849,7 @@ Regra de coordenação:
 | **F2 — Ingress Greenfield** | B + C | `api-hotmart-ingress`, `api-funnel-ingress`, queue `decole-q-funnel-events` e DLQ | POST de fixture retorna `202` e mensagem chega ao dispatcher |
 | **F3 — Dispatcher + Dedupe** | C | execução ordered da chain + `event_id:handler` | reenvio mesmo `event_id` gera `skipped` sem duplicar efeitos |
 | **F4 — Destinos mínimos** | D | `update_brevo_funnel`, `send_brevo_doi`, `forward_n8n` | lead real de staging atualiza Brevo e DOI entregue |
-| **F5 — Tracking server-side** | D + E | `emit_tracking` (GA4/Meta), observabilidade de handler | evento aparece em GA4 DebugView e Meta Test Events |
+| **F5 — Tracking + Checkout State** | B + D + E | `links-redirect` emitindo `BEGIN_CHECKOUT` e `emit_tracking` encaminhando para sGTM | `BEGIN_CHECKOUT` no event store e evento correspondente no sGTM/GA4/Meta |
 | **F6 — Identity Graph** | A + D | `resolve_identity`, `upsert_event_store`, stitch anon->email | evento pré-submit e pós-submit no mesmo `profile_id` |
 | **F7 — Cutover** | B + C + E | rotas finais, deprecar legado, runbook | suíte E2E completa 2x consecutivas sem regressão |
 
@@ -870,7 +857,7 @@ Regra de coordenação:
 
 1. **Sprint 1**: F0.1 + F0.2 + F1 + F2 (pipeline canônico no ar sem efeitos externos críticos).
 2. **Sprint 2**: F3 + F4 (funil operacional com Brevo/n8n).
-3. **Sprint 3**: F5 + F6 (tracking robusto + identidade unificada).
+3. **Sprint 3**: F5 + F6 (checkout state + identidade unificada).
 4. **Sprint 4**: F7 (cutover e estabilização assistida por observabilidade).
 
 ### 12.4 Definição de pronto por fase
@@ -938,7 +925,8 @@ Implementação:
 2. Publicar checklist de bindings obrigatórios por worker:
 - `api-funnel-ingress`: `FUNNEL_EVENTS`, `APP_EVENTS_HMAC`
 - `api-hotmart-ingress`: `FUNNEL_EVENTS`, `HOTMART_WEBHOOK_TOKEN`
-- `funnel-dispatcher`: `DEDUPE_KV`, `IDENTITY_KV`, `IDENTITY_DB`, `EVENT_STORE_DB` + secrets de Brevo/n8n/tracking
+- `links-redirect`: `FUNNEL_EVENTS`
+- `funnel-dispatcher`: `DEDUPE_KV`, `IDENTITY_KV`, `IDENTITY_DB`, `EVENT_STORE_DB` + secrets de Brevo/n8n
 
 3. Formalizar source de truth:
 - `wrangler.toml` versionado para bindings/rotas
@@ -980,12 +968,14 @@ para:
 4. Confirmar estratégia de trilhos:
 - `gtm_web_only`: continua só `dataLayer`/GTM
 - `both`: `dataLayer` + POST para `api-funnel-ingress`
+- checkout: links de saída apontam para `links-redirect`, que emite `BEGIN_CHECKOUT` antes do 302 para a Hotmart
 
 Gate:
 
 - submit válido retorna `202` sem regressão de redirect para checkout.
 - retry/reenvio não duplica efeitos downstream (`event_id:handler`).
 - eventos `sign_up` continuam com `event_id` consistente.
+- clique/redirect de checkout gera `BEGIN_CHECKOUT` no event store.
 
 #### Ticket GO-LIVE-004 — URL e segurança de Webhook Hotmart
 
@@ -1004,7 +994,7 @@ Implementação:
 3. Congelar whitelist inicial de eventos:
 - `PURCHASE_APPROVED`
 - `PURCHASE_OUT_OF_SHOPPING_CART`
-- `BEGIN_CHECKOUT` (se disponível no payload operacional)
+- `PURCHASE_COMPLETE` normalizado para `PURCHASE_APPROVED`
 
 4. Manter rollback preparado:
 - rota antiga ativa por janela curta de convivência
@@ -1212,12 +1202,12 @@ Checklist final:
 3. dispatcher executa `send_brevo_doi` + `update_brevo_funnel`.
 4. DOI chega e atributo de funil é atualizado.
 
-### F5 (tracking)
+### F5 (tracking + checkout state)
 
-1. `PURCHASE_APPROVED` dispara `emit_tracking`.
-2. GA4 DebugView mostra `purchase` com `value/currency/transaction_id`.
-3. Meta Test Events mostra `Purchase` com `event_id` e `user_data` válidos.
-4. falha forçada de token Meta -> apenas `emit_tracking` vai para DLQ.
+1. GET em `links-redirect` para checkout retorna `302` para a Hotmart.
+2. O mesmo request publica `BEGIN_CHECKOUT` em `decole-q-funnel-events`.
+3. Dispatcher executa `resolve_identity`, `upsert_event_store` e `update_brevo_funnel`.
+4. sGTM recebe `BEGIN_CHECKOUT` do Worker (`emit_tracking`) e publica `begin_checkout`/`InitiateCheckout` nos destinos.
 
 ### F6 (identidade)
 

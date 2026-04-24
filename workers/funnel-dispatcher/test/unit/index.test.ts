@@ -63,7 +63,7 @@ describe("funnel-dispatcher", () => {
     expect(res.status).toBe(200);
   });
 
-  it("executa chain default e dedupe em reenvio", async () => {
+  it("executa chain do catalog embutido e dedupe em reenvio", async () => {
     const env = makeEnv();
     const event = {
       event_id: "evt-1",
@@ -229,6 +229,243 @@ describe("funnel-dispatcher", () => {
     expect(body.params?.checkoutUrl).toBe("https://pay.hotmart.com/R105463680A?off=f3yweqek");
     expect(body.params?.product_name).toBe("DECOLE - Plano de Voo");
     expect(body.params?.productName).toBe("DECOLE - Plano de Voo");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("atualiza Brevo com campos de funil por produto", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const env = makeEnv({
+      BREVO_API_KEY: "set",
+      CATALOG_JSON: JSON.stringify({
+        products: {
+          DECOLE_ESG_MENTORIA: {
+            brevo: {
+              funnelFields: {
+                steps: "DECOLE_ESG_FUNIL_STEPS",
+                lastStep: "DECOLE_ESG_FUNIL_LAST_STEP",
+                lastStepTimestamp: "DECOLE_ESG_FUNIL_LAST_STEP_TIMESTAMP",
+              },
+            },
+            funnelEventArchitecture: {
+              events: [{ eventType: "PURCHASE_APPROVED", chain: ["update_brevo_funnel"] }],
+            },
+          },
+          DECOLE_PLANOVOO: {
+            aliases: ["PLANOVOO"],
+            brevo: {
+              funnelFields: {
+                steps: "DECOLE_PLANOVOO_FUNIL_STEPS",
+                lastStep: "DECOLE_PLANOVOO_FUNIL_LAST_STEP",
+                lastStepTimestamp: "DECOLE_PLANOVOO_FUNIL_LAST_STEP_TIMESTAMP",
+              },
+            },
+            funnelEventArchitecture: {
+              events: [{ eventType: "PURCHASE_APPROVED", chain: ["update_brevo_funnel"] }],
+            },
+          },
+        },
+      }),
+    });
+
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: {
+              event_id: "evt-brevo-esg-1",
+              event_type: "PURCHASE_APPROVED",
+              product_code: "DECOLE_ESG_MENTORIA",
+              source: "hotmart",
+              occurred_at: "2026-04-24T12:00:00.000Z",
+              lead: { email: "qa.brevo.esg@example.com" },
+              payload: {},
+            },
+          },
+        ],
+      },
+      env
+    );
+
+    const esgCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/contacts"));
+    expect(esgCall).toBeTruthy();
+    const esgBody = JSON.parse(String((esgCall?.[1] as RequestInit)?.body || "{}")) as {
+      attributes?: Record<string, string>;
+    };
+    expect(esgBody.attributes?.DECOLE_ESG_FUNIL_LAST_STEP).toBe("PURCHASE_APPROVED");
+    expect(esgBody.attributes?.DECOLE_ESG_FUNIL_STEPS).toBe("PURCHASE_APPROVED");
+    expect(esgBody.attributes?.DECOLE_ESG_FUNIL_LAST_STEP_TIMESTAMP).toBe("2026-04-24T12:00:00.000Z");
+    expect(esgBody.attributes?.PRODUCT_CODE).toBe("DECOLE_ESG_MENTORIA");
+
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: {
+              event_id: "evt-brevo-planovoo-1",
+              event_type: "PURCHASE_APPROVED",
+              product_code: "PLANOVOO",
+              source: "hotmart",
+              occurred_at: "2026-04-24T13:00:00.000Z",
+              lead: { email: "qa.brevo.planovoo@example.com" },
+              payload: {},
+            },
+          },
+        ],
+      },
+      env
+    );
+
+    const contactsCalls = fetchMock.mock.calls.filter((call) => String(call[0]).includes("/contacts"));
+    const planovooCall = contactsCalls[1];
+    expect(planovooCall).toBeTruthy();
+    const planovooBody = JSON.parse(String((planovooCall?.[1] as RequestInit)?.body || "{}")) as {
+      attributes?: Record<string, string>;
+    };
+    expect(planovooBody.attributes?.DECOLE_PLANOVOO_FUNIL_LAST_STEP).toBe("PURCHASE_APPROVED");
+    expect(planovooBody.attributes?.DECOLE_PLANOVOO_FUNIL_STEPS).toBe("PURCHASE_APPROVED");
+    expect(planovooBody.attributes?.DECOLE_PLANOVOO_FUNIL_LAST_STEP_TIMESTAMP).toBe("2026-04-24T13:00:00.000Z");
+    expect(planovooBody.attributes?.PRODUCT_CODE).toBe("PLANOVOO");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("faz skip de update_brevo_funnel sem funnelFields no catalogo", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const env = makeEnv({
+      BREVO_API_KEY: "set",
+      CATALOG_JSON: JSON.stringify({
+        products: {
+          DECOLE_ESG_MENTORIA: {
+            funnelEventArchitecture: {
+              events: [{ eventType: "PURCHASE_APPROVED", chain: ["update_brevo_funnel"] }],
+            },
+          },
+        },
+      }),
+    });
+
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: {
+              event_id: "evt-brevo-skip-1",
+              event_type: "PURCHASE_APPROVED",
+              product_code: "DECOLE_ESG_MENTORIA",
+              source: "hotmart",
+              occurred_at: "2026-04-24T12:00:00.000Z",
+              lead: { email: "qa.brevo.skip@example.com" },
+              payload: {},
+            },
+          },
+        ],
+      },
+      env
+    );
+
+    const contactsCalls = fetchMock.mock.calls.filter((call) => String(call[0]).includes("/contacts"));
+    expect(contactsCalls.length).toBe(0);
+
+    vi.unstubAllGlobals();
+  });
+
+  it("resolve tracking por produto e envia para sgtm", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const env = makeEnv({
+      SGTM_ENDPOINT_URL_DECOLE_ESG: "https://sgtm.example.com/decole-esg/event",
+      SGTM_ENDPOINT_URL_PLANOVOO: "https://sgtm.example.com/planovoo/event",
+      CATALOG_JSON: JSON.stringify({
+        products: {
+          DECOLE_ESG_MENTORIA: {
+            tracking: {
+              sgtm: { endpointEnvVar: "SGTM_ENDPOINT_URL_DECOLE_ESG" },
+            },
+            funnelEventArchitecture: {
+              events: [{ eventType: "PURCHASE_APPROVED", chain: ["emit_tracking"] }],
+            },
+          },
+          DECOLE_PLANOVOO: {
+            aliases: ["PLANOVOO"],
+            tracking: {
+              sgtm: { endpointEnvVar: "SGTM_ENDPOINT_URL_PLANOVOO" },
+            },
+            funnelEventArchitecture: {
+              events: [{ eventType: "PURCHASE_APPROVED", chain: ["emit_tracking"] }],
+            },
+          },
+        },
+      }),
+    });
+
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: {
+              event_id: "evt-track-esg",
+              event_type: "PURCHASE_APPROVED",
+              product_code: "DECOLE_ESG_MENTORIA",
+              source: "hotmart",
+              occurred_at: "2026-04-24T12:00:00.000Z",
+              lead: { email: "qa.track@example.com" },
+              payload: {
+                value: 1500,
+                currency: "BRL",
+                transaction: "HP123",
+                event_source_url: "https://pay.hotmart.com/K98068530F",
+              },
+            },
+          },
+        ],
+      },
+      env
+    );
+
+    const sgtmEsgCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/decole-esg/event"));
+    expect(sgtmEsgCall).toBeTruthy();
+    const sgtmEsgBody = JSON.parse(String((sgtmEsgCall?.[1] as RequestInit)?.body || "{}")) as Record<string, unknown>;
+    expect(sgtmEsgBody.transaction_id).toBe("HP123");
+    expect(sgtmEsgBody.event_source_url).toBe("https://pay.hotmart.com/K98068530F");
+    expect(sgtmEsgBody.ga4_event_name).toBe("purchase");
+    expect(sgtmEsgBody.meta_event_name).toBe("Purchase");
+
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: {
+              event_id: "evt-track-planovoo",
+              event_type: "PURCHASE_APPROVED",
+              product_code: "PLANOVOO",
+              source: "hotmart",
+              occurred_at: "2026-04-24T12:00:00.000Z",
+              payload: { value: 100, currency: "BRL" },
+            },
+          },
+        ],
+      },
+      env
+    );
+
+    const sgtmPlanovooCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/planovoo/event"));
+    expect(sgtmPlanovooCall).toBeTruthy();
+    const sgtmPlanovooBody = JSON.parse(String((sgtmPlanovooCall?.[1] as RequestInit)?.body || "{}")) as Record<string, unknown>;
+    expect(sgtmPlanovooBody.product_code).toBe("PLANOVOO");
+    expect(sgtmPlanovooBody.ga4_event_name).toBe("purchase");
+    expect(sgtmPlanovooBody.meta_event_name).toBe("Purchase");
 
     vi.unstubAllGlobals();
   });

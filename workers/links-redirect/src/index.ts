@@ -1,19 +1,29 @@
+import { FunnelEvent } from "../../../packages/shared/src/funnel-event";
+
+interface QueueBinding {
+  send(body: unknown): Promise<void>;
+}
+
 interface Env {
   ELIZETE_WHATSAPP_NUMBER?: string;
   ELIZETE_WHATSAPP_DEFAULT_TEXT?: string;
   DECOLE_MENTORIA_CHECKOUT_URL?: string;
   PLANO_DE_VOO_CHECKOUT_URL?: string;
   LINKS_PRODUCTS?: string;
+  FUNNEL_EVENTS?: QueueBinding;
 }
 
 type HandlerResult = {
   location: string;
   cacheControl?: string;
+  checkoutPath?: string;
+  productCode?: string;
 };
 
 interface LinksProductConfig {
   checkoutPath: string;
   checkoutBaseUrl: string;
+  productCode?: string;
 }
 
 let cachedLinksProductsRaw = "";
@@ -71,8 +81,11 @@ function parseLinksProducts(rawConfig: string): LinksProductConfig[] {
       const data = entry as Record<string, unknown>;
       const checkoutPath = lowercasePath(normalizePath(asTrimmedString(data.checkoutPath)));
       const checkoutBaseUrl = asTrimmedString(data.checkoutBaseUrl);
+      const productCode = asTrimmedString(data.productCode ?? data.product_code).toUpperCase();
       if (!checkoutPath || !checkoutBaseUrl) return null;
-      return { checkoutPath, checkoutBaseUrl };
+      const config: LinksProductConfig = { checkoutPath, checkoutBaseUrl };
+      if (productCode) config.productCode = productCode;
+      return config;
     })
     .filter((entry): entry is LinksProductConfig => !!entry);
 }
@@ -101,6 +114,14 @@ function appendQueryParams(baseUrl: string, params: URLSearchParams, ignoreKeys:
   });
 
   return url.toString();
+}
+
+function firstSearchParam(params: URLSearchParams, keys: string[]): string {
+  for (const key of keys) {
+    const value = asTrimmedString(params.get(key));
+    if (value) return value;
+  }
+  return "";
 }
 
 function handleElizeteWhatsapp(url: URL, env: Env): HandlerResult | null {
@@ -162,25 +183,51 @@ function handleCheckoutByBaseUrl(url: URL, baseUrl: string): HandlerResult | nul
   };
 }
 
-function resolveCheckoutBaseUrlByPath(path: string, env: Env): string {
+function inferProductCodeByPath(path: string): string {
   const normalizedPath = lowercasePath(normalizePath(path));
-
-  const dynamicMatch = getLinksProducts(env).find((item) => item.checkoutPath === normalizedPath);
-  if (dynamicMatch) return dynamicMatch.checkoutBaseUrl;
-
-  if (normalizedPath === "checkout" || normalizedPath === "decole-esg/checkout") {
-    return asTrimmedString(env.DECOLE_MENTORIA_CHECKOUT_URL);
-  }
-  if (normalizedPath === "plano-de-voo/checkout") {
-    return asTrimmedString(env.PLANO_DE_VOO_CHECKOUT_URL);
-  }
-
+  if (normalizedPath === "checkout" || normalizedPath === "decole-esg/checkout") return "DECOLE_ESG_MENTORIA";
+  if (normalizedPath === "plano-de-voo/checkout") return "DECOLE_PLANOVOO";
   return "";
 }
 
+function resolveCheckoutProductByPath(path: string, env: Env): LinksProductConfig | null {
+  const normalizedPath = lowercasePath(normalizePath(path));
+
+  const dynamicMatch = getLinksProducts(env).find((item) => item.checkoutPath === normalizedPath);
+  if (dynamicMatch) {
+    return {
+      ...dynamicMatch,
+      productCode: dynamicMatch.productCode || inferProductCodeByPath(normalizedPath) || undefined,
+    };
+  }
+
+  if (normalizedPath === "checkout" || normalizedPath === "decole-esg/checkout") {
+    return {
+      checkoutPath: normalizedPath,
+      checkoutBaseUrl: asTrimmedString(env.DECOLE_MENTORIA_CHECKOUT_URL),
+      productCode: "DECOLE_ESG_MENTORIA",
+    };
+  }
+  if (normalizedPath === "plano-de-voo/checkout") {
+    return {
+      checkoutPath: normalizedPath,
+      checkoutBaseUrl: asTrimmedString(env.PLANO_DE_VOO_CHECKOUT_URL),
+      productCode: "DECOLE_PLANOVOO",
+    };
+  }
+
+  return null;
+}
+
 function handleCheckoutPath(url: URL, checkoutPath: string, env: Env): HandlerResult | null {
-  const baseUrl = resolveCheckoutBaseUrlByPath(checkoutPath, env);
-  return handleCheckoutByBaseUrl(url, baseUrl);
+  const product = resolveCheckoutProductByPath(checkoutPath, env);
+  const result = handleCheckoutByBaseUrl(url, product?.checkoutBaseUrl || "");
+  if (!result) return null;
+  return {
+    ...result,
+    checkoutPath: product?.checkoutPath || lowercasePath(normalizePath(checkoutPath)),
+    productCode: product?.productCode,
+  };
 }
 
 function withOfferCode(url: URL, offerCode: string): URL {
@@ -200,8 +247,108 @@ const handlers: Record<string, (url: URL, env: Env) => HandlerResult | null> = {
   "elizete-wp": handleElizeteWhatsapp,
 };
 
+function buildBeginCheckoutEvent(request: Request, url: URL, result: HandlerResult): FunnelEvent | null {
+  const productCode = asTrimmedString(result.productCode).toUpperCase();
+  if (!productCode) return null;
+
+  const target = new URL(result.location);
+  const eventId =
+    firstSearchParam(url.searchParams, ["event_id", "eventId"]) || `begin_checkout:${productCode}:${crypto.randomUUID()}`;
+  const anonymousId = firstSearchParam(url.searchParams, ["anonymous_id", "anonymousId", "client_id", "clientId"]);
+  const sessionId = firstSearchParam(url.searchParams, ["session_id", "sessionId"]);
+  const leadId = firstSearchParam(url.searchParams, ["lead_id", "leadId", "LEAD_ID"]);
+  const email = firstSearchParam(url.searchParams, ["email", "EMAIL"]);
+  const phone = firstSearchParam(url.searchParams, ["phone", "PHONE", "SMS"]);
+
+  return {
+    event_id: eventId,
+    event_type: "BEGIN_CHECKOUT",
+    product_code: productCode,
+    source: "site",
+    occurred_at: new Date().toISOString(),
+    identity: {
+      anonymous_id: anonymousId || undefined,
+      session_id: sessionId || undefined,
+      lead_id: leadId || undefined,
+    },
+    attribution: {
+      fbp: firstSearchParam(url.searchParams, ["fbp", "FBP"]) || undefined,
+      fbc: firstSearchParam(url.searchParams, ["fbc", "FBC"]) || undefined,
+      gclid: firstSearchParam(url.searchParams, ["gclid"]) || undefined,
+      wbraid: firstSearchParam(url.searchParams, ["wbraid"]) || undefined,
+      gbraid: firstSearchParam(url.searchParams, ["gbraid"]) || undefined,
+      utm_source: firstSearchParam(url.searchParams, ["utm_source"]) || undefined,
+      utm_medium: firstSearchParam(url.searchParams, ["utm_medium"]) || undefined,
+      utm_campaign: firstSearchParam(url.searchParams, ["utm_campaign"]) || undefined,
+    },
+    lead: {
+      email: email || undefined,
+      phone: phone || undefined,
+      lead_id: leadId || undefined,
+    },
+    payload: {
+      checkout_url: target.toString(),
+      checkout_path: result.checkoutPath,
+      link_url: url.toString(),
+      event_source_url: request.headers.get("referer") || url.origin,
+      offer_code: firstSearchParam(target.searchParams, ["off", "offer"]),
+    },
+  };
+}
+
+async function enqueueBeginCheckout(request: Request, url: URL, result: HandlerResult, env: Env): Promise<void> {
+  if (!env.FUNNEL_EVENTS) {
+    console.log(JSON.stringify({ stage: "begin_checkout_skip", reason: "missing_queue" }));
+    return;
+  }
+
+  const event = buildBeginCheckoutEvent(request, url, result);
+  if (!event) {
+    console.log(JSON.stringify({ stage: "begin_checkout_skip", reason: "missing_product_code" }));
+    return;
+  }
+
+  try {
+    await env.FUNNEL_EVENTS.send(event);
+    console.log(
+      JSON.stringify({
+        stage: "begin_checkout_queued",
+        event_id: event.event_id,
+        product_code: event.product_code,
+      })
+    );
+  } catch (error) {
+    console.log(
+      JSON.stringify({
+        stage: "begin_checkout_error",
+        reason: error instanceof Error ? error.message : "queue_send_failed",
+      })
+    );
+  }
+}
+
+async function redirectResponse(
+  request: Request,
+  url: URL,
+  result: HandlerResult,
+  env: Env,
+  options: { emitBeginCheckout?: boolean } = {}
+): Promise<Response> {
+  if (options.emitBeginCheckout && request.method === "GET") {
+    await enqueueBeginCheckout(request, url, result, env);
+  }
+
+  return new Response(null, {
+    status: 302,
+    headers: {
+      location: result.location,
+      "cache-control": result.cacheControl || "no-store",
+    },
+  });
+}
+
 const worker = {
-  fetch(request: Request, env: Env): Response {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const rawPath = normalizePath(url.pathname);
     const path = lowercasePath(rawPath);
@@ -227,13 +374,7 @@ const worker = {
           return jsonResponse({ ok: false, error: "link_not_configured" }, 500);
         }
 
-        return new Response(null, {
-          status: 302,
-          headers: {
-            location: result.location,
-            "cache-control": result.cacheControl || "no-store",
-          },
-        });
+        return redirectResponse(request, url, result, env, { emitBeginCheckout: true });
       }
 
       if (path === "checkout" || path.endsWith("/checkout")) {
@@ -242,13 +383,7 @@ const worker = {
           return jsonResponse({ ok: false, error: "link_not_configured" }, 500);
         }
 
-        return new Response(null, {
-          status: 302,
-          headers: {
-            location: result.location,
-            "cache-control": result.cacheControl || "no-store",
-          },
-        });
+        return redirectResponse(request, url, result, env, { emitBeginCheckout: true });
       }
 
       const handler = handlers[path];
@@ -261,13 +396,7 @@ const worker = {
         return jsonResponse({ ok: false, error: "link_not_configured" }, 500);
       }
 
-      return new Response(null, {
-        status: 302,
-        headers: {
-          location: result.location,
-          "cache-control": result.cacheControl || "no-store",
-        },
-      });
+      return redirectResponse(request, url, result, env);
     }
 
     return jsonResponse({ ok: false, error: "method_not_allowed" }, 405);

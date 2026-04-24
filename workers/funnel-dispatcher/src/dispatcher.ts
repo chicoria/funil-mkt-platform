@@ -1,4 +1,5 @@
 import { FunnelEvent } from "../../../packages/shared/src/funnel-event";
+import bundledCatalogJson from "../../../config/products.catalog.json";
 
 interface KVNamespaceLike {
   get(key: string): Promise<string | null>;
@@ -6,6 +7,7 @@ interface KVNamespaceLike {
 }
 
 export interface DispatcherEnv {
+  [key: string]: unknown;
   DEDUPE_KV?: KVNamespaceLike;
   IDENTITY_KV?: KVNamespaceLike;
   IDENTITY_DB?: unknown;
@@ -25,6 +27,7 @@ export interface DispatcherEnv {
   META_PIXEL_ID?: string;
   META_CAPI_ACCESS_TOKEN?: string;
   META_TEST_EVENT_CODE?: string;
+  SGTM_ENDPOINT_URL?: string;
 }
 
 export type HandlerFn = (event: FunnelEvent, env: DispatcherEnv) => Promise<void>;
@@ -35,20 +38,35 @@ export interface CatalogEvent {
   chain?: string[];
 }
 
-export interface ParsedCatalog {
-  products?: Record<string, { funnelEventArchitecture?: { events?: CatalogEvent[] } }>;
+interface CatalogProduct {
+  aliases?: string[];
+  funnelEventArchitecture?: { events?: CatalogEvent[] };
 }
 
+export interface ParsedCatalog {
+  products?: Record<string, CatalogProduct>;
+}
+
+const bundledCatalog = bundledCatalogJson as ParsedCatalog;
+
 const DEFAULT_CHAIN_MAP: Record<string, string[]> = {
-  GENERATE_LEAD: ["resolve_identity", "upsert_event_store", "send_brevo_doi", "update_brevo_funnel", "emit_tracking"],
+  GENERATE_LEAD: ["resolve_identity", "upsert_event_store", "send_brevo_doi", "update_brevo_funnel", "sync_brevo_segments"],
   PRECHECKOUT_SUBMIT_SUCCESS: [
     "resolve_identity",
     "upsert_event_store",
     "send_brevo_doi",
     "update_brevo_funnel",
+    "sync_brevo_segments",
+  ],
+  BEGIN_CHECKOUT: ["resolve_identity", "upsert_event_store", "update_brevo_funnel", "emit_tracking"],
+  SIGN_UP: ["resolve_identity", "upsert_event_store", "update_brevo_funnel"],
+  PURCHASE_OUT_OF_SHOPPING_CART: [
+    "resolve_identity",
+    "upsert_event_store",
+    "update_brevo_funnel",
+    "send_cart_abandonment_email",
     "emit_tracking",
   ],
-  PURCHASE_OUT_OF_SHOPPING_CART: ["update_brevo_funnel", "send_cart_abandonment_email", "emit_tracking"],
   PURCHASE_APPROVED: ["resolve_identity", "upsert_event_store", "update_brevo_funnel", "emit_tracking", "forward_n8n"],
 };
 
@@ -63,8 +81,25 @@ export function parseCatalog(raw: string | undefined): ParsedCatalog {
   }
 }
 
+function getCatalog(raw: string | undefined): ParsedCatalog {
+  const parsed = parseCatalog(raw);
+  if (parsed.products) return parsed;
+  return bundledCatalog;
+}
+
+function getCatalogProduct(catalog: ParsedCatalog, productCode: string): CatalogProduct | undefined {
+  const products = catalog.products || {};
+  const direct = products[productCode];
+  if (direct) return direct;
+
+  const normalizedProductCode = productCode.toUpperCase();
+  return Object.values(products).find((product) =>
+    (product.aliases || []).some((alias) => alias.toUpperCase() === normalizedProductCode)
+  );
+}
+
 export function resolveChain(event: FunnelEvent, catalog: ParsedCatalog): string[] {
-  const product = catalog.products?.[event.product_code];
+  const product = getCatalogProduct(catalog, event.product_code);
   const events = product?.funnelEventArchitecture?.events || [];
 
   const matched = events.find((entry) => {
@@ -81,7 +116,7 @@ export async function runChain(
   env: DispatcherEnv,
   handlers: Record<string, HandlerFn>
 ): Promise<{ executed: string[]; skipped: string[] }> {
-  const chain = resolveChain(event, parseCatalog(env.CATALOG_JSON));
+  const chain = resolveChain(event, getCatalog(env.CATALOG_JSON));
   const executed: string[] = [];
   const skipped: string[] = [];
 

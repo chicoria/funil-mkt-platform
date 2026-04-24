@@ -2,6 +2,8 @@
 
 Worker responsavel por mapear paths estaticos em links dinamicos (ex.: WhatsApp).
 
+Nos redirects de checkout, o worker emite `BEGIN_CHECKOUT` para `FUNNEL_EVENTS` antes de retornar o `302` para a Hotmart. Esse evento alimenta o estado de funil/event store; analytics continua no trilho GTM Web/sGTM.
+
 ## Rotas
 
 - `https://links.decolesuacarreiraesg.com.br/elizete-wp`
@@ -29,7 +31,8 @@ Worker responsavel por mapear paths estaticos em links dinamicos (ex.: WhatsApp)
 
 - `ELIZETE_WHATSAPP_NUMBER` (ex.: `5511999999999`)
 - `ELIZETE_WHATSAPP_DEFAULT_TEXT` (opcional)
-- `LINKS_PRODUCTS` (JSON multiproduto: `[{checkoutPath, checkoutBaseUrl}]`)
+- `LINKS_PRODUCTS` (JSON multiproduto: `[{checkoutPath, checkoutBaseUrl, productCode}]`)
+- `FUNNEL_EVENTS` (queue producer para `decole-q-funnel-events`)
 - `DECOLE_MENTORIA_CHECKOUT_URL` (fallback)
 - `PLANO_DE_VOO_CHECKOUT_URL` (checkout do Plano de Voo)
 

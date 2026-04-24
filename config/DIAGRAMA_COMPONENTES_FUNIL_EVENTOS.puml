@@ -8,11 +8,13 @@ skinparam linetype ortho
 package "Event Sources" {
   [Landing Pages\n(site/*)] as src_site
   [App Plano de Voo] as src_app
+  [links-redirect\nGET /{produto}/checkout] as src_links
   [Hotmart Webhooks] as src_hotmart
 }
 
 package "Cloudflare Ingress" {
   [api-funnel-ingress\nPOST /funnel/*\nPOST /webhooks/v1/planovoo/app/event] as ingress_funnel
+  [links-redirect\nBEGIN_CHECKOUT before 302] as ingress_links
   [api-hotmart-ingress\nPOST /webhooks/v1/{produto}/hotmart/*] as ingress_hotmart
 }
 
@@ -29,8 +31,8 @@ package "Handler Chain (catalog-driven)" {
   [send_brevo_doi] as h_doi
   [update_brevo_funnel] as h_brevo
   [send_cart_abandonment_email] as h_cart
-  [forward_n8n] as h_n8n
   [emit_tracking] as h_track
+  [forward_n8n] as h_n8n
   [sync_brevo_segments] as h_sync
 }
 
@@ -45,8 +47,8 @@ package "Config & State" {
 package "External Systems" {
   [Brevo] as ext_brevo
   [n8n] as ext_n8n
-  [GA4 MP + Meta CAPI] as ext_tracking
   [GTM Web + sGTM] as ext_gtm
+  [GA4 + Meta CAPI] as ext_analytics
 }
 
 package "Observability Layer" {
@@ -59,11 +61,14 @@ interface "I_FunnelEvent" as I_EVENT
 interface "I_HandlerChainResolver\n(catalog.events[].chain)" as I_CHAIN
 
 src_site --> ingress_funnel : gtm_web_only / both events\n(precheckout, sign_up, app server events)
-src_site --> ext_gtm : gtm_web_only (alto volume)
+src_site --> ext_gtm : analytics events\n(gtm_web_only / both)
 src_app --> ingress_funnel : app event webhook (HMAC)
-src_hotmart --> ingress_hotmart : purchase / checkout webhooks
+src_links --> ingress_links : BEGIN_CHECKOUT\nbefore Hotmart redirect
+src_hotmart --> ingress_hotmart : purchase / cart webhooks
+ext_gtm --> ext_analytics : server-side tagging
 
 ingress_funnel --> ev_norm
+ingress_links --> I_EVENT
 ingress_hotmart --> ev_norm
 ev_norm --> I_EVENT
 I_EVENT --> q_funnel
@@ -78,8 +83,8 @@ ev_disp --> h_store
 ev_disp --> h_doi
 ev_disp --> h_brevo
 ev_disp --> h_cart
-ev_disp --> h_n8n
 ev_disp --> h_track
+ev_disp --> h_n8n
 ev_disp --> h_sync
 
 h_resolve --> db_identity
@@ -88,8 +93,8 @@ h_store --> db_events
 h_doi --> ext_brevo
 h_brevo --> ext_brevo
 h_cart --> ext_brevo
+h_track --> ext_gtm : server-side forwarding
 h_n8n --> ext_n8n
-h_track --> ext_tracking
 h_sync --> ext_brevo
 ev_disp --> q_dlq : falha definitiva
 
@@ -110,11 +115,15 @@ note right of I_CHAIN
 Exemplos de chain:
 GENERATE_LEAD ->
 [resolve_identity, upsert_event_store,
- send_brevo_doi, update_brevo_funnel, emit_tracking]
-SIGN_UP -> [update_brevo_funnel, emit_tracking]
+ send_brevo_doi, update_brevo_funnel, sync_brevo_segments]
+BEGIN_CHECKOUT ->
+[resolve_identity, upsert_event_store, update_brevo_funnel, emit_tracking]
+SIGN_UP -> [resolve_identity, upsert_event_store, update_brevo_funnel]
 PURCHASE_OUT_OF_SHOPPING_CART ->
-[update_brevo_funnel, send_cart_abandonment_email]
-PURCHASE_APPROVED -> [update_brevo_funnel, forward_n8n]
+[resolve_identity, upsert_event_store,
+ update_brevo_funnel, send_cart_abandonment_email, emit_tracking]
+PURCHASE_APPROVED ->
+[resolve_identity, upsert_event_store, update_brevo_funnel, emit_tracking, forward_n8n]
 end note
 
 ev_disp ..> obs_logs : console JSON estruturado
