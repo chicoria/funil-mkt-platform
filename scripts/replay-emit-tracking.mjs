@@ -187,11 +187,13 @@ function firstNumber(source, paths) {
 function eventToGa4Name(eventType) {
   if (eventType === "PURCHASE_APPROVED") return "purchase";
   if (eventType === "GENERATE_LEAD" || eventType === "PRECHECKOUT_SUBMIT_SUCCESS") return "generate_lead";
+  if (eventType === "BEGIN_CHECKOUT" || eventType === "PURCHASE_OUT_OF_SHOPPING_CART") return "begin_checkout";
   return eventType.toLowerCase();
 }
 
 function eventToMetaName(eventType) {
   if (eventType === "PURCHASE_APPROVED") return "Purchase";
+  if (eventType === "BEGIN_CHECKOUT" || eventType === "PURCHASE_OUT_OF_SHOPPING_CART") return "InitiateCheckout";
   if (eventType === "GENERATE_LEAD" || eventType === "PRECHECKOUT_SUBMIT_SUCCESS") return "Lead";
   return eventType;
 }
@@ -226,26 +228,13 @@ function rowToEvent(row) {
 function resolveTracking(event, catalog, envFileValues) {
   const product = getCatalogProduct(catalog, event.product_code) || {};
   const tracking = product.tracking || {};
-  const meta = product.meta || {};
 
-  return {
-    ga4MeasurementId:
-      envValue(envFileValues, tracking.ga4?.measurementIdEnvVar) ||
-      String(tracking.ga4?.measurementId || process.env.GA4_MEASUREMENT_ID || "").trim(),
-    ga4ApiSecret: envValue(envFileValues, tracking.ga4?.apiSecretEnvVar) || envValue(envFileValues, "GA4_API_SECRET"),
-    metaPixelId:
-      envValue(envFileValues, tracking.metaPixel?.pixelIdEnvVar) ||
-      envValue(envFileValues, meta.pixelIdEnvVar) ||
-      String(tracking.metaPixel?.pixelId || process.env.META_PIXEL_ID || "").trim(),
-    metaCapiToken:
-      envValue(envFileValues, tracking.metaPixel?.capiTokenEnvVar) ||
-      envValue(envFileValues, meta.capiTokenEnvVar) ||
-      envValue(envFileValues, "META_CAPI_ACCESS_TOKEN"),
-    metaTestEventCode:
-      envValue(envFileValues, tracking.metaPixel?.testEventCodeEnvVar) ||
-      envValue(envFileValues, meta.testEventCodeEnvVar) ||
-      envValue(envFileValues, "META_TEST_EVENT_CODE"),
-  };
+  const sgtmEndpointUrl =
+    envValue(envFileValues, tracking.sgtm?.endpointEnvVar) ||
+    String(tracking.sgtm?.endpointUrl || "").trim() ||
+    envValue(envFileValues, "SGTM_ENDPOINT_URL");
+
+  return { sgtmEndpointUrl };
 }
 
 function trackingFields(event) {
@@ -289,64 +278,40 @@ async function postJson(destination, url, body) {
 
 async function replayEvent(event, tracking, apply) {
   const fields = trackingFields(event);
-  const destinations = [];
 
-  if (tracking.ga4MeasurementId && tracking.ga4ApiSecret) {
-    destinations.push("ga4");
-    if (apply) {
-      const url = `https://www.google-analytics.com/mp/collect?measurement_id=${encodeURIComponent(tracking.ga4MeasurementId)}&api_secret=${encodeURIComponent(tracking.ga4ApiSecret)}`;
-      await postJson("ga4", url, {
-        client_id: event.identity?.anonymous_id || event.event_id,
-        events: [
-          {
-            name: eventToGa4Name(event.event_type),
-            params: {
-              event_id: event.event_id,
-              product_code: event.product_code,
-              source: event.source,
-              currency: fields.currency,
-              value: fields.value,
-              ...(fields.transactionId ? { transaction_id: fields.transactionId } : {}),
-            },
-          },
-        ],
-      });
-    }
+  if (!tracking.sgtmEndpointUrl) {
+    return [];
   }
 
-  if (tracking.metaPixelId && tracking.metaCapiToken) {
-    destinations.push("meta");
-    if (apply) {
-      const email = String(event.lead?.email || "").trim().toLowerCase();
-      const userData = {};
-      if (email) userData.em = [sha256Hex(email)];
-      if (!email && event.identity?.email_hash) userData.em = [event.identity.email_hash];
+  if (apply) {
+    const email = String(event.lead?.email || "").trim().toLowerCase();
+    const userData = {};
+    if (email) userData.em = [sha256Hex(email)];
+    else if (event.identity?.email_hash) userData.em = [event.identity.email_hash];
 
-      const body = {
-        data: [
-          {
-            event_name: eventToMetaName(event.event_type),
-            event_time: unixTime(event.occurred_at),
-            action_source: "website",
-            event_id: event.event_id,
-            user_data: userData,
-            ...(fields.eventSourceUrl ? { event_source_url: fields.eventSourceUrl } : {}),
-            custom_data: {
-              product_code: event.product_code,
-              currency: fields.currency,
-              value: fields.value,
-              ...(fields.transactionId ? { order_id: fields.transactionId } : {}),
-            },
-          },
-        ],
-        ...(tracking.metaTestEventCode ? { test_event_code: tracking.metaTestEventCode } : {}),
-      };
-      const url = `https://graph.facebook.com/v20.0/${encodeURIComponent(tracking.metaPixelId)}/events?access_token=${encodeURIComponent(tracking.metaCapiToken)}`;
-      await postJson("meta", url, body);
-    }
+    await postJson("sgtm", tracking.sgtmEndpointUrl, {
+      event_id: event.event_id,
+      event_type: event.event_type,
+      product_code: event.product_code,
+      source: event.source,
+      occurred_at: event.occurred_at,
+      ga4_event_name: eventToGa4Name(event.event_type),
+      meta_event_name: eventToMetaName(event.event_type),
+      client_id: event.identity?.anonymous_id || event.event_id,
+      session_id: event.identity?.session_id || undefined,
+      lead_id: event.identity?.lead_id || event.lead?.lead_id || undefined,
+      event_source_url: fields.eventSourceUrl || undefined,
+      transaction_id: fields.transactionId || undefined,
+      value: fields.value,
+      currency: fields.currency,
+      user_data: userData,
+      payload: event.payload,
+      sent_at: new Date().toISOString(),
+      event_time_unix: unixTime(event.occurred_at),
+    });
   }
 
-  return destinations;
+  return ["sgtm"];
 }
 
 async function main() {
@@ -366,8 +331,7 @@ async function main() {
     const event = rowToEvent(row);
     const tracking = resolveTracking(event, catalog, envFileValues);
     const planned = {
-      ga4: Boolean(tracking.ga4MeasurementId && tracking.ga4ApiSecret),
-      meta: Boolean(tracking.metaPixelId && tracking.metaCapiToken),
+      sgtm: Boolean(tracking.sgtmEndpointUrl),
     };
     const destinations = await replayEvent(event, tracking, args.apply);
     console.log(

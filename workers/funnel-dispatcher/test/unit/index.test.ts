@@ -467,6 +467,31 @@ describe("funnel-dispatcher", () => {
     expect(sgtmPlanovooBody.ga4_event_name).toBe("purchase");
     expect(sgtmPlanovooBody.meta_event_name).toBe("Purchase");
 
+    fetchMock.mock.calls.length = 0;
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: {
+              event_id: "evt-track-cart-abandon",
+              event_type: "PURCHASE_OUT_OF_SHOPPING_CART",
+              product_code: "DECOLE_ESG_MENTORIA",
+              source: "hotmart",
+              occurred_at: "2026-04-24T12:00:00.000Z",
+              payload: { value: 1500, currency: "BRL" },
+            },
+          },
+        ],
+      },
+      env
+    );
+
+    const sgtmCartCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/decole-esg/event"));
+    expect(sgtmCartCall).toBeTruthy();
+    const sgtmCartBody = JSON.parse(String((sgtmCartCall?.[1] as RequestInit)?.body || "{}")) as Record<string, unknown>;
+    expect(sgtmCartBody.ga4_event_name).toBe("begin_checkout");
+    expect(sgtmCartBody.meta_event_name).toBe("InitiateCheckout");
+
     vi.unstubAllGlobals();
   });
 });
