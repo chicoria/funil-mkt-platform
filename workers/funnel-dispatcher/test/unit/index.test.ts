@@ -385,22 +385,26 @@ describe("funnel-dispatcher", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const env = makeEnv({
-      SGTM_ENDPOINT_URL_DECOLE_ESG: "https://sgtm.example.com/decole-esg/event",
-      SGTM_ENDPOINT_URL_PLANOVOO: "https://sgtm.example.com/planovoo/event",
+      SGTM_ENDPOINT_URL_DECOLE_ESG: "https://sgtm.example.com/decole-esg",
+      SGTM_ENDPOINT_URL_PLANOVOO: "https://sgtm.example.com/planovoo",
+      GA4_MEASUREMENT_ID: "G-TEST123",
+      GA4_API_SECRET: "test-api-secret",
       CATALOG_JSON: JSON.stringify({
         products: {
           DECOLE_ESG_MENTORIA: {
             tracking: {
               sgtm: { endpointEnvVar: "SGTM_ENDPOINT_URL_DECOLE_ESG" },
+              ga4: { measurementIdEnvVar: "GA4_MEASUREMENT_ID", apiSecretEnvVar: "GA4_API_SECRET" },
             },
             funnelEventArchitecture: {
-              events: [{ eventType: "PURCHASE_APPROVED", chain: ["emit_tracking"] }],
+              events: [{ eventType: "PURCHASE_APPROVED", chain: ["emit_tracking"] }, { eventType: "PURCHASE_OUT_OF_SHOPPING_CART", chain: ["emit_tracking"] }],
             },
           },
           DECOLE_PLANOVOO: {
             aliases: ["PLANOVOO"],
             tracking: {
               sgtm: { endpointEnvVar: "SGTM_ENDPOINT_URL_PLANOVOO" },
+              ga4: { measurementIdEnvVar: "GA4_MEASUREMENT_ID", apiSecretEnvVar: "GA4_API_SECRET" },
             },
             funnelEventArchitecture: {
               events: [{ eventType: "PURCHASE_APPROVED", chain: ["emit_tracking"] }],
@@ -434,13 +438,17 @@ describe("funnel-dispatcher", () => {
       env
     );
 
-    const sgtmEsgCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/decole-esg/event"));
+    const sgtmEsgCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/decole-esg/mp/collect"));
     expect(sgtmEsgCall).toBeTruthy();
+    expect(String(sgtmEsgCall?.[0])).toContain("measurement_id=G-TEST123");
+    expect(String(sgtmEsgCall?.[0])).toContain("api_secret=test-api-secret");
     const sgtmEsgBody = JSON.parse(String((sgtmEsgCall?.[1] as RequestInit)?.body || "{}")) as Record<string, unknown>;
-    expect(sgtmEsgBody.transaction_id).toBe("HP123");
-    expect(sgtmEsgBody.event_source_url).toBe("https://pay.hotmart.com/K98068530F");
-    expect(sgtmEsgBody.ga4_event_name).toBe("purchase");
-    expect(sgtmEsgBody.meta_event_name).toBe("Purchase");
+    const esgParams = (sgtmEsgBody.events as Array<{ name: string; params: Record<string, unknown> }>)[0];
+    expect(esgParams.name).toBe("purchase");
+    expect(esgParams.params.transaction_id).toBe("HP123");
+    expect(esgParams.params.page_location).toBe("https://pay.hotmart.com/K98068530F");
+    expect(esgParams.params.currency).toBe("BRL");
+    expect(esgParams.params.value).toBe(1500);
 
     await worker.queue(
       {
@@ -460,12 +468,12 @@ describe("funnel-dispatcher", () => {
       env
     );
 
-    const sgtmPlanovooCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/planovoo/event"));
+    const sgtmPlanovooCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/planovoo/mp/collect"));
     expect(sgtmPlanovooCall).toBeTruthy();
     const sgtmPlanovooBody = JSON.parse(String((sgtmPlanovooCall?.[1] as RequestInit)?.body || "{}")) as Record<string, unknown>;
-    expect(sgtmPlanovooBody.product_code).toBe("PLANOVOO");
-    expect(sgtmPlanovooBody.ga4_event_name).toBe("purchase");
-    expect(sgtmPlanovooBody.meta_event_name).toBe("Purchase");
+    const planovooParams = (sgtmPlanovooBody.events as Array<{ name: string; params: Record<string, unknown> }>)[0];
+    expect(planovooParams.name).toBe("purchase");
+    expect(planovooParams.params.product_code).toBe("PLANOVOO");
 
     fetchMock.mock.calls.length = 0;
     await worker.queue(
@@ -486,11 +494,12 @@ describe("funnel-dispatcher", () => {
       env
     );
 
-    const sgtmCartCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/decole-esg/event"));
+    const sgtmCartCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/decole-esg/mp/collect"));
     expect(sgtmCartCall).toBeTruthy();
     const sgtmCartBody = JSON.parse(String((sgtmCartCall?.[1] as RequestInit)?.body || "{}")) as Record<string, unknown>;
-    expect(sgtmCartBody.ga4_event_name).toBe("begin_checkout");
-    expect(sgtmCartBody.meta_event_name).toBe("InitiateCheckout");
+    const cartParams = (sgtmCartBody.events as Array<{ name: string; params: Record<string, unknown> }>)[0];
+    expect(cartParams.name).toBe("begin_checkout");
+    expect(cartParams.params.product_code).toBe("DECOLE_ESG_MENTORIA");
 
     vi.unstubAllGlobals();
   });

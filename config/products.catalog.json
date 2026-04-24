@@ -314,6 +314,8 @@
         },
         "ga4": {
           "measurementId": "G-BQQB6X5XN1",
+          "measurementIdEnvVar": "GA4_MEASUREMENT_ID",
+          "apiSecretEnvVar": "GA4_API_SECRET",
           "differentiationKeys": {
             "produto": "DECOLE_ESG_MENTORIA",
             "product_code": "DECOLE_ESG_MENTORIA"
@@ -703,6 +705,8 @@
         },
         "ga4": {
           "measurementId": "G-BQQB6X5XN1",
+          "measurementIdEnvVar": "GA4_MEASUREMENT_ID",
+          "apiSecretEnvVar": "GA4_API_SECRET",
           "differentiationKeys": {
             "produto": "DECOLE_PLANOVOO",
             "product_code": "DECOLE_PLANOVOO"

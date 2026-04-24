@@ -75,6 +75,8 @@ const bundledCatalog = bundledCatalogJson as ParsedCatalog;
 
 interface TrackingDestinationConfig {
   sgtmEndpointUrl: string;
+  ga4MeasurementId: string;
+  ga4ApiSecret: string;
 }
 
 interface BrevoFunnelFieldsConfig {
@@ -326,8 +328,15 @@ function resolveTrackingConfig(event: FunnelEvent, env: DispatcherEnv): Tracking
     envString(env, tracking?.sgtm?.endpointEnvVar) ||
     asString(tracking?.sgtm?.endpointUrl) ||
     asString(env.SGTM_ENDPOINT_URL);
+  const ga4MeasurementId =
+    envString(env, tracking?.ga4?.measurementIdEnvVar) ||
+    asString(tracking?.ga4?.measurementId) ||
+    asString(env.GA4_MEASUREMENT_ID);
+  const ga4ApiSecret =
+    envString(env, tracking?.ga4?.apiSecretEnvVar) ||
+    asString(env.GA4_API_SECRET);
 
-  return { sgtmEndpointUrl };
+  return { sgtmEndpointUrl, ga4MeasurementId, ga4ApiSecret };
 }
 
 function resolveCatalogEvent(event: FunnelEvent, env: DispatcherEnv): CatalogEventConfig | null {
@@ -562,7 +571,7 @@ async function emitTracking(event: FunnelEvent, env: DispatcherEnv): Promise<voi
   const transactionId = payloadString(payload, ["transaction", "transaction_id", "transactionId"]);
   const eventSourceUrl = payloadString(payload, ["event_source_url", "eventSourceUrl", "page_url", "checkout_url", "checkoutUrl"]);
 
-  if (!tracking.sgtmEndpointUrl) {
+  if (!tracking.sgtmEndpointUrl || !tracking.ga4MeasurementId || !tracking.ga4ApiSecret) {
     console.log(
       JSON.stringify({
         stage: "handler_skip",
@@ -570,51 +579,47 @@ async function emitTracking(event: FunnelEvent, env: DispatcherEnv): Promise<voi
         destination: "sgtm",
         reason: "missing_product_tracking_config",
         product_code: event.product_code,
+        has_endpoint: Boolean(tracking.sgtmEndpointUrl),
+        has_measurement_id: Boolean(tracking.ga4MeasurementId),
+        has_api_secret: Boolean(tracking.ga4ApiSecret),
       })
     );
     return;
   }
 
   const email = asString(event.lead?.email).toLowerCase();
-  const userData: Record<string, string[]> = {};
-  if (email) {
-    userData.em = [await sha256Hex(email)];
-  } else if (asString(event.identity?.email_hash)) {
-    userData.em = [asString(event.identity?.email_hash)];
-  }
+  const clientId = asString(event.identity?.anonymous_id) || event.event_id;
 
-  await postJson(tracking.sgtmEndpointUrl, {
+  const mpUrl = `${tracking.sgtmEndpointUrl}/mp/collect?measurement_id=${encodeURIComponent(tracking.ga4MeasurementId)}&api_secret=${encodeURIComponent(tracking.ga4ApiSecret)}`;
+
+  await postJson(mpUrl, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      event_id: event.event_id,
-      event_type: event.event_type,
-      product_code: event.product_code,
-      source: event.source,
-      occurred_at: event.occurred_at,
-      ga4_event_name: eventToGa4Name(event.event_type),
-      meta_event_name: eventToMetaName(event.event_type),
-      client_id: asString(event.identity?.anonymous_id) || event.event_id,
-      session_id: asString(event.identity?.session_id) || undefined,
-      lead_id: asString(event.identity?.lead_id || event.lead?.lead_id) || undefined,
-      event_source_url: eventSourceUrl || undefined,
-      transaction_id: transactionId || undefined,
-      value,
-      currency,
-      attribution: {
-        fbp: asString(event.attribution?.fbp) || undefined,
-        fbc: asString(event.attribution?.fbc) || undefined,
-        gclid: asString(event.attribution?.gclid) || undefined,
-        wbraid: asString(event.attribution?.wbraid) || undefined,
-        gbraid: asString(event.attribution?.gbraid) || undefined,
-        utm_source: asString(event.attribution?.utm_source) || undefined,
-        utm_medium: asString(event.attribution?.utm_medium) || undefined,
-        utm_campaign: asString(event.attribution?.utm_campaign) || undefined,
-      },
-      user_data: userData,
-      payload,
-      sent_at: new Date().toISOString(),
-      event_time_unix: unixTime(event.occurred_at),
+      client_id: clientId,
+      timestamp_micros: String(unixTime(event.occurred_at) * 1_000_000),
+      ...(email ? { user_data: { sha256_email_address: await sha256Hex(email) } } : {}),
+      events: [
+        {
+          name: eventToGa4Name(event.event_type),
+          params: {
+            event_id: event.event_id,
+            product_code: event.product_code,
+            source: event.source,
+            currency,
+            value,
+            ...(transactionId ? { transaction_id: transactionId } : {}),
+            ...(eventSourceUrl ? { page_location: eventSourceUrl } : {}),
+            ...(asString(event.identity?.session_id) ? { session_id: asString(event.identity?.session_id) } : {}),
+            ...(asString(event.attribution?.fbp) ? { fbp: asString(event.attribution?.fbp) } : {}),
+            ...(asString(event.attribution?.fbc) ? { fbc: asString(event.attribution?.fbc) } : {}),
+            ...(asString(event.attribution?.gclid) ? { gclid: asString(event.attribution?.gclid) } : {}),
+            ...(asString(event.attribution?.utm_source) ? { utm_source: asString(event.attribution?.utm_source) } : {}),
+            ...(asString(event.attribution?.utm_medium) ? { utm_medium: asString(event.attribution?.utm_medium) } : {}),
+            ...(asString(event.attribution?.utm_campaign) ? { utm_campaign: asString(event.attribution?.utm_campaign) } : {}),
+          },
+        },
+      ],
     }),
   });
 }

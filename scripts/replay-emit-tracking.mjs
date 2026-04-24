@@ -233,8 +233,15 @@ function resolveTracking(event, catalog, envFileValues) {
     envValue(envFileValues, tracking.sgtm?.endpointEnvVar) ||
     String(tracking.sgtm?.endpointUrl || "").trim() ||
     envValue(envFileValues, "SGTM_ENDPOINT_URL");
+  const ga4MeasurementId =
+    envValue(envFileValues, tracking.ga4?.measurementIdEnvVar) ||
+    String(tracking.ga4?.measurementId || "").trim() ||
+    envValue(envFileValues, "GA4_MEASUREMENT_ID");
+  const ga4ApiSecret =
+    envValue(envFileValues, tracking.ga4?.apiSecretEnvVar) ||
+    envValue(envFileValues, "GA4_API_SECRET");
 
-  return { sgtmEndpointUrl };
+  return { sgtmEndpointUrl, ga4MeasurementId, ga4ApiSecret };
 }
 
 function trackingFields(event) {
@@ -279,35 +286,33 @@ async function postJson(destination, url, body) {
 async function replayEvent(event, tracking, apply) {
   const fields = trackingFields(event);
 
-  if (!tracking.sgtmEndpointUrl) {
+  if (!tracking.sgtmEndpointUrl || !tracking.ga4MeasurementId || !tracking.ga4ApiSecret) {
     return [];
   }
 
   if (apply) {
     const email = String(event.lead?.email || "").trim().toLowerCase();
-    const userData = {};
-    if (email) userData.em = [sha256Hex(email)];
-    else if (event.identity?.email_hash) userData.em = [event.identity.email_hash];
+    const clientId = event.identity?.anonymous_id || event.event_id;
+    const mpUrl = `${tracking.sgtmEndpointUrl}/mp/collect?measurement_id=${encodeURIComponent(tracking.ga4MeasurementId)}&api_secret=${encodeURIComponent(tracking.ga4ApiSecret)}`;
 
-    await postJson("sgtm", tracking.sgtmEndpointUrl, {
-      event_id: event.event_id,
-      event_type: event.event_type,
-      product_code: event.product_code,
-      source: event.source,
-      occurred_at: event.occurred_at,
-      ga4_event_name: eventToGa4Name(event.event_type),
-      meta_event_name: eventToMetaName(event.event_type),
-      client_id: event.identity?.anonymous_id || event.event_id,
-      session_id: event.identity?.session_id || undefined,
-      lead_id: event.identity?.lead_id || event.lead?.lead_id || undefined,
-      event_source_url: fields.eventSourceUrl || undefined,
-      transaction_id: fields.transactionId || undefined,
-      value: fields.value,
-      currency: fields.currency,
-      user_data: userData,
-      payload: event.payload,
-      sent_at: new Date().toISOString(),
-      event_time_unix: unixTime(event.occurred_at),
+    await postJson("sgtm", mpUrl, {
+      client_id: clientId,
+      timestamp_micros: String(unixTime(event.occurred_at) * 1_000_000),
+      ...(email ? { user_data: { sha256_email_address: sha256Hex(email) } } : {}),
+      events: [
+        {
+          name: eventToGa4Name(event.event_type),
+          params: {
+            event_id: event.event_id,
+            product_code: event.product_code,
+            source: event.source,
+            currency: fields.currency,
+            value: fields.value,
+            ...(fields.transactionId ? { transaction_id: fields.transactionId } : {}),
+            ...(fields.eventSourceUrl ? { page_location: fields.eventSourceUrl } : {}),
+          },
+        },
+      ],
     });
   }
 
@@ -331,7 +336,7 @@ async function main() {
     const event = rowToEvent(row);
     const tracking = resolveTracking(event, catalog, envFileValues);
     const planned = {
-      sgtm: Boolean(tracking.sgtmEndpointUrl),
+      sgtm: Boolean(tracking.sgtmEndpointUrl && tracking.ga4MeasurementId && tracking.ga4ApiSecret),
     };
     const destinations = await replayEvent(event, tracking, args.apply);
     console.log(
