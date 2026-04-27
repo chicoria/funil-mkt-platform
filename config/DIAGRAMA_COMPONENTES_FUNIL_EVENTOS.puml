@@ -98,6 +98,17 @@ h_n8n --> ext_n8n
 h_sync --> ext_brevo
 ev_disp --> q_dlq : falha definitiva
 
+note right of ext_gtm
+sGTM clients / paths:
+- GA4 client (gaaw_client): /g/collect
+- Measurement Protocol (GA4) client: /mp/collect, /debug/mp/collect
+- Measurement Protocol (UA): /collect, /batch (legado/opcional)
+
+Emit tracking server-side:
+- funnel-dispatcher -> /mp/collect (GA4 MP)
+- payload deve usar client_id GA4 valido (digits.digits)
+end note
+
 note right of I_EVENT
 FunnelEvent (canonico):
 - event_id

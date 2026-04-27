@@ -105,6 +105,23 @@ function unixTime(value: string): number {
   return Number.isFinite(ms) ? Math.floor(ms / 1000) : Math.floor(Date.now() / 1000);
 }
 
+function stableHash32(value: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function normalizeGa4ClientId(rawValue: string, fallbackSeed: string, occurredAt: string): string {
+  const raw = asString(rawValue);
+  if (/^\d+\.\d+$/.test(raw)) return raw;
+  const seconds = unixTime(occurredAt);
+  const hash = stableHash32(raw || fallbackSeed || crypto.randomUUID());
+  return `${hash}.${seconds}`;
+}
+
 async function sha256Hex(value: string): Promise<string> {
   const input = new TextEncoder().encode(value);
   const digest = await crypto.subtle.digest("SHA-256", input);
@@ -587,8 +604,7 @@ async function emitTracking(event: FunnelEvent, env: DispatcherEnv): Promise<voi
     return;
   }
 
-  const email = asString(event.lead?.email).toLowerCase();
-  const clientId = asString(event.identity?.anonymous_id) || event.event_id;
+  const clientId = normalizeGa4ClientId(asString(event.identity?.anonymous_id), event.event_id, event.occurred_at);
 
   const mpUrl = `${tracking.sgtmEndpointUrl}/mp/collect?measurement_id=${encodeURIComponent(tracking.ga4MeasurementId)}&api_secret=${encodeURIComponent(tracking.ga4ApiSecret)}`;
 
@@ -598,7 +614,6 @@ async function emitTracking(event: FunnelEvent, env: DispatcherEnv): Promise<voi
     body: JSON.stringify({
       client_id: clientId,
       timestamp_micros: String(unixTime(event.occurred_at) * 1_000_000),
-      ...(email ? { user_data: { sha256_email_address: await sha256Hex(email) } } : {}),
       events: [
         {
           name: eventToGa4Name(event.event_type),

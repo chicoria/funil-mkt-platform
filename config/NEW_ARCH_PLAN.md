@@ -507,6 +507,23 @@ Isso evita:
 
 `emit_tracking` é handler padrão para eventos server-side que precisam analytics (`BEGIN_CHECKOUT`, `PURCHASE_OUT_OF_SHOPPING_CART`, `PURCHASE_APPROVED`). O handler recebe `FunnelEvent` canônico e encaminha para sGTM, resolvendo endpoint por produto via catálogo.
 
+**Roteamento de clients no sGTM (paths)**
+
+- `GA4 client` (`gaaw_client`): atende tráfego GA4 Web no path `/g/collect`.
+- `Measurement Protocol (GA4) client`: atende tráfego MP GA4 nos paths `/mp/collect` e `/debug/mp/collect`.
+- `Measurement Protocol` (UA/legado): opcional para `/collect` e `/batch` quando houver necessidade histórica.
+
+**Regra para `client_id` no GA4 MP**
+
+- Requisições para `/mp/collect` devem enviar `client_id` em formato GA4 válido (`digits.digits`).
+- O `emit_tracking` e o script de replay normalizam `client_id` quando `anonymous_id`/`event_id` não estiverem nesse formato.
+- Evitar `api_secret` em logs de troubleshooting; se houver exposição em query string durante incidentes, rotacionar secret.
+
+**Estado operacional validado (2026-04-27)**
+
+- `Measurement Protocol (GA4)` publicado no sGTM e replay `--apply` funcionando.
+- Workspace ativo do container server atualmente: `14` (o `13` ficou obsoleto no setup local).
+
 **Checklist de configuração alvo**
 
 - [ ] Garantir que as landing pages disparam `begin_checkout`/`InitiateCheckout` via GTM Web/sGTM no clique/submit para checkout.

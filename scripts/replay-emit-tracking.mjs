@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -23,7 +22,7 @@ Options:
   --db <name>            D1 database name. Default: decole-d1-event-store.
   --env-file <path>      Env file with local secrets. Default: .env.local.
   --wrangler-cwd <path>  Directory used to run wrangler.
-  --apply                Send to GA4/Meta. Without this flag, runs dry-run only.`);
+  --apply                Send to sGTM /mp/collect (GA4 MP). Without this flag, runs dry-run only.`);
 }
 
 function parseArgs(argv) {
@@ -203,8 +202,20 @@ function unixTime(value) {
   return Number.isFinite(ms) ? Math.floor(ms / 1000) : Math.floor(Date.now() / 1000);
 }
 
-function sha256Hex(value) {
-  return crypto.createHash("sha256").update(value).digest("hex");
+function stableHash32(value) {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function normalizeGa4ClientId(rawValue, fallbackSeed, occurredAt) {
+  const raw = String(rawValue || "").trim();
+  if (/^\\d+\\.\\d+$/.test(raw)) return raw;
+  const hash = stableHash32(raw || fallbackSeed || String(Date.now()));
+  return `${hash}.${unixTime(occurredAt)}`;
 }
 
 function rowToEvent(row) {
@@ -291,14 +302,12 @@ async function replayEvent(event, tracking, apply) {
   }
 
   if (apply) {
-    const email = String(event.lead?.email || "").trim().toLowerCase();
-    const clientId = event.identity?.anonymous_id || event.event_id;
+    const clientId = normalizeGa4ClientId(event.identity?.anonymous_id, event.event_id, event.occurred_at);
     const mpUrl = `${tracking.sgtmEndpointUrl}/mp/collect?measurement_id=${encodeURIComponent(tracking.ga4MeasurementId)}&api_secret=${encodeURIComponent(tracking.ga4ApiSecret)}`;
 
     await postJson("sgtm", mpUrl, {
       client_id: clientId,
       timestamp_micros: String(unixTime(event.occurred_at) * 1_000_000),
-      ...(email ? { user_data: { sha256_email_address: sha256Hex(email) } } : {}),
       events: [
         {
           name: eventToGa4Name(event.event_type),
