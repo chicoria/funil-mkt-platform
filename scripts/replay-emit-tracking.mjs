@@ -162,6 +162,16 @@ function getCatalogProduct(catalog, productCode) {
   );
 }
 
+function catalogChainHasEmitTracking(catalog, productCode, eventType) {
+  const product = getCatalogProduct(catalog, productCode) || {};
+  // Catalog uses product.funnelEventArchitecture.events (mirrors dispatcher resolveChain)
+  const events = Array.isArray(product?.funnelEventArchitecture?.events) ? product.funnelEventArchitecture.events : [];
+  const normalizedType = String(eventType || "").toUpperCase();
+  const eventConfig = events.find((e) => String(e.eventType || e.id || "").toUpperCase() === normalizedType);
+  if (!eventConfig) return false; // event not in catalog → no emit_tracking
+  return Array.isArray(eventConfig.chain) && eventConfig.chain.includes("emit_tracking");
+}
+
 function getPath(value, path) {
   return path.split(".").reduce((current, key) => {
     if (!current || typeof current !== "object") return undefined;
@@ -358,8 +368,9 @@ async function main() {
   for (const row of rows) {
     const event = rowToEvent(row);
     const tracking = resolveTracking(event, catalog, envFileValues);
+    const chainHasEmitTracking = catalogChainHasEmitTracking(catalog, event.product_code, event.event_type);
     const planned = {
-      sgtm: Boolean(tracking.sgtmEndpointUrl && tracking.ga4MeasurementId && tracking.ga4ApiSecret),
+      sgtm: Boolean(tracking.sgtmEndpointUrl && tracking.ga4MeasurementId && tracking.ga4ApiSecret && chainHasEmitTracking),
     };
     const destinations = await replayEvent(event, tracking, args.apply, args);
     console.log(

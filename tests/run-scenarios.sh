@@ -63,12 +63,17 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Load env file if present
+# Load minimal vars needed for orchestrator logic (scenarios load env themselves via --env-file).
+# We use awk to take only the first occurrence of each key to avoid duplicate-entry issues.
 if [[ -f "$ENV_FILE" ]]; then
-  set -a
-  # shellcheck disable=SC1090
-  source "$ENV_FILE"
-  set +a
+  while IFS='=' read -r key val; do
+    [[ -z "$key" || "$key" =~ ^[[:space:]]*# ]] && continue
+    key="${key#"${key%%[![:space:]]*}"}"  # trim leading whitespace
+    [[ -z "$key" ]] && continue
+    if [[ -z "${!key+x}" ]]; then
+      export "$key"="$val"
+    fi
+  done < <(awk -F'=' '/^[A-Za-z_][A-Za-z0-9_]*=/{print}' "$ENV_FILE")
 fi
 
 # Fallback token
@@ -129,12 +134,12 @@ extra_args=""
 
 # Run scenarios
 all_results=()
+passed_names=()
+failed_names=()
 passed=0
 failed=0
-skipped=0
 total=${#selected_files[@]}
 
-declare -A result_status
 for f in "${selected_files[@]}"; do
   name="$(basename "$f" .mjs)"
   echo "──────────────────────────────────────────────────────────────"
@@ -147,10 +152,10 @@ for f in "${selected_files[@]}"; do
   node "$f" --env-file "$ENV_FILE" $extra_args 2>&1 | tee "$tmp_output" || exit_code=$?
 
   if [[ $exit_code -eq 0 ]]; then
-    result_status["$name"]="pass"
+    passed_names+=("$name")
     ((passed++)) || true
   else
-    result_status["$name"]="fail"
+    failed_names+=("$name")
     ((failed++)) || true
   fi
 
@@ -166,14 +171,8 @@ echo ""
 echo "══════════════════════════════════════════════════════════════"
 echo "  RESULTS"
 echo "══════════════════════════════════════════════════════════════"
-for name in "${!result_status[@]}"; do
-  status="${result_status[$name]}"
-  if [[ "$status" == "pass" ]]; then
-    echo "  ✓  $name"
-  else
-    echo "  ✗  $name"
-  fi
-done | sort
+for name in "${passed_names[@]}"; do echo "  ✓  $name"; done
+for name in "${failed_names[@]}"; do echo "  ✗  $name"; done
 
 echo ""
 echo "  Total: $total | Passed: $passed | Failed: $failed"

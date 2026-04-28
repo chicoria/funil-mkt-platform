@@ -22,6 +22,7 @@ export function loadEnv(envFile = DEFAULT_ENV_FILE) {
     if (!trimmed || trimmed.startsWith("#")) continue;
     const match = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
     if (!match) continue;
+    if (match[1] in env) continue; // first occurrence wins — ignore duplicates
     let value = match[2].trim();
     if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
       value = value.slice(1, -1);

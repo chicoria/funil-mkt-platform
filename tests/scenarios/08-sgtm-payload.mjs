@@ -19,8 +19,8 @@ export async function run(opts = {}) {
   applyEnv(env);
   requireEnv(["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]);
 
-  const metaTestEventCode = opts.metaTestEventCode || process.env.META_TEST_EVENT_CODE_DECOLE_ESG || "";
-  const productCode = opts.productCode || "DECOLE_ESG_MENTORIA";
+  const metaTestEventCode = opts.metaTestEventCode || process.env.META_TEST_EVENT_CODE_DECOLE_ESG || process.env.META_TEST_EVENT_CODE_PLANOVOO || "";
+  const productCode = opts.productCode || null; // null = any product
 
   const start = Date.now();
   const steps = [];
@@ -32,7 +32,7 @@ export async function run(opts = {}) {
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const rows = d1Query(
       "decole-d1-event-store",
-      `SELECT event_id, event_type, product_code, email_hash FROM funnel_events WHERE event_type IN ('PURCHASE_APPROVED','GENERATE_LEAD','BEGIN_CHECKOUT') AND product_code LIKE '%${sqlEscape(productCode.split("_")[1] || productCode)}%' AND occurred_at >= '${sqlEscape(since)}' AND email_hash IS NOT NULL ORDER BY occurred_at DESC LIMIT 1`
+      `SELECT event_id, event_type, product_code, email_hash FROM funnel_events WHERE event_type IN ('PURCHASE_APPROVED','BEGIN_CHECKOUT') ${productCode ? `AND product_code LIKE '%${sqlEscape(productCode.split("_")[1] || productCode)}%'` : ""} AND occurred_at >= '${sqlEscape(since)}' AND email_hash IS NOT NULL ORDER BY occurred_at DESC LIMIT 1`
     );
     if (!rows[0]) throw new Error(`no recent trackable event found for product ${productCode} in last 7 days`);
     eventId = rows[0].event_id;

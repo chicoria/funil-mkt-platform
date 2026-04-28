@@ -275,7 +275,9 @@ async function upsertEventStoreRecord(event: FunnelEvent, env: DispatcherEnv): P
   const profileId = asString((event.payload || {}).profile_id) || null;
   const anonymousId = asString(event.identity?.anonymous_id) || null;
   const emailHash = asString(event.identity?.email_hash) || null;
-  const payloadJson = JSON.stringify(event.payload || {});
+  // Merge attribution into payload_json so enrich_attribution can recover fbp/fbc/client_ip
+  // from prior site events. event.payload keys take precedence over attribution keys.
+  const payloadJson = JSON.stringify({ ...(event.attribution || {}), ...(event.payload || {}) });
 
   await db
     .prepare(
