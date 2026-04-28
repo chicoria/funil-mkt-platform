@@ -591,19 +591,33 @@ async function sendBrevoEmail(
     headers["X-Sib-Sandbox"] = "drop";
   }
 
-  await postJson(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      to: [{ email }],
-      templateId,
-      params: {
-        product_code: event.product_code,
-        event_type: event.event_type,
-        ...extraParams,
-      },
-    }),
-  });
+  try {
+    await postJson(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        to: [{ email }],
+        templateId,
+        params: {
+          product_code: event.product_code,
+          event_type: event.event_type,
+          ...extraParams,
+        },
+      }),
+    });
+    console.log(JSON.stringify({ stage: "handler_ok", handler: "brevo_email", event_id: event.event_id, templateId }));
+  } catch (err) {
+    // Non-fatal: log and continue. Brevo errors (rate limit, invalid email, etc.)
+    // must not cause queue message retries that block upsert_event_store and identity steps.
+    console.log(
+      JSON.stringify({
+        stage: "handler_warn",
+        handler: "brevo_email",
+        event_id: event.event_id,
+        error: err instanceof Error ? err.message : String(err),
+      })
+    );
+  }
 }
 
 async function updateBrevoFunnel(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
@@ -631,23 +645,36 @@ async function updateBrevoFunnel(event: FunnelEvent, env: DispatcherEnv): Promis
   const steps = await resolveBrevoFunnelSteps(event, env);
 
   const url = `${asString(env.BREVO_BASE_URL) || BREVO_BASE_URL}/contacts`;
-  await postJson(url, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "api-key": apiKey,
-    },
-    body: JSON.stringify({
-      email,
-      attributes: {
-        [fields.stepsField]: steps,
-        [fields.lastStepField]: event.event_type,
-        [fields.lastStepTimestampField]: event.occurred_at,
-        PRODUCT_CODE: event.product_code,
+  try {
+    await postJson(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "api-key": apiKey,
       },
-      updateEnabled: true,
-    }),
-  });
+      body: JSON.stringify({
+        email,
+        attributes: {
+          [fields.stepsField]: steps,
+          [fields.lastStepField]: event.event_type,
+          [fields.lastStepTimestampField]: event.occurred_at,
+          PRODUCT_CODE: event.product_code,
+        },
+        updateEnabled: true,
+      }),
+    });
+    console.log(JSON.stringify({ stage: "handler_ok", handler: "update_brevo_funnel", event_id: event.event_id }));
+  } catch (err) {
+    // Non-fatal: Brevo errors must not block identity and tracking steps via queue retry
+    console.log(
+      JSON.stringify({
+        stage: "handler_warn",
+        handler: "update_brevo_funnel",
+        event_id: event.event_id,
+        error: err instanceof Error ? err.message : String(err),
+      })
+    );
+  }
 }
 
 async function emitTracking(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
@@ -735,11 +762,24 @@ async function forwardN8n(event: FunnelEvent, env: DispatcherEnv): Promise<void>
     return;
   }
 
-  await postJson(webhookUrl, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(event),
-  });
+  try {
+    await postJson(webhookUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(event),
+    });
+    console.log(JSON.stringify({ stage: "handler_ok", handler: "forward_n8n", event_id: event.event_id }));
+  } catch (err) {
+    // Non-fatal: n8n webhook errors must not block identity/tracking via queue retry
+    console.log(
+      JSON.stringify({
+        stage: "handler_warn",
+        handler: "forward_n8n",
+        event_id: event.event_id,
+        error: err instanceof Error ? err.message : String(err),
+      })
+    );
+  }
 }
 
 export function createHandlers(): HandlerMap {

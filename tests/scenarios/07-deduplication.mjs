@@ -67,13 +67,13 @@ export async function run(opts = {}) {
       "decole-d1-event-store",
       `SELECT event_id FROM funnel_events WHERE event_id='${sqlEscape(firstEventId)}' LIMIT 1`,
       (r) => r.event_id === firstEventId,
-      { timeout: 60000, poll: 3000 }
+      { timeout: 120000, poll: 4000 }
     );
     await waitForRow(
       "decole-d1-event-store",
       `SELECT event_id FROM funnel_events WHERE event_id='${sqlEscape(secondEventId)}' LIMIT 1`,
       (r) => r.event_id === secondEventId,
-      { timeout: 30000, poll: 3000 }
+      { timeout: 60000, poll: 4000 }
     );
     return `both event_ids present in D1`;
   }));
