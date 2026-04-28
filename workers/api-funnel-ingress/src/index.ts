@@ -143,6 +143,8 @@ export default {
     const payload = await parseBody(request);
 
     if (pathname === "/funnel/precheckout") {
+      const clientIp = request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "";
+      if (clientIp) payload.client_ip = clientIp;
       const event = fromPrecheckoutForm(payload, productCodeFromBody(payload, "UNKNOWN_PRODUCT"));
       await env.FUNNEL_EVENTS.send(event);
       logIngress({

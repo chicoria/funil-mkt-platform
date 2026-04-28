@@ -22,6 +22,7 @@ Options:
   --db <name>            D1 database name. Default: decole-d1-event-store.
   --env-file <path>      Env file with local secrets. Default: .env.local.
   --wrangler-cwd <path>  Directory used to run wrangler.
+  --meta-test-event-code <code>  Optional override to inject test_event_code in payload sent to sGTM.
   --apply                Send to sGTM /mp/collect (GA4 MP). Without this flag, runs dry-run only.`);
 }
 
@@ -33,6 +34,7 @@ function parseArgs(argv) {
     dbName: "decole-d1-event-store",
     envFile: defaultEnvFile,
     wranglerCwd: defaultWranglerCwd,
+    metaTestEventCode: "",
     apply: false,
   };
 
@@ -54,6 +56,8 @@ function parseArgs(argv) {
       args.envFile = resolve(requiredValue(argv, ++i, "--env-file"));
     } else if (arg === "--wrangler-cwd") {
       args.wranglerCwd = resolve(requiredValue(argv, ++i, "--wrangler-cwd"));
+    } else if (arg === "--meta-test-event-code") {
+      args.metaTestEventCode = requiredValue(argv, ++i, "--meta-test-event-code");
     } else {
       throw new Error(`unknown_arg:${arg}`);
     }
@@ -239,6 +243,7 @@ function rowToEvent(row) {
 function resolveTracking(event, catalog, envFileValues) {
   const product = getCatalogProduct(catalog, event.product_code) || {};
   const tracking = product.tracking || {};
+  const fallbackMeta = product.meta || {};
 
   const sgtmEndpointUrl =
     envValue(envFileValues, tracking.sgtm?.endpointEnvVar) ||
@@ -251,12 +256,17 @@ function resolveTracking(event, catalog, envFileValues) {
   const ga4ApiSecret =
     envValue(envFileValues, tracking.ga4?.apiSecretEnvVar) ||
     envValue(envFileValues, "GA4_API_SECRET");
+  const metaTestEventCode =
+    envValue(envFileValues, tracking.metaPixel?.testEventCodeEnvVar) ||
+    envValue(envFileValues, fallbackMeta.testEventCodeEnvVar) ||
+    envValue(envFileValues, "META_TEST_EVENT_CODE");
 
-  return { sgtmEndpointUrl, ga4MeasurementId, ga4ApiSecret };
+  return { sgtmEndpointUrl, ga4MeasurementId, ga4ApiSecret, metaTestEventCode };
 }
 
-function trackingFields(event) {
+function trackingFields(event, forcedMetaTestEventCode = "") {
   const payload = event.payload || {};
+  const payloadMetaTestEventCode = firstString(payload, ["meta_test_event_code", "test_event_code", "meta.test_event_code"]);
   return {
     currency:
       firstString(payload, ["currency", "currency_code", "currencyCode", "purchase.price.currency_value", "data.purchase.price.currency_value"]) ||
@@ -279,6 +289,7 @@ function trackingFields(event) {
       "data.purchase.transaction",
     ]),
     eventSourceUrl: firstString(payload, ["event_source_url", "eventSourceUrl", "page_url", "checkout_url", "checkoutUrl"]),
+    metaTestEventCode: forcedMetaTestEventCode || payloadMetaTestEventCode,
   };
 }
 
@@ -294,8 +305,8 @@ async function postJson(destination, url, body) {
   }
 }
 
-async function replayEvent(event, tracking, apply) {
-  const fields = trackingFields(event);
+async function replayEvent(event, tracking, apply, args) {
+  const fields = trackingFields(event, args.metaTestEventCode || tracking.metaTestEventCode);
 
   if (!tracking.sgtmEndpointUrl || !tracking.ga4MeasurementId || !tracking.ga4ApiSecret) {
     return [];
@@ -319,6 +330,9 @@ async function replayEvent(event, tracking, apply) {
             value: fields.value,
             ...(fields.transactionId ? { transaction_id: fields.transactionId } : {}),
             ...(fields.eventSourceUrl ? { page_location: fields.eventSourceUrl } : {}),
+            ...(event.identity?.email_hash ? { em: event.identity.email_hash } : {}),
+            ...(fields.metaTestEventCode ? { meta_test_event_code: fields.metaTestEventCode, test_event_code: fields.metaTestEventCode } : {}),
+            meta_event_name: eventToMetaName(event.event_type),
           },
         },
       ],
@@ -347,12 +361,13 @@ async function main() {
     const planned = {
       sgtm: Boolean(tracking.sgtmEndpointUrl && tracking.ga4MeasurementId && tracking.ga4ApiSecret),
     };
-    const destinations = await replayEvent(event, tracking, args.apply);
+    const destinations = await replayEvent(event, tracking, args.apply, args);
     console.log(
       JSON.stringify({
         event_id: event.event_id,
         event_type: event.event_type,
         product_code: event.product_code,
+        meta_test_event_code_applied: Boolean(args.metaTestEventCode || tracking.metaTestEventCode),
         planned,
         sent: args.apply ? destinations : [],
       })

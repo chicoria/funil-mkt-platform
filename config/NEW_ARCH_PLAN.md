@@ -122,9 +122,9 @@ A arquitetura orientada a eventos NÃO substitui o sGTM — ela coexiste. O sGTM
 | `PRECHECKOUT_SUBMIT_SUCCESS`    | `both`                   | `[resolve_identity, upsert_event_store, send_brevo_doi, update_brevo_funnel, sync_brevo_segments]` |
 | `PRECHECKOUT_SUBMIT_ERROR`      | `gtm_web_only`           | —                                                                   |
 | `SIGN_UP`                       | `both`                   | `[resolve_identity, upsert_event_store, update_brevo_funnel]`       |
-| `BEGIN_CHECKOUT`                | `server_queue` (`links-redirect`) | `[resolve_identity, upsert_event_store, update_brevo_funnel, emit_tracking]` |
-| `PURCHASE_OUT_OF_SHOPPING_CART` | `server_queue`           | `[resolve_identity, upsert_event_store, update_brevo_funnel, send_cart_abandonment_email, emit_tracking]` |
-| `PURCHASE_APPROVED`             | `server_queue`           | `[resolve_identity, upsert_event_store, update_brevo_funnel, emit_tracking, forward_n8n]` |
+| `BEGIN_CHECKOUT`                | `server_queue` (`links-redirect`) | `[resolve_identity, upsert_event_store, enrich_attribution, update_brevo_funnel, emit_tracking]` |
+| `PURCHASE_OUT_OF_SHOPPING_CART` | `server_queue`           | `[resolve_identity, upsert_event_store, update_brevo_funnel, send_cart_abandonment_email]` |
+| `PURCHASE_APPROVED`             | `server_queue`           | `[resolve_identity, upsert_event_store, enrich_attribution, update_brevo_funnel, emit_tracking, forward_n8n]` |
 
 Idempotência: chave `event_id:handler_name` no DEDUPE_KV — permite que um handler falhe e seja re-executado sem re-executar os que já completaram. Só se aplica a eventos `server_queue`/`both`.
 
@@ -156,6 +156,7 @@ Bump `products.catalog.json` para `schemaVersion: 3`. Adiciona globalmente:
 "handlers": {
   "resolve_identity":            { "worker": "funnel-dispatcher", "bindings": ["IDENTITY_KV", "IDENTITY_DB"] },
   "upsert_event_store":          { "worker": "funnel-dispatcher", "binding": "EVENT_STORE_DB" },
+  "enrich_attribution":          { "worker": "funnel-dispatcher", "binding": "EVENT_STORE_DB", "note": "Recupera fbp/fbc/client_ip do evento site mais recente do mesmo profile_id; só preenche campos ausentes" },
   "send_brevo_doi":              { "worker": "funnel-dispatcher", "binding": "BREVO_API_KEY" },
   "update_brevo_funnel":        { "worker": "funnel-dispatcher", "binding": "BREVO_API_KEY" },
   "send_cart_abandonment_email":{ "worker": "funnel-dispatcher", "binding": "BREVO_API_KEY" },
@@ -190,13 +191,13 @@ Tabela única para operação e QA E2E, refletindo o comportamento atual (`funne
 | `GENERATE_LEAD`                | `both`           | `generate_lead`                    | `Lead`                           | oficial |
 | `SIGN_UP`                      | `both`           | `sign_up`                          | `CompleteRegistration`           | oficial |
 | `BEGIN_CHECKOUT`               | `server_queue` + GTM click | `begin_checkout`            | `InitiateCheckout`               | oficial |
-| `PURCHASE_OUT_OF_SHOPPING_CART`| `server_queue`   | `purchase_out_of_shopping_cart`    | `PURCHASE_OUT_OF_SHOPPING_CART`  | custom |
+| `PURCHASE_OUT_OF_SHOPPING_CART`| `server_queue`   | —                                  | —                                | sem emit_tracking (dedup com BEGIN_CHECKOUT) |
 | `PURCHASE_APPROVED`            | `server_queue`   | `purchase`                         | `Purchase`                       | oficial |
 
 Notas operacionais:
 
-- `BEGIN_CHECKOUT` não vem de webhook Hotmart; deve ser emitido pelo `links-redirect` antes do 302 para a Hotmart.
-- O `BEGIN_CHECKOUT` da queue é estado de funil/CRM. O evento analytics equivalente (`begin_checkout` / `InitiateCheckout`) deve ser disparado pelo GTM Web/sGTM no clique/submit que leva ao `links-redirect`, reaproveitando o mesmo `event_id` quando disponível.
+- `BEGIN_CHECKOUT` não vem de webhook Hotmart; é emitido pelo `links-redirect` antes do 302 para a Hotmart. Captura `CF-Connecting-IP` como `client_ip` em `attribution`.
+- `PURCHASE_OUT_OF_SHOPPING_CART` **não tem `emit_tracking`**: evita contagem dupla de `InitiateCheckout` na Meta (o `BEGIN_CHECKOUT` já cobre esse momento com o mesmo usuário). Serve apenas para CRM/Brevo e email de abandono de carrinho.
 - `PURCHASE_COMPLETE` (Hotmart) deve ser normalizado no ingress para `PURCHASE_APPROVED` antes de entrar na queue canônica.
 - GA4 e Meta CAPI continuam roteados pelo sGTM. No caminho server-side, o `funnel-dispatcher` envia para sGTM via `emit_tracking`.
 - Eventos `custom` são válidos, mas não entram automaticamente em relatórios padrão de ecommerce; exigem exploração custom em GA4/Meta.
@@ -484,7 +485,7 @@ Isso evita:
 
 - A Hotmart não emite webhook operacional `BEGIN_CHECKOUT`.
 - O evento canônico `BEGIN_CHECKOUT` é emitido pelo `links-redirect` antes do `302` para a Hotmart.
-- A chain Cloudflare é: `[resolve_identity, upsert_event_store, update_brevo_funnel, emit_tracking]`.
+- A chain Cloudflare é: `[resolve_identity, upsert_event_store, enrich_attribution, update_brevo_funnel, emit_tracking]`.
 - O evento analytics equivalente deve ser entregue ao sGTM:
   - GA4: `begin_checkout`
   - Meta: `InitiateCheckout`
@@ -494,8 +495,9 @@ Isso evita:
 
 - Webhooks Hotmart entram por `api-hotmart-ingress`.
 - `PURCHASE_COMPLETE` deve ser normalizado para `PURCHASE_APPROVED`.
-- `PURCHASE_OUT_OF_SHOPPING_CART` alimenta recuperação de carrinho e event store.
-- Esses eventos passam por `emit_tracking` para sGTM no fluxo padrão. O Worker não deve falar GA4/Meta diretamente.
+- `PURCHASE_OUT_OF_SHOPPING_CART` alimenta recuperação de carrinho e event store; **não tem `emit_tracking`** (deduplicação com `BEGIN_CHECKOUT`/`InitiateCheckout`).
+- `PURCHASE_APPROVED` passa por `enrich_attribution` antes de `emit_tracking` para recuperar `fbp`/`fbc`/`client_ip` do evento site anterior do mesmo usuário.
+- O Worker não deve falar GA4/Meta diretamente — sempre via sGTM.
 
 **`update_brevo_funnel`**
 
@@ -505,7 +507,9 @@ Isso evita:
 
 **`emit_tracking`**
 
-`emit_tracking` é handler padrão para eventos server-side que precisam analytics (`BEGIN_CHECKOUT`, `PURCHASE_OUT_OF_SHOPPING_CART`, `PURCHASE_APPROVED`). O handler recebe `FunnelEvent` canônico e encaminha para sGTM, resolvendo endpoint por produto via catálogo.
+`emit_tracking` é handler padrão para eventos server-side que precisam analytics (`BEGIN_CHECKOUT`, `PURCHASE_APPROVED`). O handler recebe `FunnelEvent` canônico e encaminha para sGTM via `/mp/collect`, resolvendo endpoint por produto via catálogo.
+
+Payload enviado ao sGTM inclui (quando disponíveis): `em` (email hash), `client_ip_address`, `fbp`, `fbc`, `meta_event_name`, `meta_test_event_code`. `PURCHASE_OUT_OF_SHOPPING_CART` **não usa `emit_tracking`** para evitar duplicação de `InitiateCheckout` na Meta.
 
 **Roteamento de clients no sGTM (paths)**
 

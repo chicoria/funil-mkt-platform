@@ -248,6 +248,10 @@ const handlers: Record<string, (url: URL, env: Env) => HandlerResult | null> = {
 };
 
 function buildBeginCheckoutEvent(request: Request, url: URL, result: HandlerResult): FunnelEvent | null {
+  const clientIp =
+    request.headers.get("cf-connecting-ip") ||
+    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
+    "";
   const productCode = asTrimmedString(result.productCode).toUpperCase();
   if (!productCode) return null;
 
@@ -280,6 +284,7 @@ function buildBeginCheckoutEvent(request: Request, url: URL, result: HandlerResu
       utm_source: firstSearchParam(url.searchParams, ["utm_source"]) || undefined,
       utm_medium: firstSearchParam(url.searchParams, ["utm_medium"]) || undefined,
       utm_campaign: firstSearchParam(url.searchParams, ["utm_campaign"]) || undefined,
+      client_ip: clientIp || undefined,
     },
     lead: {
       email: email || undefined,

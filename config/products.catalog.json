@@ -223,6 +223,7 @@
             "chain": [
               "resolve_identity",
               "upsert_event_store",
+              "enrich_attribution",
               "update_brevo_funnel",
               "emit_tracking"
             ],
@@ -246,13 +247,11 @@
               "resolve_identity",
               "upsert_event_store",
               "update_brevo_funnel",
-              "send_cart_abandonment_email",
-              "emit_tracking"
+              "send_cart_abandonment_email"
             ],
             "destinations": [
               "Brevo",
-              "Event Store",
-              "sGTM"
+              "Event Store"
             ],
             "brevoConfig": {
               "cartAbandonmentTemplateId": "8",
@@ -286,6 +285,7 @@
             "chain": [
               "resolve_identity",
               "upsert_event_store",
+              "enrich_attribution",
               "update_brevo_funnel",
               "emit_tracking",
               "forward_n8n"
@@ -614,6 +614,7 @@
             "chain": [
               "resolve_identity",
               "upsert_event_store",
+              "enrich_attribution",
               "update_brevo_funnel",
               "emit_tracking"
             ],
@@ -637,13 +638,11 @@
               "resolve_identity",
               "upsert_event_store",
               "update_brevo_funnel",
-              "send_cart_abandonment_email",
-              "emit_tracking"
+              "send_cart_abandonment_email"
             ],
             "destinations": [
               "Brevo",
-              "Event Store",
-              "sGTM"
+              "Event Store"
             ],
             "brevoConfig": {
               "cartAbandonmentTemplateId": "11",
@@ -677,6 +676,7 @@
             "chain": [
               "resolve_identity",
               "upsert_event_store",
+              "enrich_attribution",
               "update_brevo_funnel",
               "emit_tracking",
               "forward_n8n"
@@ -937,6 +937,11 @@
     "forward_n8n": {
       "worker": "funnel-dispatcher",
       "binding": "N8N_WEBHOOK_URL"
+    },
+    "enrich_attribution": {
+      "worker": "funnel-dispatcher",
+      "binding": "EVENT_STORE_DB",
+      "note": "Enriches hotmart events with fbp/fbc/client_ip from most recent site event for same profile"
     },
     "emit_tracking": {
       "worker": "funnel-dispatcher",

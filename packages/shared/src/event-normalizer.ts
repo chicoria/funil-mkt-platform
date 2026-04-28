@@ -175,6 +175,7 @@ export function fromPrecheckoutForm(body: Record<string, unknown>, productCode: 
       utm_source: pick(body, ["utm_source"]) || undefined,
       utm_medium: pick(body, ["utm_medium"]) || undefined,
       utm_campaign: pick(body, ["utm_campaign"]) || undefined,
+      client_ip: pick(body, ["client_ip"]) || undefined,
     },
     lead: {
       email: email || undefined,

@@ -16,6 +16,7 @@ export interface FunnelAttribution {
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
+  client_ip?: string;
 }
 
 export interface FunnelLead {

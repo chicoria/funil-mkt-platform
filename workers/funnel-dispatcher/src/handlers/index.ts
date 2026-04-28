@@ -77,6 +77,7 @@ interface TrackingDestinationConfig {
   sgtmEndpointUrl: string;
   ga4MeasurementId: string;
   ga4ApiSecret: string;
+  metaTestEventCode: string;
 }
 
 interface BrevoFunnelFieldsConfig {
@@ -302,6 +303,72 @@ async function upsertEventStoreRecord(event: FunnelEvent, env: DispatcherEnv): P
     .run();
 }
 
+async function enrichAttributionFromHistory(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
+  const db = getEventStoreDb(env);
+  if (!db) return;
+
+  const profileId = asString((event.payload || {}).profile_id);
+  if (!profileId) return;
+
+  const attr = event.attribution || {};
+  const needsEnrichment = !attr.fbp && !attr.fbc && !attr.client_ip;
+  if (!needsEnrichment) return;
+
+  let row: { payload_json: string } | null = null;
+  try {
+    const result = await db
+      .prepare(
+        `SELECT payload_json FROM funnel_events
+         WHERE profile_id = ? AND source = 'site'
+         ORDER BY occurred_at DESC LIMIT 1`
+      )
+      .bind(profileId)
+      .first<{ payload_json: string }>();
+    row = result ?? null;
+  } catch {
+    return;
+  }
+
+  if (!row) return;
+
+  let sitePayload: Record<string, unknown> = {};
+  try {
+    sitePayload = JSON.parse(row.payload_json);
+  } catch {
+    return;
+  }
+
+  const pick = (keys: string[]): string => {
+    for (const k of keys) {
+      const v = sitePayload[k];
+      if (v && typeof v === "string") return v;
+    }
+    return "";
+  };
+
+  const fbp = pick(["fbp", "FBP"]);
+  const fbc = pick(["fbc", "FBC"]);
+  const clientIp = pick(["client_ip"]);
+
+  if (!fbp && !fbc && !clientIp) return;
+
+  event.attribution = {
+    ...attr,
+    ...(fbp && !attr.fbp ? { fbp } : {}),
+    ...(fbc && !attr.fbc ? { fbc } : {}),
+    ...(clientIp && !attr.client_ip ? { client_ip: clientIp } : {}),
+  };
+
+  console.log(
+    JSON.stringify({
+      stage: "enrich_attribution",
+      event_id: event.event_id,
+      profile_id: profileId,
+      enriched: { fbp: Boolean(fbp && !attr.fbp), fbc: Boolean(fbc && !attr.fbc), client_ip: Boolean(clientIp && !attr.client_ip) },
+    })
+  );
+}
+
 async function postJson(url: string, init: RequestInit): Promise<void> {
   const response = await fetch(url, init);
   if (!response.ok) {
@@ -341,6 +408,7 @@ function getCatalogProduct(catalog: ParsedCatalog, productCode: string): Catalog
 function resolveTrackingConfig(event: FunnelEvent, env: DispatcherEnv): TrackingDestinationConfig {
   const product = getCatalogProduct(getCatalog(env), event.product_code);
   const tracking = product?.tracking;
+  const fallbackMeta = product?.meta;
   const sgtmEndpointUrl =
     envString(env, tracking?.sgtm?.endpointEnvVar) ||
     asString(tracking?.sgtm?.endpointUrl) ||
@@ -352,8 +420,12 @@ function resolveTrackingConfig(event: FunnelEvent, env: DispatcherEnv): Tracking
   const ga4ApiSecret =
     envString(env, tracking?.ga4?.apiSecretEnvVar) ||
     asString(env.GA4_API_SECRET);
+  const metaTestEventCode =
+    envString(env, tracking?.metaPixel?.testEventCodeEnvVar) ||
+    envString(env, fallbackMeta?.testEventCodeEnvVar) ||
+    asString(env.META_TEST_EVENT_CODE);
 
-  return { sgtmEndpointUrl, ga4MeasurementId, ga4ApiSecret };
+  return { sgtmEndpointUrl, ga4MeasurementId, ga4ApiSecret, metaTestEventCode };
 }
 
 function resolveCatalogEvent(event: FunnelEvent, env: DispatcherEnv): CatalogEventConfig | null {
@@ -587,6 +659,12 @@ async function emitTracking(event: FunnelEvent, env: DispatcherEnv): Promise<voi
   const value = numberFromPayload(payload, ["value", "amount", "price", "purchase_value", "total_value"]) ?? 0;
   const transactionId = payloadString(payload, ["transaction", "transaction_id", "transactionId"]);
   const eventSourceUrl = payloadString(payload, ["event_source_url", "eventSourceUrl", "page_url", "checkout_url", "checkoutUrl"]);
+  const payloadMetaTestEventCode = payloadString(payload, [
+    "meta_test_event_code",
+    "test_event_code",
+    "meta.test_event_code",
+  ]);
+  const metaTestEventCode = payloadMetaTestEventCode || tracking.metaTestEventCode;
 
   if (!tracking.sgtmEndpointUrl || !tracking.ga4MeasurementId || !tracking.ga4ApiSecret) {
     console.log(
@@ -626,12 +704,16 @@ async function emitTracking(event: FunnelEvent, env: DispatcherEnv): Promise<voi
             ...(transactionId ? { transaction_id: transactionId } : {}),
             ...(eventSourceUrl ? { page_location: eventSourceUrl } : {}),
             ...(asString(event.identity?.session_id) ? { session_id: asString(event.identity?.session_id) } : {}),
+            ...(asString(event.identity?.email_hash) ? { em: asString(event.identity?.email_hash) } : {}),
+            ...(asString(event.attribution?.client_ip) ? { client_ip_address: asString(event.attribution?.client_ip) } : {}),
             ...(asString(event.attribution?.fbp) ? { fbp: asString(event.attribution?.fbp) } : {}),
             ...(asString(event.attribution?.fbc) ? { fbc: asString(event.attribution?.fbc) } : {}),
             ...(asString(event.attribution?.gclid) ? { gclid: asString(event.attribution?.gclid) } : {}),
             ...(asString(event.attribution?.utm_source) ? { utm_source: asString(event.attribution?.utm_source) } : {}),
             ...(asString(event.attribution?.utm_medium) ? { utm_medium: asString(event.attribution?.utm_medium) } : {}),
             ...(asString(event.attribution?.utm_campaign) ? { utm_campaign: asString(event.attribution?.utm_campaign) } : {}),
+            ...(metaTestEventCode ? { meta_test_event_code: metaTestEventCode, test_event_code: metaTestEventCode } : {}),
+            meta_event_name: eventToMetaName(event.event_type),
           },
         },
       ],
@@ -702,6 +784,11 @@ export function createHandlers(): HandlerMap {
     async forward_n8n(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
       console.log(JSON.stringify({ stage: "handler", handler: "forward_n8n", event_id: event.event_id }));
       await forwardN8n(event, env);
+    },
+
+    async enrich_attribution(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
+      console.log(JSON.stringify({ stage: "handler", handler: "enrich_attribution", event_id: event.event_id }));
+      await enrichAttributionFromHistory(event, env);
     },
 
     async emit_tracking(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
