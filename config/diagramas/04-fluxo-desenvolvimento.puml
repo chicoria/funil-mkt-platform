@@ -1,0 +1,70 @@
+@startuml fluxo-desenvolvimento
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 12
+skinparam activityBackgroundColor #DAE8FC
+skinparam activityBorderColor #6C8EBF
+skinparam activityDiamondBackgroundColor #FFF2CC
+skinparam activityDiamondBorderColor #D6B656
+skinparam ArrowColor #555555
+
+start
+
+:Alteração de código\n(worker · handler · catalog · shared);
+
+repeat
+  :npm test\npor worker afectado\nvitest · sem rede;
+backward:corrigir código / teste;
+repeat while (falha?) is (sim)
+-> não;
+
+repeat
+  :bash tests/verify.sh --unit-only\ntodos os workers;
+backward:corrigir código / teste;
+repeat while (algum worker falha?) is (sim)
+-> não;
+
+repeat
+  :bash tests/verify.sh\nou verify.sh --worker <nome>\nunit + E2E cenários afectados;
+backward:corrigir implementação\nou fixture de teste;
+repeat while (falha?) is (sim)
+-> não;
+
+:git commit;
+
+repeat
+  :bash scripts/deploy-incremental.sh --worker <nome>\n(npm test + typecheck + wrangler deploy);
+backward:corrigir e re-executar;
+repeat while (falha?) is (sim)
+-> não;
+
+:scripts/healthcheck-worker.sh\n--url https://worker.domain/health;
+
+if (200 OK?) then (não)
+  :wrangler rollback\n+ investigar logs;
+  stop
+endif
+
+repeat
+  :bash tests/verify.sh --all --skip-sgtm;
+backward:wrangler rollback;
+repeat while (< 2x consecutivas?) is (sim)
+-> 2x pass;
+
+:✅ Go-live;
+
+stop
+
+note right
+  **Atalhos por worker alterado:**
+  funnel-dispatcher   → cenários 01–08
+  api-hotmart-ingress → cenários 03–06
+  links-redirect      → cenário 02
+  api-funnel-ingress  → cenários 01, 07
+  packages/shared     → cenários 01–08
+
+  **Com sGTM:**
+  verify.sh --full --meta-test-event-code TESTXXXX
+end note
+
+@enduml

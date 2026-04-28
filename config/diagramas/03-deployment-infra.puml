@@ -1,0 +1,55 @@
+@startuml deployment-infra
+!theme plain
+skinparam linetype ortho
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 11
+skinparam componentStyle rectangle
+skinparam nodeBackgroundColor #DAE8FC
+skinparam artifactBackgroundColor #F5F5F5
+skinparam queueBackgroundColor #FFE6CC
+skinparam databaseBackgroundColor #DAE8FC
+skinparam storageBackgroundColor #D5E8D4
+
+package "GitHub Actions" as GHA {
+  artifact "deploy-incremental-hotmart-ingress.yml\nworkflow_dispatch · dry_run opcional\n→ test + typecheck + wrangler deploy" as WF1
+  artifact "ci-e2e-staging.yml\nworkflow_dispatch manual\n→ run-scenarios.sh --all --skip-sgtm" as WF2
+}
+
+package "Scripts locais" as Scripts {
+  artifact "scripts/deploy-incremental.sh\n--worker api-hotmart-ingress\n--worker api-funnel-ingress\n--worker funnel-dispatcher\n→ npm test + typecheck + wrangler deploy [--dry-run]" as S1
+  artifact "tests/verify.sh\n--unit-only | --e2e-only | --full | --worker <name>\n→ unit tests + run-scenarios.sh" as S2
+  artifact "scripts/healthcheck-worker.sh\n--url <worker>/health" as S3
+}
+
+WF1 -down-> S1
+WF2 -down-> S2
+
+cloud "Cloudflare Edge" as CF {
+
+  node "decole-api-funnel-ingress" as W_FI {
+    component "Route: api.decole…/funnel/*\n         api.decole…/webhooks/v1/planovoo/app/event\nProducer → FUNNEL_EVENTS\nenv: ALLOWED_ORIGINS" as FI_C
+  }
+
+  node "decole-links-redirect" as W_LR {
+    component "Route: links.decolesuacarreiraesg.com.br/*\nProducer → FUNNEL_EVENTS\nenv: checkout URLs · LINKS_PRODUCTS" as LR_C
+  }
+
+  node "decole-api-hotmart-ingress" as W_HI {
+    component "Route: api.decole…/webhooks/v1/decole-esg/hotmart/*\n         api.decole…/webhooks/v1/planovoo/hotmart/*\nProducer → FUNNEL_EVENTS\nsecret: HOTMART_WEBHOOK_TOKEN_*" as HI_C
+  }
+
+  node "decole-funnel-dispatcher" as W_FD {
+    component "Consumer ← decole-q-funnel-events\nKV: DEDUPE_KV · IDENTITY_KV\nD1: decole-d1-identity · decole-d1-event-store\nDLQ: decole-q-funnel-events-dlq" as FD_C
+  }
+
+  queue "decole-q-funnel-events" as Q_MAIN
+  queue "decole-q-funnel-events-dlq" as Q_DLQ
+
+  FI_C -down-> Q_MAIN
+  LR_C -down-> Q_MAIN
+  HI_C -down-> Q_MAIN
+  Q_MAIN -down-> FD_C
+  Q_MAIN .right.> Q_DLQ : retries esgotados
+}
+
+@enduml

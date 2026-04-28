@@ -1,0 +1,74 @@
+@startuml arquitetura-sistema
+!theme plain
+skinparam linetype ortho
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 12
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam databaseBackgroundColor #DAE8FC
+skinparam storageBackgroundColor #D5E8D4
+skinparam queueBackgroundColor #FFE6CC
+
+left to right direction
+
+package "Origens" {
+  actor "Browser / Site\ndecolesuacarreiraesg.com.br" as Browser
+  actor "Hotmart\nWebhook POST" as Hotmart
+}
+
+package "Ingress Workers" as Ingress {
+  component "api-funnel-ingress\napi.decole…/funnel/*\n/webhooks/v1/planovoo/app/event" as FI
+  component "links-redirect\nlinks.decole…/*" as LR
+  component "api-hotmart-ingress\napi.decole…/webhooks/v1/*/hotmart/*" as HI
+}
+
+package "Queue · Cloudflare Queues" as Queues {
+  queue "decole-q-funnel-events\nbatch 25 · timeout 10s · retries 5" as Q
+  queue "decole-q-funnel-events-dlq\n5 retries esgotados" as DLQ
+}
+
+package "Dispatcher · Cloudflare Worker" as Disp {
+  component "funnel-dispatcher\nconsumer da queue\nchain de handlers por evento" as FD
+}
+
+package "Storage · Cloudflare" as Storage {
+  database "D1 event-store\nfunnel_events" as D1E
+  database "D1 identity\nidentity_links" as D1I
+  storage "KV DEDUPE_KV\nidempotência por handler" as KVD
+  storage "KV IDENTITY_KV\ncache de identidade" as KVI
+}
+
+package "Destinos Externos" as Externos {
+  component "sGTM\nGTM-K6Q4H6BR" as sGTM
+  component "Brevo\nCRM + Email" as Brevo
+  component "n8n\nautomações" as N8N
+}
+
+package "Tracking Final" as Tracking {
+  component "Google Analytics 4" as GA4
+  component "Meta CAPI" as Meta
+}
+
+Browser -right-> FI : GENERATE_LEAD · SIGN_UP
+Browser -right-> LR : BEGIN_CHECKOUT + redirect
+Hotmart -right-> HI : PURCHASE_APPROVED\nPURCHASE_OUT_OF_SHOPPING_CART
+
+FI -right-> Q
+LR -right-> Q
+HI -right-> Q
+Q .right.> DLQ : falha após 5 retries
+
+Q -right-> FD
+
+FD <-down-> D1E
+FD <-down-> D1I
+FD <-down-> KVD
+FD <-down-> KVI
+FD -right-> sGTM
+FD -right-> Brevo
+FD -right-> N8N
+
+sGTM -down-> GA4
+sGTM -down-> Meta
+
+@enduml

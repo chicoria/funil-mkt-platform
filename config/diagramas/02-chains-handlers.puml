@@ -1,0 +1,51 @@
+@startuml chains-handlers
+!theme plain
+skinparam sequenceMessageAlign center
+skinparam sequenceBoxBackgroundColor #F5F5F5
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 12
+
+participant "Queue" as Q
+participant "resolve_identity" as RI #DAE8FC
+participant "upsert_event_store" as US #DAE8FC
+participant "enrich_attribution" as EA #FFF2CC
+participant "update_brevo_funnel" as UB #D5E8D4
+participant "send_brevo_doi" as SB #D5E8D4
+participant "sync_brevo_segments" as SS #D5E8D4
+participant "send_cart_abandonment" as SC #D5E8D4
+participant "emit_tracking" as ET #FFE6CC
+participant "forward_n8n" as FN #FFE6CC
+
+== GENERATE_LEAD · source: site ==
+
+Q -> RI
+RI -> US
+US -> SB
+SB -> UB
+UB -> SS
+
+== BEGIN_CHECKOUT · source: site ==
+
+Q -> RI
+RI -> US
+US -> EA
+EA -> UB
+UB -> ET
+
+== PURCHASE_APPROVED · source: hotmart ==
+
+Q -> RI
+RI -> US
+US -> EA
+EA -> UB
+UB -> ET
+ET -> FN
+
+== PURCHASE_OUT_OF_SHOPPING_CART · source: hotmart ==
+
+Q -> RI
+RI -> US
+US -> UB
+UB -> SC
+
+@enduml
