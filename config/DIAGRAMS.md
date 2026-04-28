@@ -1,6 +1,7 @@
 # Diagramas do Sistema DECOLE — Cloudflare
 
-> Renderizam nativamente no GitHub. Última actualização: 2026-04-28.
+> Formato: PlantUML. Renderizar com VS Code (extension: PlantUML), IntelliJ ou `plantuml -tsvg *.puml`.
+> Última actualização: 2026-04-28.
 
 ---
 
@@ -8,67 +9,81 @@
 
 Visão de componentes e fluxo de dados de ponta a ponta.
 
-```mermaid
-graph LR
-  subgraph Origens
-    Browser["🌐 Site\ndecolesuacarreiraesg.com.br"]
-    Hotmart["🛒 Hotmart\nwebhook POST"]
-  end
+```plantuml
+@startuml arquitetura-sistema
+!theme plain
+skinparam linetype ortho
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 12
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam databaseBackgroundColor #DAE8FC
+skinparam storageBackgroundColor #D5E8D4
+skinparam queueBackgroundColor #FFE6CC
 
-  subgraph Ingress["Ingress Workers"]
-    FI["api-funnel-ingress\napi.decole…/funnel/*\n/webhooks/v1/planovoo/app/event"]
-    LR["links-redirect\nlinks.decole…/*"]
-    HI["api-hotmart-ingress\napi.decole…/webhooks/v1/*/hotmart/*"]
-  end
+left to right direction
 
-  subgraph Queue["Queue · Cloudflare Queues"]
-    Q[("decole-q-funnel-events\nbatch 25 · timeout 10s · retries 5")]
-    DLQ[("decole-q-funnel-events-dlq\n5 retries esgotados")]
-  end
+package "Origens" {
+  actor "Browser / Site\ndecolesuacarreiraesg.com.br" as Browser
+  actor "Hotmart\nWebhook POST" as Hotmart
+}
 
-  subgraph Dispatcher["Dispatcher · Cloudflare Worker"]
-    FD["funnel-dispatcher\nconsumer da queue\nchain de handlers por evento"]
-  end
+package "Ingress Workers" as Ingress {
+  component "api-funnel-ingress\napi.decole…/funnel/*\n/webhooks/v1/planovoo/app/event" as FI
+  component "links-redirect\nlinks.decole…/*" as LR
+  component "api-hotmart-ingress\napi.decole…/webhooks/v1/*/hotmart/*" as HI
+}
 
-  subgraph Storage["Storage · Cloudflare"]
-    D1E[("D1 · event-store\nfunnel_events")]
-    D1I[("D1 · identity\nidentity_links")]
-    KVD[("KV · DEDUPE_KV\nidempotência por handler")]
-    KVI[("KV · IDENTITY_KV\ncache de identidade")]
-  end
+package "Queue · Cloudflare Queues" as Queues {
+  queue "decole-q-funnel-events\nbatch 25 · timeout 10s · retries 5" as Q
+  queue "decole-q-funnel-events-dlq\n5 retries esgotados" as DLQ
+}
 
-  subgraph Externos["Destinos externos"]
-    sGTM["sGTM\nGTM-K6Q4H6BR"]
-    Brevo["Brevo\nCRM + Email"]
-    N8N["n8n\nautomações"]
-  end
+package "Dispatcher · Cloudflare Worker" as Disp {
+  component "funnel-dispatcher\nconsumer da queue\nchain de handlers por evento" as FD
+}
 
-  subgraph Tracking["Tracking final"]
-    GA4["Google Analytics 4"]
-    Meta["Meta CAPI"]
-  end
+package "Storage · Cloudflare" as Storage {
+  database "D1 event-store\nfunnel_events" as D1E
+  database "D1 identity\nidentity_links" as D1I
+  storage "KV DEDUPE_KV\nidempotência por handler" as KVD
+  storage "KV IDENTITY_KV\ncache de identidade" as KVI
+}
 
-  Browser -->|"GENERATE_LEAD · SIGN_UP"| FI
-  Browser -->|"BEGIN_CHECKOUT + redirect"| LR
-  Hotmart -->|"PURCHASE_APPROVED\nPURCHASE_OUT_OF_SHOPPING_CART"| HI
+package "Destinos Externos" as Externos {
+  component "sGTM\nGTM-K6Q4H6BR" as sGTM
+  component "Brevo\nCRM + Email" as Brevo
+  component "n8n\nautomações" as N8N
+}
 
-  FI --> Q
-  LR --> Q
-  HI --> Q
-  Q -.->|"falha após 5 retries"| DLQ
+package "Tracking Final" as Tracking {
+  component "Google Analytics 4" as GA4
+  component "Meta CAPI" as Meta
+}
 
-  Q --> FD
+Browser -right-> FI : GENERATE_LEAD · SIGN_UP
+Browser -right-> LR : BEGIN_CHECKOUT + redirect
+Hotmart -right-> HI : PURCHASE_APPROVED\nPURCHASE_OUT_OF_SHOPPING_CART
 
-  FD <--> D1E
-  FD <--> D1I
-  FD <--> KVD
-  FD <--> KVI
-  FD --> sGTM
-  FD --> Brevo
-  FD --> N8N
+FI -right-> Q
+LR -right-> Q
+HI -right-> Q
+Q .right.> DLQ : falha após 5 retries
 
-  sGTM --> GA4
-  sGTM --> Meta
+Q -right-> FD
+
+FD <-down-> D1E
+FD <-down-> D1I
+FD <-down-> KVD
+FD <-down-> KVI
+FD -right-> sGTM
+FD -right-> Brevo
+FD -right-> N8N
+
+sGTM -down-> GA4
+sGTM -down-> Meta
+
+@enduml
 ```
 
 ---
@@ -77,27 +92,58 @@ graph LR
 
 Cada evento entra na queue com um `event_type` e `product_code`. O `funnel-dispatcher` lê a chain do `products.catalog.json` e executa os handlers em ordem. Cada handler é idempotente via `DEDUPE_KV`.
 
-```mermaid
-flowchart LR
-  subgraph GL["GENERATE_LEAD · source: site"]
-    direction LR
-    GL1[resolve_identity] --> GL2[upsert_event_store] --> GL3[send_brevo_doi] --> GL4[update_brevo_funnel] --> GL5[sync_brevo_segments]
-  end
+```plantuml
+@startuml chains-handlers
+!theme plain
+skinparam sequenceMessageAlign center
+skinparam sequenceBoxBackgroundColor #F5F5F5
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 12
 
-  subgraph BC["BEGIN_CHECKOUT · source: site"]
-    direction LR
-    BC1[resolve_identity] --> BC2[upsert_event_store] --> BC3[enrich_attribution] --> BC4[update_brevo_funnel] --> BC5[emit_tracking]
-  end
+participant "Queue" as Q
+participant "resolve_identity" as RI #DAE8FC
+participant "upsert_event_store" as US #DAE8FC
+participant "enrich_attribution" as EA #FFF2CC
+participant "update_brevo_funnel" as UB #D5E8D4
+participant "send_brevo_doi" as SB #D5E8D4
+participant "sync_brevo_segments" as SS #D5E8D4
+participant "send_cart_abandonment" as SC #D5E8D4
+participant "emit_tracking" as ET #FFE6CC
+participant "forward_n8n" as FN #FFE6CC
 
-  subgraph PA["PURCHASE_APPROVED · source: hotmart"]
-    direction LR
-    PA1[resolve_identity] --> PA2[upsert_event_store] --> PA3[enrich_attribution] --> PA4[update_brevo_funnel] --> PA5[emit_tracking] --> PA6[forward_n8n]
-  end
+== GENERATE_LEAD · source: site ==
 
-  subgraph CA["PURCHASE_OUT_OF_SHOPPING_CART · source: hotmart"]
-    direction LR
-    CA1[resolve_identity] --> CA2[upsert_event_store] --> CA3[update_brevo_funnel] --> CA4[send_cart_abandonment_email]
-  end
+Q -> RI
+RI -> US
+US -> SB
+SB -> UB
+UB -> SS
+
+== BEGIN_CHECKOUT · source: site ==
+
+Q -> RI
+RI -> US
+US -> EA
+EA -> UB
+UB -> ET
+
+== PURCHASE_APPROVED · source: hotmart ==
+
+Q -> RI
+RI -> US
+US -> EA
+EA -> UB
+UB -> ET
+ET -> FN
+
+== PURCHASE_OUT_OF_SHOPPING_CART · source: hotmart ==
+
+Q -> RI
+RI -> US
+US -> UB
+UB -> SC
+
+@enduml
 ```
 
 **O que cada handler faz:**
@@ -120,51 +166,62 @@ flowchart LR
 
 Workers, routes, bindings e CI/CD.
 
-```mermaid
-graph TB
-  subgraph CI["CI/CD · GitHub Actions"]
-    WF1["deploy-incremental-hotmart-ingress.yml\nworkflow_dispatch · dry_run opcional\n→ test + typecheck + wrangler deploy"]
-    WF2["ci-e2e-staging.yml\nworkflow_dispatch manual\n→ run-scenarios.sh --all --skip-sgtm"]
-  end
+```plantuml
+@startuml deployment-infra
+!theme plain
+skinparam linetype ortho
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 11
+skinparam componentStyle rectangle
+skinparam nodeBackgroundColor #DAE8FC
+skinparam artifactBackgroundColor #F5F5F5
+skinparam queueBackgroundColor #FFE6CC
+skinparam databaseBackgroundColor #DAE8FC
+skinparam storageBackgroundColor #D5E8D4
 
-  subgraph CF["☁️ Cloudflare Edge"]
-    subgraph W_FI["decole-api-funnel-ingress"]
-      FI_R["api.decole…/funnel/*\napi.decole…/webhooks/v1/planovoo/app/event"]
-      FI_B["Producer → decole-q-funnel-events\nenv: ALLOWED_ORIGINS"]
-    end
+package "GitHub Actions" as GHA {
+  artifact "deploy-incremental-hotmart-ingress.yml\nworkflow_dispatch · dry_run opcional\n→ test + typecheck + wrangler deploy" as WF1
+  artifact "ci-e2e-staging.yml\nworkflow_dispatch manual\n→ run-scenarios.sh --all --skip-sgtm" as WF2
+}
 
-    subgraph W_LR["decole-links-redirect"]
-      LR_R["links.decolesuacarreiraesg.com.br/*"]
-      LR_B["Producer → decole-q-funnel-events\nenv: checkout URLs · LINKS_PRODUCTS"]
-    end
+package "Scripts locais" as Scripts {
+  artifact "scripts/deploy-incremental.sh\n--worker api-hotmart-ingress\n--worker api-funnel-ingress\n--worker funnel-dispatcher\n→ npm test + typecheck + wrangler deploy [--dry-run]" as S1
+  artifact "tests/verify.sh\n--unit-only | --e2e-only | --full | --worker <name>\n→ unit tests + run-scenarios.sh" as S2
+  artifact "scripts/healthcheck-worker.sh\n--url <worker>/health" as S3
+}
 
-    subgraph W_HI["decole-api-hotmart-ingress"]
-      HI_R["api.decole…/webhooks/v1/decole-esg/hotmart/*\napi.decole…/webhooks/v1/planovoo/hotmart/*\napi.decole…/webhooks/v1/plano-de-voo/hotmart/*"]
-      HI_B["Producer → decole-q-funnel-events\nsecret: HOTMART_WEBHOOK_TOKEN_*"]
-    end
+WF1 -down-> S1
+WF2 -down-> S2
 
-    subgraph W_FD["decole-funnel-dispatcher"]
-      FD_B["Consumer ← decole-q-funnel-events\nKV: DEDUPE_KV · IDENTITY_KV\nD1: decole-d1-identity · decole-d1-event-store\nDLQ: decole-q-funnel-events-dlq"]
-    end
+cloud "Cloudflare Edge" as CF {
 
-    Q_MAIN[("decole-q-funnel-events")]
-    Q_DLQ[("decole-q-funnel-events-dlq")]
+  node "decole-api-funnel-ingress" as W_FI {
+    component "Route: api.decole…/funnel/*\n         api.decole…/webhooks/v1/planovoo/app/event\nProducer → FUNNEL_EVENTS\nenv: ALLOWED_ORIGINS" as FI_C
+  }
 
-    FI_B --> Q_MAIN
-    LR_B --> Q_MAIN
-    HI_B --> Q_MAIN
-    Q_MAIN --> FD_B
-    Q_MAIN -.-> Q_DLQ
-  end
+  node "decole-links-redirect" as W_LR {
+    component "Route: links.decolesuacarreiraesg.com.br/*\nProducer → FUNNEL_EVENTS\nenv: checkout URLs · LINKS_PRODUCTS" as LR_C
+  }
 
-  subgraph Scripts["Scripts locais"]
-    S1["deploy-incremental.sh --worker api-hotmart-ingress\n                        --worker api-funnel-ingress\n                        --worker funnel-dispatcher\n→ test + typecheck + wrangler deploy [--dry-run]"]
-    S2["tests/verify.sh [--unit-only | --e2e-only | --full]\n                  [--worker <name>]\n→ unit tests + run-scenarios.sh"]
-    S3["scripts/healthcheck-worker.sh --url <url>/health"]
-  end
+  node "decole-api-hotmart-ingress" as W_HI {
+    component "Route: api.decole…/webhooks/v1/decole-esg/hotmart/*\n         api.decole…/webhooks/v1/planovoo/hotmart/*\nProducer → FUNNEL_EVENTS\nsecret: HOTMART_WEBHOOK_TOKEN_*" as HI_C
+  }
 
-  WF1 --> S1
-  WF2 --> S2
+  node "decole-funnel-dispatcher" as W_FD {
+    component "Consumer ← decole-q-funnel-events\nKV: DEDUPE_KV · IDENTITY_KV\nD1: decole-d1-identity · decole-d1-event-store\nDLQ: decole-q-funnel-events-dlq" as FD_C
+  }
+
+  queue "decole-q-funnel-events" as Q_MAIN
+  queue "decole-q-funnel-events-dlq" as Q_DLQ
+
+  FI_C -down-> Q_MAIN
+  LR_C -down-> Q_MAIN
+  HI_C -down-> Q_MAIN
+  Q_MAIN -down-> FD_C
+  Q_MAIN .right.> Q_DLQ : retries esgotados
+}
+
+@enduml
 ```
 
 **Bindings do `funnel-dispatcher`:**
@@ -182,51 +239,77 @@ graph TB
 
 Do código à produção.
 
-```mermaid
-flowchart TD
-  Change["✏️ Alteração de código\nworker · handler · catalog · shared"]
+```plantuml
+@startuml fluxo-desenvolvimento
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 12
+skinparam activityBackgroundColor #DAE8FC
+skinparam activityBorderColor #6C8EBF
+skinparam activityDiamondBackgroundColor #FFF2CC
+skinparam activityDiamondBorderColor #D6B656
+skinparam ArrowColor #555555
 
-  Change --> UnitLocal["npm test\npor worker afectado\nvitest · sem rede"]
+start
 
-  UnitLocal -->|"✗ falha"| FixUnit["corrigir código / teste"]
-  FixUnit --> UnitLocal
+:Alteração de código\n(worker · handler · catalog · shared);
 
-  UnitLocal -->|"✓ pass"| VerifyFull["bash tests/verify.sh --unit-only\ntodos os workers em sequência"]
+repeat
+  :npm test\npor worker afectado\nvitest · sem rede;
+backward:corrigir código / teste;
+repeat while (falha?) is (sim)
+-> não;
 
-  VerifyFull -->|"✗ algum worker falha"| FixUnit
+repeat
+  :bash tests/verify.sh --unit-only\ntodos os workers;
+backward:corrigir código / teste;
+repeat while (algum worker falha?) is (sim)
+-> não;
 
-  VerifyFull -->|"✓ todos pass"| E2ELocal["bash tests/verify.sh\nou\nbash tests/verify.sh --worker nome\nunit + E2E cenários afectados"]
+repeat
+  :bash tests/verify.sh\nou verify.sh --worker <nome>\nunit + E2E cenários afectados;
+backward:corrigir implementação\nou fixture de teste;
+repeat while (falha?) is (sim)
+-> não;
 
-  E2ELocal -->|"✗ falha"| FixImpl["corrigir implementação\nou fixture de teste"]
-  FixImpl --> E2ELocal
+:git commit;
 
-  E2ELocal -->|"✓ pass"| Commit["git commit"]
+repeat
+  :bash scripts/deploy-incremental.sh --worker <nome>\n(npm test + typecheck + wrangler deploy);
+backward:corrigir e re-executar;
+repeat while (falha?) is (sim)
+-> não;
 
-  Commit --> Deploy["bash scripts/deploy-incremental.sh\n--worker nome"]
+:scripts/healthcheck-worker.sh\n--url https://worker.domain/health;
 
-  Deploy --> TestCI["npm test + typecheck\n(dentro do script)"]
-  TestCI -->|"✗"| FixDeploy["corrigir e re-executar"]
-  FixDeploy --> Deploy
+if (200 OK?) then (não)
+  :wrangler rollback\n+ investigar logs;
+  stop
+endif
 
-  TestCI -->|"✓"| WDeploy["wrangler deploy"]
+repeat
+  :bash tests/verify.sh --all --skip-sgtm;
+backward:wrangler rollback;
+repeat while (< 2x consecutivas?) is (sim)
+-> 2x pass;
 
-  WDeploy --> Health["scripts/healthcheck-worker.sh\n--url https://worker.domain/health"]
+:✅ Go-live;
 
-  Health -->|"✗ 500 / timeout"| Rollback["wrangler rollback\n+ investigar logs"]
+stop
 
-  Health -->|"✓ 200"| E2EProd["bash tests/verify.sh\n2x consecutivas\n--all --skip-sgtm"]
+note right
+  **Atalhos por worker alterado:**
+  funnel-dispatcher  → cenários 01–08
+  api-hotmart-ingress → cenários 03–06
+  links-redirect      → cenário 02
+  api-funnel-ingress  → cenários 01, 07
+  packages/shared     → cenários 01–08
 
-  E2EProd -->|"✗ falha"| Rollback
+  **Com sGTM:**
+  verify.sh --full --meta-test-event-code TESTXXXX
+end note
 
-  E2EProd -->|"✓ pass 2x"| GoLive["✅ Go-live"]
-
-  subgraph Shortcuts["Atalhos por contexto de mudança"]
-    SC1["mudança em funnel-dispatcher\n→ verify.sh --worker funnel-dispatcher\n   cobre cenários 01–08"]
-    SC2["mudança em api-hotmart-ingress\n→ verify.sh --worker api-hotmart-ingress\n   cobre cenários 03–06"]
-    SC3["mudança em links-redirect\n→ verify.sh --worker links-redirect\n   cobre cenário 02"]
-    SC4["mudança em api-funnel-ingress\n→ verify.sh --worker api-funnel-ingress\n   cobre cenários 01, 07"]
-    SC5["com sGTM ativo\n→ verify.sh --full --meta-test-event-code TESTXXXX"]
-  end
+@enduml
 ```
 
 **Mapeamento mudança → verificação mínima:**
