@@ -30,10 +30,10 @@ backend/cloudflare/scripts/healthcheck-worker.sh --url https://decole-api-funnel
 backend/cloudflare/scripts/healthcheck-worker.sh --url https://decole-funnel-dispatcher.chicoria.workers.dev/health
 ```
 
-### 3) E2E staging
+### 3) E2E de validação
 
 ```bash
-backend/cloudflare/scripts/e2e-funnel-staging.sh
+bash backend/cloudflare/tests/run-scenarios.sh --all --skip-sgtm
 ```
 
 ### 4) Confirmação de consumer
@@ -54,7 +54,9 @@ npx wrangler queues consumer worker add decole-q-funnel-events decole-funnel-dis
 
 ## Critério de go-live
 
-- E2E staging verde 2x consecutivas.
+- `bash tests/verify.sh` verde 2x consecutivas.
 - `PURCHASE_APPROVED` processando sem exception.
 - `funnel_events` e `identity_links` recebendo dados novos.
 - Sem crescimento anômalo de backlog por 24h.
+
+> Ver `ARCHITECTURE.md` para referência completa de workers, pipelines e mapeamento mudança→teste.

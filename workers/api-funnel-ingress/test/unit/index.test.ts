@@ -64,4 +64,40 @@ describe("api-funnel-ingress", () => {
     const res = await worker.fetch(req, makeEnv({ APP_EVENTS_HMAC: "abc" }));
     expect(res.status).toBe(401);
   });
+
+  it("captura CF-Connecting-IP e inclui client_ip na attribution", async () => {
+    const send = vi.fn(async () => undefined);
+    const req = new Request("https://x/funnel/precheckout", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: "https://decolesuacarreiraesg.com.br",
+        "cf-connecting-ip": "1.2.3.4",
+      },
+      body: JSON.stringify({ email: "lead@example.com", product_code: "DECOLE_ESG_MENTORIA" }),
+    });
+
+    const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send } }));
+    expect(res.status).toBe(202);
+    const evt = send.mock.calls[0]?.[0] as { attribution?: { client_ip?: string } };
+    expect(evt?.attribution?.client_ip).toBe("1.2.3.4");
+  });
+
+  it("usa x-forwarded-for como fallback quando CF-Connecting-IP ausente", async () => {
+    const send = vi.fn(async () => undefined);
+    const req = new Request("https://x/funnel/precheckout", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: "https://decolesuacarreiraesg.com.br",
+        "x-forwarded-for": "5.6.7.8, 10.0.0.1",
+      },
+      body: JSON.stringify({ email: "lead@example.com", product_code: "DECOLE_ESG_MENTORIA" }),
+    });
+
+    const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send } }));
+    expect(res.status).toBe(202);
+    const evt = send.mock.calls[0]?.[0] as { attribution?: { client_ip?: string } };
+    expect(evt?.attribution?.client_ip).toBe("5.6.7.8");
+  });
 });

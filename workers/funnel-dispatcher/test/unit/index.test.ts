@@ -503,4 +503,104 @@ describe("funnel-dispatcher", () => {
 
     vi.unstubAllGlobals();
   });
+
+  it("upsert_event_store guarda attribution merged no payload_json (fbp/fbc/client_ip acessíveis para enrich_attribution)", async () => {
+    const d1Stub = makeD1Stub();
+    let storedPayloadJson = "";
+    d1Stub.db.prepare = vi.fn((sql: string) => {
+      const state = { binds: [] as unknown[] };
+      return {
+        bind: vi.fn((...vals: unknown[]) => {
+          state.binds = vals;
+          return {
+            run: vi.fn(async () => {
+              if (sql.includes("INSERT INTO funnel_events")) {
+                // payload_json is the 9th bind param (index 8)
+                storedPayloadJson = String(state.binds[8] ?? "");
+              }
+              return {};
+            }),
+            first: vi.fn(async () => null),
+          };
+        }),
+        run: vi.fn(async () => ({})),
+        first: vi.fn(async () => null),
+      };
+    }) as any;
+
+    const env = makeEnv({ EVENT_STORE_DB: d1Stub.db });
+    const event: any = {
+      event_id: "evt-attr-merge-1",
+      event_type: "BEGIN_CHECKOUT",
+      product_code: "DECOLE_ESG_MENTORIA",
+      source: "site",
+      occurred_at: new Date().toISOString(),
+      attribution: { fbp: "fb.1.123.test", fbc: "fb.click.456", client_ip: "1.2.3.4" },
+      payload: { checkout_url: "https://pay.hotmart.com/checkout" },
+    };
+
+    await worker.queue({ messages: [{ body: event }] }, env);
+
+    // attribution fields must be present in payload_json for enrich_attribution recovery
+    const stored = JSON.parse(storedPayloadJson || "{}") as Record<string, unknown>;
+    expect(stored.fbp).toBe("fb.1.123.test");
+    expect(stored.fbc).toBe("fb.click.456");
+    expect(stored.client_ip).toBe("1.2.3.4");
+    expect(stored.checkout_url).toBe("https://pay.hotmart.com/checkout");
+  });
+
+  it("enrich_attribution injeta fbp/client_ip no evento quando evento site anterior existe no D1", async () => {
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const sitePayload = JSON.stringify({ fbp: "fb.1.site.111", client_ip: "9.9.9.9" });
+    const d1Stub = makeD1Stub();
+    d1Stub.db.prepare = vi.fn((sql: string) => {
+      return {
+        bind: vi.fn((..._vals: unknown[]) => ({
+          run: vi.fn(async () => ({})),
+          first: vi.fn(async () => {
+            // enrich_attribution queries for prior site event
+            if (sql.includes("source = 'site'")) return { payload_json: sitePayload };
+            return null;
+          }),
+        })),
+        run: vi.fn(async () => ({})),
+        first: vi.fn(async () => null),
+      };
+    }) as any;
+
+    const env = makeEnv({
+      EVENT_STORE_DB: d1Stub.db,
+      SGTM_ENDPOINT_URL_PLANOVOO: "https://sgtm.test",
+      GA4_MEASUREMENT_ID: "G-TEST",
+      GA4_API_SECRET: "test-secret",
+    });
+
+    // Hotmart event without fbp — enrich_attribution should recover from D1
+    const event: any = {
+      event_id: "evt-enrich-1",
+      event_type: "PURCHASE_APPROVED",
+      product_code: "DECOLE_PLANOVOO",
+      source: "hotmart",
+      occurred_at: new Date().toISOString(),
+      identity: { email_hash: "abc123" },
+      attribution: {},
+      payload: { profile_id: "profile-enrich-1", value: 297 },
+    };
+
+    await worker.queue({ messages: [{ body: event }] }, env);
+
+    // emit_tracking should have been called with fbp from enriched attribution
+    const sgtmCall = fetchMock.mock.calls.find((c) =>
+      String(c[0]).includes("/mp/collect")
+    );
+    expect(sgtmCall).toBeTruthy();
+    const body = JSON.parse(String((sgtmCall?.[1] as RequestInit)?.body || "{}")) as { events?: Array<{ params?: Record<string, unknown> }> };
+    const params = body.events?.[0]?.params ?? {};
+    expect(params.fbp).toBe("fb.1.site.111");
+    expect(params.client_ip_address).toBe("9.9.9.9");
+
+    vi.unstubAllGlobals();
+  });
 });

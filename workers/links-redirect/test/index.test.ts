@@ -176,6 +176,18 @@ describe("links-redirect worker", () => {
     });
   });
 
+  it("captura CF-Connecting-IP e inclui client_ip na attribution do BEGIN_CHECKOUT", async () => {
+    const sent: unknown[] = [];
+    const req = new Request("https://links.decolesuacarreiraesg.com.br/checkout?anonymous_id=anon-ip", {
+      method: "GET",
+      headers: { "cf-connecting-ip": "9.8.7.6" },
+    });
+    await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send: async (b: unknown) => { sent.push(b); } } }));
+    expect(sent).toHaveLength(1);
+    const evt = sent[0] as { attribution?: { client_ip?: string } };
+    expect(evt?.attribution?.client_ip).toBe("9.8.7.6");
+  });
+
   it("recusa metodos nao permitidos", async () => {
     const res = await worker.fetch(makeRequest("health", { method: "POST" }), makeEnv());
     expect(res.status).toBe(405);
