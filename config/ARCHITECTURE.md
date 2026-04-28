@@ -1,7 +1,7 @@
 # Arquitetura de Eventos — DECOLE (estado atual)
 
 > Referência de estado atual. Última actualização: 2026-04-28.
-> Documento substitui `NEW_ARCH_PLAN.md` (plano de implementação, arquivado).
+> Para diagramas visuais (arquitetura, chains, deployment, fluxo de dev) ver [`DIAGRAMS.md`](DIAGRAMS.md).
 
 ---
 
