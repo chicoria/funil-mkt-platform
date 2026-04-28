@@ -42,11 +42,6 @@ Browser / Hotmart / App
 | `decole-links-redirect` | `links.decolesuacarreiraesg.com.br/*` | Checkout redirect → BEGIN_CHECKOUT |
 | `decole-api-hotmart-ingress` | `api.decolesuacarreiraesg.com.br/webhooks/v1/*` | Webhooks Hotmart → PURCHASE_APPROVED / PURCHASE_OUT_OF_SHOPPING_CART |
 | `decole-funnel-dispatcher` | consumer queue | Processa chain de handlers por evento |
-| `decole-api-external-webhooks` | `/webhooks/hotmart*` + `/webhooks/v1/*` | Legacy + forwarding n8n (DECOLE_PLANOVOO) |
-| `decole-jobs-events-consumer` | consumer `decole-q-hotmart-events` | Legacy consumer (queue antiga) |
-| `decole-api-precheckout` | `api.decolesuacarreiraesg.com.br/brevo*` | Legacy DOI Brevo directo |
-
-> Workers `decole-api-external-webhooks`, `decole-jobs-events-consumer` e `decole-api-precheckout` são legados em fase de desactivação gradual.
 
 ---
 
