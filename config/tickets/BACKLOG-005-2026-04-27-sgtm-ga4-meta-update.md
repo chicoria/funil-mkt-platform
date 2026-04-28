@@ -74,4 +74,68 @@ Inspecao direta do container sGTM `GTM-K6Q4H6BR` (conta 6266094107, container 24
 
 ## Observacoes operacionais
 - Nenhum secret foi registrado neste update.
-- Publicacao em ticket Basecamp pendente apenas de autenticacao do CLI local.
+
+---
+
+## Update 2026-04-28 — Fixes de tracking + Suite E2E completa
+
+### Correcoes aplicadas (deploy em producao)
+
+**1. Meta CAPI nao recebia user data**
+`emitTracking` nao incluia campos de utilizador no payload enviado ao sGTM. O template Meta CAPI no sGTM descarta eventos silenciosamente sem pelo menos um campo de user data.
+- `em` (email hash SHA-256) adicionado ao payload `/mp/collect`
+- `client_ip_address` adicionado quando disponivel
+
+**2. `client_ip` capturado nas fontes corretas**
+- `api-funnel-ingress` → endpoint `/funnel/precheckout` via `CF-Connecting-IP`
+- `links-redirect` → `buildBeginCheckoutEvent` via `CF-Connecting-IP`
+
+**3. Handler `enrich_attribution` (novo)**
+Eventos Hotmart chegam sem `fbp`/`fbc`/`client_ip`. Novo handler recupera esses campos do evento site mais recente do mesmo `profile_id` em D1 e injeta antes do `emit_tracking`.
+
+Cadeia: `resolve_identity → upsert_event_store → enrich_attribution → update_brevo_funnel → emit_tracking`
+
+**4. `PURCHASE_OUT_OF_SHOPPING_CART` removido do sGTM**
+Duplicava `InitiateCheckout` com `BEGIN_CHECKOUT`. Chain agora: `resolve_identity → upsert_event_store → update_brevo_funnel → send_cart_abandonment_email`
+
+**5. `payload_json` em D1 inclui attribution**
+`upsertEventStoreRecord` faz merge de `event.attribution` + `event.payload`. Antes so guardava `event.payload`, tornando `enrich_attribution` incapaz de encontrar `fbp` de eventos site anteriores.
+
+**6. Handlers externos nao-fatais**
+`sendBrevoEmail`, `updateBrevoFunnel` e `forwardN8n` envolvidos em try/catch. Erros HTTP ja nao causam retry da queue message que bloqueava `upsert_event_store`.
+
+### Suite E2E de referencia
+
+`backend/cloudflare/tests/` — 8 cenarios independentes, todos verdes em producao:
+
+| # | Cenario | Tags |
+|---|---|---|
+| 01 | generate-lead | ingress, identity |
+| 02 | begin-checkout | ingress, identity, tracking, sgtm |
+| 03 | purchase-approved | hotmart, identity, tracking, sgtm |
+| 04 | cart-abandonment | hotmart — confirma SEM sgtm |
+| 05 | identity-stitch | identity |
+| 06 | attribution-enrichment | identity, tracking, sgtm |
+| 07 | deduplication | ingress, identity |
+| 08 | sgtm-payload | tracking, sgtm |
+
+```bash
+# Regressao rapida (antes de qualquer deploy)
+./backend/cloudflare/tests/run-scenarios.sh --all --skip-sgtm
+
+# Validacao completa
+./backend/cloudflare/tests/run-scenarios.sh --all --meta-test-event-code TEST15651
+```
+
+### Workers deployados
+
+- `decole-links-redirect` v4b030fa6
+- `decole-api-funnel-ingress` vbb54fa47
+- `decole-funnel-dispatcher` v16c5cb74
+
+### Commits
+
+- `693d1f6` feat(tracking): enrich Meta CAPI user data and fix InitiateCheckout deduplication
+- `b52ff26` feat(tests): add E2E scenario suite for full funnel validation
+- `6e6feff` fix(e2e): resolve issues found during E2E suite execution
+- `1b1abe8` fix(dispatcher): make Brevo/n8n handler errors non-fatal to prevent queue retries
