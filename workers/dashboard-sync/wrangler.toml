@@ -1,0 +1,11 @@
+name = "decole-dashboard-sync"
+main = "src/index.ts"
+compatibility_date = "2026-04-29"
+
+[[d1_databases]]
+binding = "EVENT_STORE_DB"
+database_name = "decole-d1-event-store"
+database_id = "f5c19aac-2bdc-4fe4-b560-e1c49199ff4c"
+
+[triggers]
+crons = ["0 4 * * *"]

@@ -14,6 +14,7 @@
 | 2 | [Chains de Handlers por Evento](#2--chains-de-handlers-por-evento) | [`02-chains-handlers.puml`](diagramas/02-chains-handlers.puml) | Sequência de handlers para cada `event_type` |
 | 3 | [Deployment & Infraestrutura](#3--deployment--infraestrutura) | [`03-deployment-infra.puml`](diagramas/03-deployment-infra.puml) | Workers, routes, bindings, CI/CD |
 | 4 | [Fluxo de Desenvolvimento](#4--fluxo-de-desenvolvimento) | [`04-fluxo-desenvolvimento.puml`](diagramas/04-fluxo-desenvolvimento.puml) | Change → test → commit → deploy → go-live |
+| 5 | [Dados de Entrada do Funil](#5--dados-de-entrada-do-funil) | [`05-dados-entrada-funil.puml`](diagramas/05-dados-entrada-funil.puml) | Campos por evento, gaps de UTM, encaixe no funil por produto, dashboard |
 
 ---
 
@@ -97,3 +98,30 @@ Do código à produção com loops de validação em cada fase.
 | `api-funnel-ingress/src/**` | `verify.sh --worker api-funnel-ingress` | 01, 07 |
 | `packages/shared/**` | `verify.sh` (todos) | 01–08 |
 | `config/products.catalog.json` | `verify.sh` (todos) | 01–08 |
+
+---
+
+## 5 · Dados de Entrada do Funil
+
+→ [`diagramas/05-dados-entrada-funil.puml`](diagramas/05-dados-entrada-funil.puml)
+
+Mapa completo de **o que chega, de onde e o que está em falta** em cada etapa do funil, por produto. Inclui o encaixe com o dashboard de analytics.
+
+**Cobre:**
+- **AWARENESS** — PAGE_VIEW / CTA_CLICK via GTM → GA4 (cron diário)
+- **CONSIDERATION** — GENERATE_LEAD: campos do formulário, identity (anonymous_id, session_id), Meta attribution (fbp/fbc), gap de UTMs (fix BACKLOG-015)
+- **CONVERSION** — BEGIN_CHECKOUT: UTMs ✅ capturados pelo `links-redirect` Worker da URL
+- **PURCHASE** — PURCHASE_APPROVED: enrich_attribution recupera fbp/fbc/utm do BEGIN_CHECKOUT
+- **Dashboard** — Cloudflare Pages lendo D1 + GA4 Data API + Meta Marketing API
+- **Gap de UTMs** — GENERATE_LEAD não envia utm_source/campaign (BACKLOG-015)
+
+**Diferenciação por produto:**
+
+| Produto | Diferenciador no evento | Fonte |
+|---------|------------------------|-------|
+| DECOLE_ESG_MENTORIA | `product_code` no payload | hidden field no formulário |
+| DECOLE_PLANOVOO | `product_code` no payload | hidden field no formulário |
+| ESG (GA4) | `customEvent:produto = DECOLE_ESG_MENTORIA` | GTM dataLayer |
+| PlanoVoo (GA4) | `customEvent:produto = DECOLE_PLANOVOO` | GTM dataLayer |
+| ESG (Meta) | `META_AD_ACCOUNT_ID_ESG` | cron usa conta ESG |
+| PlanoVoo (Meta) | `META_AD_ACCOUNT_ID_PLANOVOO` | cron usa conta PlanoVoo |

@@ -1,0 +1,254 @@
+@startuml dados-entrada-funil
+!theme plain
+skinparam linetype ortho
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 11
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam noteBackgroundColor #FFFDE7
+skinparam noteBorderColor #F9A825
+skinparam databaseBackgroundColor #DAE8FC
+skinparam componentBackgroundColor #F5F5F5
+skinparam arrowColor #555555
+
+top to bottom direction
+
+' ══════════════════════════════════════════════════
+' FONTES: TOPO DE FUNIL (apenas GA4 / Meta Pixel)
+' ══════════════════════════════════════════════════
+
+package "AWARENESS / CONSIDERATION — via GTM web-only" as GTMLayer #EDE7F6 {
+
+  component "Meta Ad\n(impressão)" as MetaImpressao #CE93D8
+  component "PAGE_VIEW\n(landing page)" as PageView #CE93D8
+  component "CTA_CLICK\nBUTTON_CLICK" as CtaClick #CE93D8
+
+  MetaImpressao -right-> PageView : clique\n+ fbclid na URL\n+ utm_* na URL
+  PageView -right-> CtaClick
+
+  note bottom of PageView
+    GA4 via GTM-58CQ9K7X
+    Meta Pixel via GTM
+    ──────────────────────
+    NÃO chegam ao D1
+    Capturados via
+    GA4 Data API (cron diário)
+    Dimension: customEvent:produto
+  end note
+}
+
+' ══════════════════════════════════════════════════
+' GENERATE_LEAD — formulário de precheckout
+' ══════════════════════════════════════════════════
+
+package "CONSIDERATION — GENERATE_LEAD" as LeadLayer #E3F2FD {
+
+  component "Formulário Precheckout\nsite/index.html\nsite/planodevoo/index.html" as Form #90CAF9
+
+  note right of Form
+    <b>✅ Enviado pelo frontend:</b>
+    ─────────────────────────────────
+    email, nome, telefone
+    anonymous_id  ← localStorage (decole_anonymous_id)
+    session_id    ← sessionStorage (decole_session_id)
+    lead_id       ← sessionStorage (decole_lead_id)
+    product_code  ← hidden field
+    fbp           ← cookie _fbp (Meta Pixel)
+    fbc           ← cookie _fbc | gerado de fbclid
+    cf-turnstile-response
+
+    <b>❌ GAP — NÃO enviado (fix: BACKLOG-015):</b>
+    ─────────────────────────────────
+    utm_source    ← não lido da URL
+    utm_medium    ← não lido da URL
+    utm_campaign  ← não lido da URL
+    gclid         ← não capturado
+
+    <b>Fix: ler UTMs da URL ao carregar</b>
+    <b>→ sessionStorage → incluir no FormData</b>
+  end note
+
+  component "api-funnel-ingress\nPOST /funnel/precheckout" as FunnelIngress #90CAF9
+  Form -down-> FunnelIngress : POST FormData
+}
+
+' ══════════════════════════════════════════════════
+' BEGIN_CHECKOUT — clique no link de checkout
+' ══════════════════════════════════════════════════
+
+package "CONVERSION — BEGIN_CHECKOUT" as CheckoutLayer #E8F5E9 {
+
+  component "Botão de checkout\n(link: links.decole.../<produto>/checkout)" as CheckoutBtn #A5D6A7
+
+  note right of CheckoutBtn
+    URL do link contém os parâmetros:
+    ?utm_source=instagram
+    &utm_medium=cpc
+    &utm_campaign=nome_campanha
+    &gclid=... (Google Ads)
+  end note
+
+  component "links-redirect Worker\nlinks.decolesuacarreiraesg.com.br" as LinksRedirect #A5D6A7
+
+  note right of LinksRedirect
+    <b>✅ Capturado pelo Worker da URL + cookies:</b>
+    ─────────────────────────────────────────────
+    utm_source    ← url.searchParams
+    utm_medium    ← url.searchParams
+    utm_campaign  ← url.searchParams
+    gclid         ← url.searchParams
+    fbp           ← cookie _fbp (CF-Worker)
+    fbc           ← cookie _fbc (CF-Worker)
+    anonymous_id  ← cookie ou query param
+    client_ip     ← CF-Connecting-IP
+    product_code  ← inferido do path do link
+  end note
+
+  CheckoutBtn -down-> LinksRedirect : GET (redirect)
+}
+
+' ══════════════════════════════════════════════════
+' HOTMART — PURCHASE / CART ABANDONMENT
+' ══════════════════════════════════════════════════
+
+package "CONVERSION / PURCHASE — Hotmart Webhook" as HotmartLayer #FFF3E0 {
+
+  component "Hotmart\nPURCHASE_APPROVED\nPURCHASE_OUT_OF_SHOPPING_CART" as HotmartWebhook #FFCC80
+
+  note right of HotmartWebhook
+    <b>✅ Payload do webhook Hotmart:</b>
+    ──────────────────────────────────
+    email         → SHA-256 → lookup profile_id
+    transaction_id
+    product_id    → 5083704 (ESG) | 7592718 (PlanoVoo)
+    offer_code
+    valor (BRL)
+    status_code
+
+    <b>Attribution recuperada via enrich_attribution:</b>
+    ──────────────────────────────────
+    fbp, fbc, client_ip  ← do evento BEGIN_CHECKOUT
+    utm_source/campaign  ← do evento BEGIN_CHECKOUT
+    do mesmo profile_id
+  end note
+
+  component "api-hotmart-ingress\nPOST /webhooks/v1/*/hotmart/*" as HotmartIngress #FFCC80
+  HotmartWebhook -down-> HotmartIngress : POST JSON
+}
+
+' ══════════════════════════════════════════════════
+' QUEUE + DISPATCHER
+' ══════════════════════════════════════════════════
+
+package "Pipeline Cloudflare" as Pipeline #ECEFF1 {
+
+  queue "decole-q-funnel-events" as Queue #FFE0B2
+  component "funnel-dispatcher\nchain de handlers" as Dispatcher #CFD8DC
+
+  note right of Dispatcher
+    Handlers executados:
+    ① resolve_identity   → profile_id unificado
+    ② upsert_event_store → salva em funnel_events
+    ③ enrich_attribution → recupera utm/fbp/fbc
+       do evento site anterior (mesmo profile_id)
+    ④ emit_tracking      → sGTM → GA4 + Meta CAPI
+    ⑤ update_brevo_funnel → Brevo CRM
+  end note
+
+  Queue -down-> Dispatcher
+}
+
+' ══════════════════════════════════════════════════
+' D1 — EVENT STORE
+' ══════════════════════════════════════════════════
+
+package "D1: decole-d1-event-store" as D1Layer #DAE8FC {
+
+  database "funnel_events\nevent_id · profile_id · anonymous_id\nemail_hash · event_type · product_code\noccurred_at · payload_json" as FunnelEvents #DAE8FC
+
+  note right of FunnelEvents
+    payload_json contém:
+    ─────────────────────
+    fbp, fbc, client_ip
+    utm_source, utm_medium, utm_campaign
+    gclid, wbraid, gbraid
+    (+ campos extra por event_type)
+  end note
+
+  database "identity_links\nprofile_id · anonymous_id · email_hash" as IdentityLinks #DAE8FC
+
+  database "ga4_daily_metrics\ndate · product_code · event_name\nevent_count · fetched_at" as GA4Cache #D5E8D4
+
+  database "meta_daily_metrics\ndate · product_code · spend\nimpressions · link_clicks · leads\ncpm · cpc · ctr · cost_per_lead" as MetaCache #D5E8D4
+}
+
+' ══════════════════════════════════════════════════
+' FONTES EXTERNAS — CRON DIÁRIO
+' ══════════════════════════════════════════════════
+
+package "APIs Externas — Cron 4h UTC" as ExternalAPIs #F3E5F5 {
+  component "GA4 Data API\nG-BQQB6X5XN1\npage_view · cta_click · button_click\nper produto" as GA4API #CE93D8
+  component "Meta Marketing API\nESG: act_XXX | PlanoVoo: act_YYY\nspend · impressions · cpc\nleads · ctr · cpm · cost_per_lead" as MetaAPI #CE93D8
+}
+
+' ══════════════════════════════════════════════════
+' DASHBOARD — CLOUDFLARE PAGES
+' ══════════════════════════════════════════════════
+
+package "Dashboard — Cloudflare Pages" as DashLayer #E8EAF6 {
+
+  component "decole-dashboard\ndashboard.decolesuacarreiraesg.com.br\n(Next.js 15 + edge runtime)" as Dashboard #9FA8DA
+
+  note right of Dashboard
+    <b>Funil por produto (ESG | PlanoVoo):</b>
+    ─────────────────────────────────────────
+    PAGE_VIEW        ← ga4_daily_metrics
+        ↓ CTR %
+    Cliques LP       ← meta_daily_metrics
+        ↓ Connect Rate %
+    Visitas LP       ← meta_daily_metrics
+        ↓ Conv LP %
+    GENERATE_LEAD    ← funnel_events (D1)
+        ↓ % checkout
+    BEGIN_CHECKOUT   ← funnel_events (D1)
+        ↓ % compra
+    PURCHASE         ← funnel_events (D1)
+
+    <b>Painel Meta Ads (por produto):</b>
+    ─────────────────────────────────────────
+    Gasto · CPM · CPC · CTR
+    Custo por Lead · ROAS · Lucro
+
+    <b>Attribution breakdown:</b>
+    utm_source / utm_campaign → % conversão
+
+    <b>User journey:</b>
+    email → profile_id → timeline completa
+  end note
+}
+
+' ══════════════════════════════════════════════════
+' LIGAÇÕES
+' ══════════════════════════════════════════════════
+
+FunnelIngress -down-> Queue
+LinksRedirect -down-> Queue
+HotmartIngress -down-> Queue
+
+Dispatcher -down-> FunnelEvents
+Dispatcher -down-> IdentityLinks
+
+GA4API -down-> GA4Cache : UPSERT diário
+MetaAPI -down-> MetaCache : UPSERT diário
+
+FunnelEvents -down-> Dashboard
+IdentityLinks -down-> Dashboard
+GA4Cache -down-> Dashboard
+MetaCache -down-> Dashboard
+
+GTMLayer -[hidden]down-> LeadLayer
+LeadLayer -[hidden]down-> CheckoutLayer
+CheckoutLayer -[hidden]down-> HotmartLayer
+HotmartLayer -[hidden]down-> Pipeline
+
+@enduml

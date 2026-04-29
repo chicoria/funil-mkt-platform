@@ -6,6 +6,8 @@ IDENTITY_DB_NAME="${IDENTITY_DB_NAME:-decole-d1-identity}"
 EVENT_DB_NAME="${EVENT_DB_NAME:-decole-d1-event-store}"
 IDENTITY_SQL="${ROOT_DIR}/backend/cloudflare/config/d1/identity_links.sql"
 EVENT_SQL="${ROOT_DIR}/backend/cloudflare/config/d1/funnel_events.sql"
+GA4_SQL="${ROOT_DIR}/backend/cloudflare/config/d1/ga4_daily_metrics.sql"
+META_SQL="${ROOT_DIR}/backend/cloudflare/config/d1/meta_daily_metrics.sql"
 WRANGLER_CWD="${ROOT_DIR}/backend/cloudflare/workers/funnel-dispatcher"
 
 usage() {
@@ -46,7 +48,7 @@ if [[ -z "${CLOUDFLARE_API_TOKEN:-}" || -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]]; then
   exit 1
 fi
 
-if [[ ! -f "$IDENTITY_SQL" || ! -f "$EVENT_SQL" ]]; then
+if [[ ! -f "$IDENTITY_SQL" || ! -f "$EVENT_SQL" || ! -f "$GA4_SQL" || ! -f "$META_SQL" ]]; then
   echo "SQL schema files not found" >&2
   exit 1
 fi
@@ -58,5 +60,11 @@ npx wrangler d1 execute "$IDENTITY_DB_NAME" --remote --file "$IDENTITY_SQL"
 
 echo "[d1] applying event-store schema -> $EVENT_DB_NAME"
 npx wrangler d1 execute "$EVENT_DB_NAME" --remote --file "$EVENT_SQL"
+
+echo "[d1] applying ga4_daily_metrics schema -> $EVENT_DB_NAME"
+npx wrangler d1 execute "$EVENT_DB_NAME" --remote --file "$GA4_SQL"
+
+echo "[d1] applying meta_daily_metrics schema -> $EVENT_DB_NAME"
+npx wrangler d1 execute "$EVENT_DB_NAME" --remote --file "$META_SQL"
 
 echo "[ok] D1 schemas applied"
