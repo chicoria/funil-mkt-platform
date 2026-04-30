@@ -417,6 +417,28 @@ npx wrangler pages functions trigger decole-dashboard
 open https://dashboard.decolesuacarreiraesg.com.br
 ```
 
+### Sync on-demand (botão no dashboard)
+
+O worker `decole-dashboard-sync` já suporta execução manual segura além do cron.
+
+Endpoints:
+
+- `POST /sync/run`
+  - Auth: `Authorization: Bearer <SYNC_SECRET>` (ou header `x-sync-secret`)
+  - Body JSON opcional:
+    - `date`: `YYYY-MM-DD` (default: ontem UTC)
+    - `part`: `all | ga4 | meta` (default: `all`)
+  - Retorno:
+    - `200 { ok: true, run_id, date, part }`
+    - `409 { ok: false, error: "sync_already_running" }`
+- `GET /sync/status`
+  - Auth: igual acima
+  - Retorno: último run (`running|ok|error`) com timestamps e erro, se houver.
+
+Compatibilidade:
+
+- `GET /sync?secret=...&date=YYYY-MM-DD` continua funcional para uso legado.
+
 ---
 
 ## Ficheiros afectados
