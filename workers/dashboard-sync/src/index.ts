@@ -198,6 +198,17 @@ async function syncGa4(db: D1Database, env: Env, dateStr: string): Promise<void>
   }
 }
 
+function normalizeSyncError(raw: string): string {
+  const lower = raw.toLowerCase();
+  if (lower.includes("automated queries") || lower.includes("we're sorry")) {
+    return "GA4 temporarily blocked by Google anti-automation. Retry in a few minutes.";
+  }
+  if (lower.includes("<html")) {
+    return "External provider returned HTML error page";
+  }
+  return raw.slice(0, 600);
+}
+
 // ──────────────────────────────────────────────────────────
 // Meta helpers
 // ──────────────────────────────────────────────────────────
@@ -293,31 +304,54 @@ async function syncMeta(
 // Core sync logic (shared by cron + manual trigger)
 // ──────────────────────────────────────────────────────────
 
-async function runSync(env: Env, dateStr: string, part: SyncPart): Promise<void> {
+async function runSync(
+  env: Env,
+  dateStr: string,
+  part: SyncPart
+): Promise<{ ga4Ok: boolean; metaOk: boolean; errors: string[] }> {
   console.log(`[dashboard-sync] date=${dateStr} part=${part}`);
+  const errors: string[] = [];
+  let ga4Ok = part === "meta";
+  let metaOk = part === "ga4";
 
   if (part === "all" || part === "ga4") {
-    await syncGa4(env.EVENT_STORE_DB, env, dateStr);
-    console.log("[dashboard-sync] GA4 done");
+    try {
+      await syncGa4(env.EVENT_STORE_DB, env, dateStr);
+      console.log("[dashboard-sync] GA4 done");
+      ga4Ok = true;
+    } catch (err) {
+      const msg = normalizeSyncError(err instanceof Error ? err.message : String(err));
+      errors.push(`ga4:${msg}`);
+      console.log(`[dashboard-sync] GA4 error: ${msg}`);
+    }
   }
 
   if (part === "all" || part === "meta") {
-    await syncMeta(
-      env.EVENT_STORE_DB,
-      env.META_ACCESS_TOKEN,
-      env.META_AD_ACCOUNT_ID_ESG,
-      "DECOLE_ESG_MENTORIA",
-      dateStr
-    );
-    await syncMeta(
-      env.EVENT_STORE_DB,
-      env.META_ACCESS_TOKEN,
-      env.META_AD_ACCOUNT_ID_PLANOVOO,
-      "DECOLE_PLANOVOO",
-      dateStr
-    );
-    console.log("[dashboard-sync] Meta done");
+    try {
+      await syncMeta(
+        env.EVENT_STORE_DB,
+        env.META_ACCESS_TOKEN,
+        env.META_AD_ACCOUNT_ID_ESG,
+        "DECOLE_ESG_MENTORIA",
+        dateStr
+      );
+      await syncMeta(
+        env.EVENT_STORE_DB,
+        env.META_ACCESS_TOKEN,
+        env.META_AD_ACCOUNT_ID_PLANOVOO,
+        "DECOLE_PLANOVOO",
+        dateStr
+      );
+      console.log("[dashboard-sync] Meta done");
+      metaOk = true;
+    } catch (err) {
+      const msg = normalizeSyncError(err instanceof Error ? err.message : String(err));
+      errors.push(`meta:${msg}`);
+      console.log(`[dashboard-sync] Meta error: ${msg}`);
+    }
   }
+
+  return { ga4Ok, metaOk, errors };
 }
 
 async function ensureSyncControlSchema(db: D1Database): Promise<void> {
@@ -447,7 +481,13 @@ export default {
     await ensureSyncControlSchema(env.EVENT_STORE_DB);
     const yesterday = new Date();
     yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-    ctx.waitUntil(runSync(env, yesterday.toISOString().slice(0, 10), "all"));
+    ctx.waitUntil(
+      runSync(env, yesterday.toISOString().slice(0, 10), "all").then((result) => {
+        if (result.errors.length > 0) {
+          throw new Error(result.errors.join(" | "));
+        }
+      })
+    );
   },
 
   // HTTP: manual trigger — GET /sync?date=YYYY-MM-DD&secret=...
@@ -498,10 +538,36 @@ export default {
 
     try {
       await saveRunStart(env.EVENT_STORE_DB, runId, dateStr, part);
-      await runSync(env, dateStr, part);
-      await saveRunFinish(env.EVENT_STORE_DB, runId, true, null);
+      const result = await runSync(env, dateStr, part);
+
+      // Operational behavior for "all":
+      // if Meta succeeded and only GA4 failed (temporary Google protection),
+      // return success with partial flag so dashboard is usable.
+      const onlyGa4Failed =
+        part === "all" &&
+        result.metaOk &&
+        !result.ga4Ok &&
+        result.errors.length > 0 &&
+        result.errors.every((e) => e.startsWith("ga4:"));
+
+      if (result.errors.length === 0 || onlyGa4Failed) {
+        const warning = onlyGa4Failed ? result.errors.join(" | ") : null;
+        await saveRunFinish(env.EVENT_STORE_DB, runId, true, warning);
+        await releaseLock(env.EVENT_STORE_DB);
+        return asJson({
+          ok: true,
+          partial: onlyGa4Failed || undefined,
+          warning: warning || undefined,
+          run_id: runId,
+          date: dateStr,
+          part,
+        });
+      }
+
+      const errorMsg = result.errors.join(" | ");
+      await saveRunFinish(env.EVENT_STORE_DB, runId, false, errorMsg);
       await releaseLock(env.EVENT_STORE_DB);
-      return asJson({ ok: true, run_id: runId, date: dateStr, part });
+      return asJson({ ok: false, run_id: runId, date: dateStr, part, error: errorMsg }, 500);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       await saveRunFinish(env.EVENT_STORE_DB, runId, false, msg);
