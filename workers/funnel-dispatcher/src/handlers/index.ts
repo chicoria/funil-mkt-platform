@@ -21,6 +21,7 @@ interface CatalogEventConfig {
   eventType?: string;
   id?: string;
   brevoConfig?: {
+    doiTemplateId?: string;
     doiRedirectUrl?: string;
     cartAbandonmentTemplateId?: string;
   };
@@ -31,6 +32,11 @@ interface CatalogProductConfig {
   aliases?: string[];
   brevo?: {
     doiRedirectUrl?: string;
+    templates?: {
+      doi?: {
+        id?: string;
+      };
+    };
     funnelFields?: {
       steps?: string;
       lastStep?: string;
@@ -462,6 +468,17 @@ function resolveDoiConfirmationUrl(event: FunnelEvent, env: DispatcherEnv): stri
   return asString(env.BREVO_DOI_REDIRECT_URL);
 }
 
+function resolveDoiTemplateId(event: FunnelEvent, env: DispatcherEnv): string {
+  const fromEventConfig = asString(resolveCatalogEvent(event, env)?.brevoConfig?.doiTemplateId);
+  if (fromEventConfig) return fromEventConfig;
+
+  const product = getCatalogProduct(getCatalog(env), event.product_code);
+  const fromProductConfig = asString(product?.brevo?.templates?.doi?.id);
+  if (fromProductConfig) return fromProductConfig;
+
+  return asString(env.BREVO_DOI_TEMPLATE_ID);
+}
+
 function resolveCartAbandonmentTemplateId(event: FunnelEvent, env: DispatcherEnv): string {
   const fromEventConfig = asString(resolveCatalogEvent(event, env)?.brevoConfig?.cartAbandonmentTemplateId);
   if (fromEventConfig) return fromEventConfig;
@@ -808,7 +825,7 @@ export function createHandlers(): HandlerMap {
           })
         );
       }
-      await sendBrevoEmail(event, env, asString(env.BREVO_DOI_TEMPLATE_ID), {
+      await sendBrevoEmail(event, env, resolveDoiTemplateId(event, env), {
         confirmation_url: confirmationUrl,
       });
     },

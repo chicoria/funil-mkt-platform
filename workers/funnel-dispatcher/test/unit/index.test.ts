@@ -179,6 +179,63 @@ describe("funnel-dispatcher", () => {
     vi.unstubAllGlobals();
   });
 
+  it("envia DOI usando templateId do catalog por produto", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const env = makeEnv({
+      BREVO_API_KEY: "set",
+      BREVO_DOI_TEMPLATE_ID: "1",
+      CATALOG_JSON: JSON.stringify({
+        products: {
+          DECOLE_PLANOVOO: {
+            brevo: {
+              templates: {
+                doi: { id: "10" },
+              },
+            },
+            funnelEventArchitecture: {
+              events: [
+                {
+                  eventType: "GENERATE_LEAD",
+                  chain: ["send_brevo_doi"],
+                  brevoConfig: {
+                    doiRedirectUrl: "https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html",
+                  },
+                },
+              ],
+            },
+          },
+        },
+      }),
+    });
+
+    const event: any = {
+      event_id: "evt-doi-planovoo-1",
+      event_type: "GENERATE_LEAD",
+      product_code: "DECOLE_PLANOVOO",
+      source: "site",
+      occurred_at: new Date().toISOString(),
+      lead: { email: "qa.planovoo.doi@example.com" },
+      payload: {},
+    };
+
+    await worker.queue({ messages: [{ body: event }] }, env);
+
+    const emailCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/smtp/email"));
+    expect(emailCall).toBeTruthy();
+    const body = JSON.parse(String((emailCall?.[1] as RequestInit)?.body || "{}")) as {
+      templateId?: number;
+      params?: Record<string, string>;
+    };
+    expect(body.templateId).toBe(10);
+    expect(body.params?.confirmation_url).toBe("https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html");
+
+    vi.unstubAllGlobals();
+  });
+
   it("envia email de carrinho abandonado usando templateId do catalog por produto", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -550,7 +607,7 @@ describe("funnel-dispatcher", () => {
   });
 
   it("enrich_attribution injeta fbp/client_ip no evento quando evento site anterior existe no D1", async () => {
-    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response("{}", { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
 
     const sitePayload = JSON.stringify({ fbp: "fb.1.site.111", client_ip: "9.9.9.9" });
