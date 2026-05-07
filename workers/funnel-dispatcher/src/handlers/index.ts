@@ -127,6 +127,18 @@ function envString(env: DispatcherEnv, key: string | undefined): string {
   return asString(env[key]);
 }
 
+function asAbsoluteHttpUrl(value: unknown): string {
+  const raw = asString(value);
+  if (!raw) return "";
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return "";
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
 function isTruthyFlag(value: unknown): boolean {
   const normalized = asString(value).toLowerCase();
   return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
@@ -496,23 +508,15 @@ function resolveCatalogEvent(event: FunnelEvent, env: DispatcherEnv): CatalogEve
 }
 
 function resolveDoiConfirmationUrl(event: FunnelEvent, env: DispatcherEnv): string {
-  const payload = event.payload || {};
-  const fromPayload =
-    asString(payload.confirmation_url) ||
-    asString(payload.confirmationUrl) ||
-    asString(payload.doi_redirect_url) ||
-    asString(payload.doiRedirectUrl);
-  if (fromPayload) return fromPayload;
-
   const catalog = getCatalog(env);
   const product = getCatalogProduct(catalog, event.product_code);
-  const fromEventConfig = asString(resolveCatalogEvent(event, env)?.brevoConfig?.doiRedirectUrl);
+  const fromEventConfig = asAbsoluteHttpUrl(resolveCatalogEvent(event, env)?.brevoConfig?.doiRedirectUrl);
   if (fromEventConfig) return fromEventConfig;
 
-  const fromProductConfig = asString(product?.brevo?.doiRedirectUrl);
+  const fromProductConfig = asAbsoluteHttpUrl(product?.brevo?.doiRedirectUrl);
   if (fromProductConfig) return fromProductConfig;
 
-  return asString(env.BREVO_DOI_REDIRECT_URL);
+  return asAbsoluteHttpUrl(env.BREVO_DOI_REDIRECT_URL);
 }
 
 function resolveDoiTemplateId(event: FunnelEvent, env: DispatcherEnv): string {
@@ -1068,14 +1072,18 @@ export function createHandlers(): HandlerMap {
           JSON.stringify({
             stage: "handler_warn",
             handler: "send_brevo_doi",
-            reason: "missing_confirmation_url",
+            reason: "missing_absolute_confirmation_url",
             product_code: event.product_code,
             event_type: event.event_type,
           })
         );
+        return;
       }
       await sendBrevoEmail(event, env, resolveDoiTemplateId(event, env), {
         confirmation_url: confirmationUrl,
+        confirmationUrl,
+        doi_redirect_url: confirmationUrl,
+        doiRedirectUrl: confirmationUrl,
       });
     },
 

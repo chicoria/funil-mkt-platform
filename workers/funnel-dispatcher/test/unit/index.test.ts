@@ -232,6 +232,96 @@ describe("funnel-dispatcher", () => {
     };
     expect(body.templateId).toBe(10);
     expect(body.params?.confirmation_url).toBe("https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html");
+    expect(body.params?.confirmationUrl).toBe("https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html");
+    expect(body.params?.doi_redirect_url).toBe("https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("nao envia DOI quando confirmation_url nao e absoluta", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const env = makeEnv({
+      BREVO_API_KEY: "set",
+      BREVO_DOI_TEMPLATE_ID: "10",
+      CATALOG_JSON: JSON.stringify({
+        products: {
+          DECOLE_PLANOVOO: {
+            funnelEventArchitecture: {
+              events: [{ eventType: "GENERATE_LEAD", chain: ["send_brevo_doi"] }],
+            },
+          },
+        },
+      }),
+    });
+
+    const event: any = {
+      event_id: "evt-doi-invalid-url-1",
+      event_type: "GENERATE_LEAD",
+      product_code: "DECOLE_PLANOVOO",
+      source: "site",
+      occurred_at: new Date().toISOString(),
+      lead: { email: "qa.planovoo.invalid.doi@example.com" },
+      payload: { confirmation_url: "/planodevoo/confirmacao.html" },
+    };
+
+    await worker.queue({ messages: [{ body: event }] }, env);
+
+    const emailCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/smtp/email"));
+    expect(emailCall).toBeFalsy();
+
+    vi.unstubAllGlobals();
+  });
+
+  it("ignora confirmation_url do payload e usa redirect do catalogo", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const env = makeEnv({
+      BREVO_API_KEY: "set",
+      BREVO_DOI_TEMPLATE_ID: "10",
+      CATALOG_JSON: JSON.stringify({
+        products: {
+          DECOLE_PLANOVOO: {
+            funnelEventArchitecture: {
+              events: [
+                {
+                  eventType: "GENERATE_LEAD",
+                  chain: ["send_brevo_doi"],
+                  brevoConfig: {
+                    doiRedirectUrl: "https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html",
+                  },
+                },
+              ],
+            },
+          },
+        },
+      }),
+    });
+
+    const event: any = {
+      event_id: "evt-doi-payload-url-ignored-1",
+      event_type: "GENERATE_LEAD",
+      product_code: "DECOLE_PLANOVOO",
+      source: "site",
+      occurred_at: new Date().toISOString(),
+      lead: { email: "qa.planovoo.payload.doi@example.com" },
+      payload: { confirmation_url: "https://example.net/nao-usar" },
+    };
+
+    await worker.queue({ messages: [{ body: event }] }, env);
+
+    const emailCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/smtp/email"));
+    expect(emailCall).toBeTruthy();
+    const body = JSON.parse(String((emailCall?.[1] as RequestInit)?.body || "{}")) as {
+      params?: Record<string, string>;
+    };
+    expect(body.params?.confirmation_url).toBe("https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html");
 
     vi.unstubAllGlobals();
   });
