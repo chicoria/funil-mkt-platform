@@ -4,6 +4,10 @@ interface QueueBinding {
   send(body: unknown): Promise<void>;
 }
 
+interface KVNamespaceLike {
+  get(key: string): Promise<string | null>;
+}
+
 interface Env {
   ELIZETE_WHATSAPP_NUMBER?: string;
   ELIZETE_WHATSAPP_DEFAULT_TEXT?: string;
@@ -11,6 +15,7 @@ interface Env {
   PLANO_DE_VOO_CHECKOUT_URL?: string;
   LINKS_PRODUCTS?: string;
   FUNNEL_EVENTS?: QueueBinding;
+  IDENTITY_KV?: KVNamespaceLike;
 }
 
 type HandlerResult = {
@@ -28,6 +33,28 @@ interface LinksProductConfig {
 
 let cachedLinksProductsRaw = "";
 let cachedLinksProducts: LinksProductConfig[] = [];
+const CHECKOUT_RECOVERY_PARAM_KEYS = new Set([
+  "email",
+  "name",
+  "phoneac",
+  "phonenumber",
+  "fbp",
+  "fbc",
+  "fbclid",
+  "gclid",
+  "wbraid",
+  "gbraid",
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_content",
+  "utm_term",
+  "anonymous_id",
+  "session_id",
+  "lead_id",
+  "off",
+  "offer",
+]);
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -122,6 +149,40 @@ function firstSearchParam(params: URLSearchParams, keys: string[]): string {
     if (value) return value;
   }
   return "";
+}
+
+async function withCheckoutRecoveryParams(url: URL, env: Env): Promise<URL> {
+  const recoveryId = firstSearchParam(url.searchParams, ["rid", "recovery_id", "recoveryId"]);
+  if (!recoveryId) return url;
+
+  const nextUrl = new URL(url);
+  nextUrl.searchParams.delete("rid");
+  nextUrl.searchParams.delete("recovery_id");
+  nextUrl.searchParams.delete("recoveryId");
+
+  if (!env.IDENTITY_KV) return nextUrl;
+
+  let parsed: unknown;
+  try {
+    const raw = await env.IDENTITY_KV.get(`checkout_recovery:${recoveryId}`);
+    if (!raw) return nextUrl;
+    parsed = JSON.parse(raw);
+  } catch {
+    return nextUrl;
+  }
+
+  if (!parsed || typeof parsed !== "object") return nextUrl;
+  const params = (parsed as { params?: unknown }).params;
+  if (!params || typeof params !== "object") return nextUrl;
+
+  Object.entries(params as Record<string, unknown>).forEach(([key, rawValue]) => {
+    if (!CHECKOUT_RECOVERY_PARAM_KEYS.has(key)) return;
+    const value = asTrimmedString(rawValue);
+    if (!value || asTrimmedString(nextUrl.searchParams.get(key))) return;
+    nextUrl.searchParams.set(key, value);
+  });
+
+  return nextUrl;
 }
 
 function handleElizeteWhatsapp(url: URL, env: Env): HandlerResult | null {
@@ -262,7 +323,7 @@ function buildBeginCheckoutEvent(request: Request, url: URL, result: HandlerResu
   const sessionId = firstSearchParam(url.searchParams, ["session_id", "sessionId"]);
   const leadId = firstSearchParam(url.searchParams, ["lead_id", "leadId", "LEAD_ID"]);
   const email = firstSearchParam(url.searchParams, ["email", "EMAIL"]);
-  const phone = firstSearchParam(url.searchParams, ["phone", "PHONE", "SMS"]);
+  const phone = firstSearchParam(url.searchParams, ["phone", "PHONE", "SMS", "phonenumber", "phoneNumber"]);
 
   return {
     event_id: eventId,
@@ -372,23 +433,24 @@ const worker = {
         }
 
         const checkoutPath = `${checkoutPrefix}/checkout`;
-        const requestUrl = withOfferCode(url, offerCode);
+        const requestUrl = await withCheckoutRecoveryParams(withOfferCode(url, offerCode), env);
         const result = handleCheckoutPath(requestUrl, checkoutPath, env);
 
         if (!result || !result.location) {
           return jsonResponse({ ok: false, error: "link_not_configured" }, 500);
         }
 
-        return redirectResponse(request, url, result, env, { emitBeginCheckout: true });
+        return redirectResponse(request, requestUrl, result, env, { emitBeginCheckout: true });
       }
 
       if (path === "checkout" || path.endsWith("/checkout")) {
-        const result = handleCheckoutPath(url, rawPath, env);
+        const requestUrl = await withCheckoutRecoveryParams(url, env);
+        const result = handleCheckoutPath(requestUrl, rawPath, env);
         if (!result || !result.location) {
           return jsonResponse({ ok: false, error: "link_not_configured" }, 500);
         }
 
-        return redirectResponse(request, url, result, env, { emitBeginCheckout: true });
+        return redirectResponse(request, requestUrl, result, env, { emitBeginCheckout: true });
       }
 
       const handler = handlers[path];

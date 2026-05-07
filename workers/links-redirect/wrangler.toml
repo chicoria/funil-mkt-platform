@@ -10,6 +10,10 @@ routes = [
 binding = "FUNNEL_EVENTS"
 queue = "decole-q-funnel-events"
 
+[[kv_namespaces]]
+binding = "IDENTITY_KV"
+id = "88989e2e3492459eadb06e9da523dfae"
+
 [observability]
   [observability.logs]
   enabled = false

@@ -8,6 +8,7 @@ type Env = {
   PLANO_DE_VOO_CHECKOUT_URL?: string;
   LINKS_PRODUCTS?: string;
   FUNNEL_EVENTS?: { send(body: unknown): Promise<void> };
+  IDENTITY_KV?: { get(key: string): Promise<string | null> };
 };
 
 function makeEnv(overrides: Partial<Env> = {}): Env {
@@ -120,6 +121,56 @@ describe("links-redirect worker", () => {
     expect(url.pathname).toBe("/R105463680A");
     expect(url.searchParams.get("off")).toBe("f3yweqek");
     expect(url.searchParams.get("utm_source")).toBe("ig");
+  });
+
+  it("expande token de recuperacao antes de redirecionar para Hotmart", async () => {
+    const sent: unknown[] = [];
+    const res = await worker.fetch(
+      makeRequest("plano-de-voo/checkout?rid=rec-123&utm_medium=manual"),
+      makeEnv({
+        IDENTITY_KV: {
+          get: async (key: string) =>
+            key === "checkout_recovery:rec-123"
+              ? JSON.stringify({
+                  params: {
+                    email: "ana@example.com",
+                    name: "Ana Silva",
+                    phoneac: "11",
+                    phonenumber: "999999999",
+                    fbp: "fb.1.123",
+                    utm_source: "brevo",
+                    utm_medium: "email",
+                    ignored: "nope",
+                  },
+                })
+              : null,
+        },
+        FUNNEL_EVENTS: {
+          send: async (body: unknown) => {
+            sent.push(body);
+          },
+        },
+      })
+    );
+
+    expect(res.status).toBe(302);
+    const location = res.headers.get("location") || "";
+    const url = new URL(location);
+    expect(url.origin).toBe("https://pay.hotmart.com");
+    expect(url.searchParams.get("rid")).toBeNull();
+    expect(url.searchParams.get("email")).toBe("ana@example.com");
+    expect(url.searchParams.get("name")).toBe("Ana Silva");
+    expect(url.searchParams.get("phoneac")).toBe("11");
+    expect(url.searchParams.get("phonenumber")).toBe("999999999");
+    expect(url.searchParams.get("fbp")).toBe("fb.1.123");
+    expect(url.searchParams.get("utm_source")).toBe("brevo");
+    expect(url.searchParams.get("utm_medium")).toBe("manual");
+    expect(url.searchParams.get("ignored")).toBeNull();
+    expect(sent[0]).toMatchObject({
+      event_type: "BEGIN_CHECKOUT",
+      lead: { email: "ana@example.com" },
+      attribution: { fbp: "fb.1.123", utm_source: "brevo", utm_medium: "manual" },
+    });
   });
 
   it("redireciona /plano-de-voo/checkout/offer/:codigo com oferta da rota", async () => {

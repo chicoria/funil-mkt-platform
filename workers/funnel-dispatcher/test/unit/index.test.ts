@@ -236,22 +236,25 @@ describe("funnel-dispatcher", () => {
     vi.unstubAllGlobals();
   });
 
-  it("envia email de carrinho abandonado usando templateId do catalog por produto", async () => {
-    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
-      return new Response(JSON.stringify({ ok: true }), { status: 200 });
-    });
+	  it("envia email de carrinho abandonado usando templateId do catalog por produto", async () => {
+	    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+	      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+	    });
     vi.stubGlobal("fetch", fetchMock);
 
     const env = makeEnv({
       BREVO_API_KEY: "set",
       CATALOG_JSON: JSON.stringify({
         products: {
-          DECOLE_PLANOVOO: {
-            name: "DECOLE - Plano de Voo",
-            links: { checkoutBaseUrl: "https://pay.hotmart.com/R105463680A?off=f3yweqek" },
-            funnelEventArchitecture: {
-              events: [
-                {
+	          DECOLE_PLANOVOO: {
+	            name: "DECOLE - Plano de Voo",
+	            links: {
+	              checkoutPath: "/plano-de-voo/checkout",
+	              checkoutBaseUrl: "https://pay.hotmart.com/R105463680A?off=f3yweqek",
+	            },
+	            funnelEventArchitecture: {
+	              events: [
+	                {
                   eventType: "PURCHASE_OUT_OF_SHOPPING_CART",
                   chain: ["send_cart_abandonment_email"],
                   brevoConfig: { cartAbandonmentTemplateId: "11" },
@@ -280,17 +283,122 @@ describe("funnel-dispatcher", () => {
     const body = JSON.parse(String((emailCall?.[1] as RequestInit)?.body || "{}")) as {
       templateId?: number;
       params?: Record<string, string>;
-    };
-    expect(body.templateId).toBe(11);
-    expect(body.params?.checkout_url).toBe("https://pay.hotmart.com/R105463680A?off=f3yweqek");
-    expect(body.params?.checkoutUrl).toBe("https://pay.hotmart.com/R105463680A?off=f3yweqek");
-    expect(body.params?.product_name).toBe("DECOLE - Plano de Voo");
-    expect(body.params?.productName).toBe("DECOLE - Plano de Voo");
+	    };
+	    expect(body.templateId).toBe(11);
+	    const checkoutUrl = new URL(String(body.params?.checkout_url || ""));
+	    expect(checkoutUrl.origin).toBe("https://links.decolesuacarreiraesg.com.br");
+	    expect(checkoutUrl.pathname).toBe("/plano-de-voo/checkout");
+	    expect(checkoutUrl.searchParams.get("rid")).toBeTruthy();
+	    expect(body.params?.checkoutUrl).toBe(body.params?.checkout_url);
+	    expect(body.params?.product_name).toBe("DECOLE - Plano de Voo");
+	    expect(body.params?.productName).toBe("DECOLE - Plano de Voo");
+	    const recoveryPutCall = (env.IDENTITY_KV.put as any).mock.calls.find((call: unknown[]) =>
+	      String(call[0]).startsWith("checkout_recovery:")
+	    );
+	    expect(recoveryPutCall).toBeTruthy();
+	    const recoveryPayload = JSON.parse(String(recoveryPutCall?.[1] || "{}")) as { params?: Record<string, string> };
+	    expect(recoveryPayload.params?.email).toBe("qa.cart@example.com");
+	    expect(recoveryPayload.params?.utm_source).toBe("brevo");
+	    expect(recoveryPayload.params?.utm_medium).toBe("email");
 
-    vi.unstubAllGlobals();
-  });
+	    vi.unstubAllGlobals();
+	  });
 
-  it("atualiza Brevo com campos de funil por produto", async () => {
+	  it("grava dados de checkout recuperados do historico para prefill na Hotmart", async () => {
+	    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+	      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+	    });
+	    vi.stubGlobal("fetch", fetchMock);
+
+	    const sitePayload = JSON.stringify({
+	      link_url:
+	        "https://links.decolesuacarreiraesg.com.br/plano-de-voo/checkout?name=Ana%20Silva&email=ana@example.com&phoneac=11&phonenumber=999999999&fbp=fb.1.site&utm_source=ig",
+	      session_id: "sess-site-1",
+	      anonymous_id: "anon-site-1",
+	    });
+	    const d1Stub = makeD1Stub();
+	    d1Stub.db.prepare = vi.fn((sql: string) => {
+	      const state = { binds: [] as unknown[] };
+	      return {
+	        bind: vi.fn((...vals: unknown[]) => {
+	          state.binds = vals;
+	          return {
+	            run: vi.fn(async () => ({})),
+	            first: vi.fn(async () => {
+	              if (sql.includes("source = 'site'")) return { payload_json: sitePayload };
+	              return null;
+	            }),
+	          };
+	        }),
+	        run: vi.fn(async () => ({})),
+	        first: vi.fn(async () => null),
+	      };
+	    }) as any;
+
+	    const env = makeEnv({
+	      EVENT_STORE_DB: d1Stub.db,
+	      BREVO_API_KEY: "set",
+	      CATALOG_JSON: JSON.stringify({
+	        products: {
+	          DECOLE_PLANOVOO: {
+	            name: "DECOLE - Plano de Voo",
+	            links: {
+	              checkoutPath: "/plano-de-voo/checkout",
+	              checkoutBaseUrl: "https://pay.hotmart.com/R105463680A?off=f3yweqek",
+	            },
+	            funnelEventArchitecture: {
+	              events: [
+	                {
+	                  eventType: "PURCHASE_OUT_OF_SHOPPING_CART",
+	                  chain: ["resolve_identity", "upsert_event_store", "send_cart_abandonment_email"],
+	                  brevoConfig: { cartAbandonmentTemplateId: "11" },
+	                },
+	              ],
+	            },
+	          },
+	        },
+	      }),
+	    });
+
+	    await worker.queue(
+	      {
+	        messages: [
+	          {
+	            body: {
+	              event_id: "evt-cart-prefill-1",
+	              event_type: "PURCHASE_OUT_OF_SHOPPING_CART",
+	              product_code: "DECOLE_PLANOVOO",
+	              source: "hotmart",
+	              occurred_at: new Date().toISOString(),
+	              lead: { email: "ana@example.com" },
+	              payload: {},
+	            },
+	          },
+	        ],
+	      },
+	      env
+	    );
+
+	    const recoveryPutCall = (env.IDENTITY_KV.put as any).mock.calls.find((call: unknown[]) =>
+	      String(call[0]).startsWith("checkout_recovery:")
+	    );
+	    expect(recoveryPutCall).toBeTruthy();
+	    const recoveryPayload = JSON.parse(String(recoveryPutCall?.[1] || "{}")) as { params?: Record<string, string> };
+	    expect(recoveryPayload.params).toMatchObject({
+	      name: "Ana Silva",
+	      email: "ana@example.com",
+	      phoneac: "11",
+	      phonenumber: "999999999",
+	      fbp: "fb.1.site",
+	      utm_source: "ig",
+	      session_id: "sess-site-1",
+	      anonymous_id: "anon-site-1",
+	    });
+
+	    vi.unstubAllGlobals();
+	  });
+
+	  it("atualiza Brevo com campos de funil por produto", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
     });

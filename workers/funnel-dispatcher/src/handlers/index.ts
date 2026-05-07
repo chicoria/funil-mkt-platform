@@ -3,6 +3,30 @@ import bundledCatalogJson from "../../../../config/products.catalog.json";
 import { DispatcherEnv, HandlerFn } from "../dispatcher";
 
 const BREVO_BASE_URL = "https://api.brevo.com/v3";
+const LINKS_BASE_URL = "https://links.decolesuacarreiraesg.com.br";
+const CHECKOUT_RECOVERY_TTL_SECONDS = 14 * 24 * 60 * 60;
+const CHECKOUT_RECOVERY_PARAM_KEYS = [
+  "email",
+  "name",
+  "phoneac",
+  "phonenumber",
+  "fbp",
+  "fbc",
+  "fbclid",
+  "gclid",
+  "wbraid",
+  "gbraid",
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_content",
+  "utm_term",
+  "anonymous_id",
+  "session_id",
+  "lead_id",
+  "off",
+  "offer",
+] as const;
 
 type HandlerMap = Record<string, HandlerFn>;
 type SqlBindable = string | number | null;
@@ -44,6 +68,7 @@ interface CatalogProductConfig {
     };
   };
   links?: {
+    checkoutPath?: string;
     checkoutBaseUrl?: string;
   };
   tracking?: {
@@ -166,6 +191,28 @@ function payloadString(payload: Record<string, unknown>, keys: string[]): string
     if (value) return value;
   }
   return "";
+}
+
+function nestedValue(data: Record<string, unknown>, path: string): unknown {
+  const parts = path.split(".");
+  let current: unknown = data;
+  for (const part of parts) {
+    if (!current || typeof current !== "object") return undefined;
+    current = (current as Record<string, unknown>)[part];
+  }
+  return current;
+}
+
+function nestedString(data: Record<string, unknown>, paths: string[]): string {
+  for (const path of paths) {
+    const value = asString(nestedValue(data, path));
+    if (value) return value;
+  }
+  return "";
+}
+
+function digitsOnly(value: string): string {
+  return value.replace(/\D+/g, "");
 }
 
 function getIdentityDb(env: DispatcherEnv): D1DatabaseLike | null {
@@ -485,15 +532,217 @@ function resolveCartAbandonmentTemplateId(event: FunnelEvent, env: DispatcherEnv
   return asString(env.BREVO_CART_ABANDON_TEMPLATE_ID || env.BREVO_CART_ABANDONMENT_TEMPLATE_ID);
 }
 
-function resolveCartAbandonmentParams(event: FunnelEvent, env: DispatcherEnv): Record<string, unknown> {
+function setRecoveryParam(params: Record<string, string>, key: string, value: unknown): void {
+  const normalized = asString(value);
+  if (!normalized || params[key]) return;
+  params[key] = normalized;
+}
+
+function appendRecoveryParamsFromUrl(params: Record<string, string>, rawUrl: string): void {
+  if (!rawUrl) return;
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return;
+  }
+
+  for (const key of CHECKOUT_RECOVERY_PARAM_KEYS) {
+    setRecoveryParam(params, key, url.searchParams.get(key));
+  }
+
+  const offerCode = asString(url.searchParams.get("off")) || asString(url.searchParams.get("offer"));
+  setRecoveryParam(params, "off", offerCode);
+}
+
+function splitPhoneForHotmart(rawPhone: string, rawCountry: string): { phoneac?: string; phonenumber?: string } {
+  const countryDigits = digitsOnly(rawCountry);
+  const phoneDigits = digitsOnly(rawPhone);
+  if (!phoneDigits) return {};
+
+  let localNumber = phoneDigits;
+  if (countryDigits && localNumber.startsWith(countryDigits) && localNumber.length > countryDigits.length) {
+    localNumber = localNumber.slice(countryDigits.length);
+  }
+
+  if ((!countryDigits || countryDigits === "55") && localNumber.length >= 10) {
+    return {
+      phoneac: localNumber.slice(0, 2),
+      phonenumber: localNumber.slice(2),
+    };
+  }
+
+  if (countryDigits) {
+    return {
+      phoneac: countryDigits,
+      phonenumber: localNumber,
+    };
+  }
+
+  return { phonenumber: localNumber };
+}
+
+function collectCheckoutRecoveryParamsFromPayload(params: Record<string, string>, payload: Record<string, unknown>): void {
+  appendRecoveryParamsFromUrl(params, nestedString(payload, ["link_url", "linkUrl", "checkout_url", "checkoutUrl", "checkout_url_recovery"]));
+
+  setRecoveryParam(params, "email", nestedString(payload, ["email", "EMAIL", "buyer.email", "customer.email", "data.buyer.email"]));
+
+  const firstName = nestedString(payload, ["FIRSTNAME", "first_name", "firstName", "buyer.first_name", "data.buyer.first_name"]);
+  const lastName = nestedString(payload, ["LASTNAME", "last_name", "lastName", "buyer.last_name", "data.buyer.last_name"]);
+  const fullName =
+    nestedString(payload, ["name", "nome", "buyer.name", "customer.name", "data.buyer.name"]) ||
+    [firstName, lastName].filter(Boolean).join(" ").trim();
+  setRecoveryParam(params, "name", fullName);
+
+  setRecoveryParam(params, "phoneac", nestedString(payload, ["phoneac", "phone_ac", "PHONEAC"]));
+  setRecoveryParam(params, "phonenumber", nestedString(payload, ["phonenumber", "phone_number", "PHONENUMBER"]));
+  if (!params.phoneac || !params.phonenumber) {
+    const phone = nestedString(payload, [
+      "phone",
+      "PHONE",
+      "SMS",
+      "buyer.phone",
+      "buyer.checkout_phone",
+      "data.buyer.phone",
+      "data.buyer.checkout_phone",
+    ]);
+    const country = nestedString(payload, ["SMS__COUNTRY_CODE", "phone_country", "country_code", "buyer.phone_country", "data.buyer.phone_country"]);
+    const phoneParts = splitPhoneForHotmart(phone, country);
+    setRecoveryParam(params, "phoneac", phoneParts.phoneac);
+    setRecoveryParam(params, "phonenumber", phoneParts.phonenumber);
+  }
+
+  setRecoveryParam(params, "fbp", nestedString(payload, ["fbp", "FBP"]));
+  setRecoveryParam(params, "fbc", nestedString(payload, ["fbc", "FBC"]));
+  setRecoveryParam(params, "fbclid", nestedString(payload, ["fbclid", "FBCLID"]));
+  setRecoveryParam(params, "gclid", nestedString(payload, ["gclid"]));
+  setRecoveryParam(params, "wbraid", nestedString(payload, ["wbraid"]));
+  setRecoveryParam(params, "gbraid", nestedString(payload, ["gbraid"]));
+  setRecoveryParam(params, "utm_source", nestedString(payload, ["utm_source"]));
+  setRecoveryParam(params, "utm_medium", nestedString(payload, ["utm_medium"]));
+  setRecoveryParam(params, "utm_campaign", nestedString(payload, ["utm_campaign"]));
+  setRecoveryParam(params, "utm_content", nestedString(payload, ["utm_content"]));
+  setRecoveryParam(params, "utm_term", nestedString(payload, ["utm_term"]));
+  setRecoveryParam(params, "anonymous_id", nestedString(payload, ["anonymous_id", "anonymousId"]));
+  setRecoveryParam(params, "session_id", nestedString(payload, ["session_id", "sessionId"]));
+  setRecoveryParam(params, "lead_id", nestedString(payload, ["lead_id", "leadId", "LEAD_ID"]));
+}
+
+function cartRecoveryCampaignName(productCode: string): string {
+  const campaignProduct = productCode.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  return `cart_abandonment_${campaignProduct || "checkout"}`;
+}
+
+async function readLatestSitePayloadForRecovery(event: FunnelEvent, env: DispatcherEnv): Promise<Record<string, unknown>> {
+  const db = getEventStoreDb(env);
+  const profileId = asString((event.payload || {}).profile_id);
+  if (!db || !profileId) return {};
+
+  let row: { payload_json?: string } | null = null;
+  try {
+    row = await db
+      .prepare(
+        `SELECT event_type, payload_json FROM funnel_events
+         WHERE profile_id = ? AND source = 'site'
+         ORDER BY CASE WHEN event_type = 'BEGIN_CHECKOUT' THEN 0 ELSE 1 END, occurred_at DESC
+         LIMIT 1`
+      )
+      .bind(profileId)
+      .first<{ payload_json?: string }>();
+  } catch {
+    return {};
+  }
+
+  if (!row?.payload_json) return {};
+  try {
+    const parsed = JSON.parse(row.payload_json);
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
+async function buildCheckoutRecoveryParams(event: FunnelEvent, env: DispatcherEnv): Promise<Record<string, string>> {
+  const params: Record<string, string> = {};
+  const sitePayload = await readLatestSitePayloadForRecovery(event, env);
+  collectCheckoutRecoveryParamsFromPayload(params, sitePayload);
+  collectCheckoutRecoveryParamsFromPayload(params, event.payload || {});
+
+  setRecoveryParam(params, "email", event.lead?.email);
+  const leadPhone = asString(event.lead?.phone);
+  if ((!params.phoneac || !params.phonenumber) && leadPhone) {
+    const phoneParts = splitPhoneForHotmart(leadPhone, "");
+    setRecoveryParam(params, "phoneac", phoneParts.phoneac);
+    setRecoveryParam(params, "phonenumber", phoneParts.phonenumber);
+  }
+  setRecoveryParam(params, "anonymous_id", event.identity?.anonymous_id);
+  setRecoveryParam(params, "session_id", event.identity?.session_id);
+  setRecoveryParam(params, "lead_id", event.identity?.lead_id || event.lead?.lead_id);
+  setRecoveryParam(params, "fbp", event.attribution?.fbp);
+  setRecoveryParam(params, "fbc", event.attribution?.fbc);
+  setRecoveryParam(params, "gclid", event.attribution?.gclid);
+  setRecoveryParam(params, "wbraid", event.attribution?.wbraid);
+  setRecoveryParam(params, "gbraid", event.attribution?.gbraid);
+  setRecoveryParam(params, "utm_source", event.attribution?.utm_source);
+  setRecoveryParam(params, "utm_medium", event.attribution?.utm_medium);
+  setRecoveryParam(params, "utm_campaign", event.attribution?.utm_campaign);
+
+  setRecoveryParam(params, "utm_source", "brevo");
+  setRecoveryParam(params, "utm_medium", "email");
+  setRecoveryParam(params, "utm_campaign", cartRecoveryCampaignName(event.product_code));
+
+  return params;
+}
+
+async function buildCheckoutRecoveryLink(
+  event: FunnelEvent,
+  env: DispatcherEnv,
+  product: CatalogProductConfig | undefined,
+  fallbackCheckoutUrl: string
+): Promise<string> {
+  const checkoutPath = asString(product?.links?.checkoutPath);
+  if (!checkoutPath || !env.IDENTITY_KV) return fallbackCheckoutUrl;
+
+  let checkoutUrl: URL;
+  try {
+    checkoutUrl = new URL(checkoutPath, asString(env.LINKS_BASE_URL || env.CHECKOUT_LINKS_BASE_URL) || LINKS_BASE_URL);
+  } catch {
+    return fallbackCheckoutUrl;
+  }
+
+  const recoveryId = crypto.randomUUID();
+  checkoutUrl.searchParams.set("rid", recoveryId);
+  checkoutUrl.searchParams.set("utm_source", "brevo");
+  checkoutUrl.searchParams.set("utm_medium", "email");
+  checkoutUrl.searchParams.set("utm_campaign", cartRecoveryCampaignName(event.product_code));
+
+  const recoveryParams = await buildCheckoutRecoveryParams(event, env);
+  await env.IDENTITY_KV.put(
+    `checkout_recovery:${recoveryId}`,
+    JSON.stringify({
+      version: 1,
+      product_code: event.product_code,
+      event_id: event.event_id,
+      profile_id: asString((event.payload || {}).profile_id) || undefined,
+      params: recoveryParams,
+      created_at: new Date().toISOString(),
+    }),
+    { expirationTtl: CHECKOUT_RECOVERY_TTL_SECONDS }
+  );
+
+  return checkoutUrl.toString();
+}
+
+async function resolveCartAbandonmentParams(event: FunnelEvent, env: DispatcherEnv): Promise<Record<string, unknown>> {
   const payload = event.payload || {};
   const catalog = getCatalog(env);
   const product = getCatalogProduct(catalog, event.product_code);
-  const checkoutUrl =
+  const fallbackCheckoutUrl =
     asString(payload.checkout_url) ||
     asString(payload.checkoutUrl) ||
     asString(payload.checkout_url_recovery) ||
     asString(product?.links?.checkoutBaseUrl);
+  const checkoutUrl = await buildCheckoutRecoveryLink(event, env, product, fallbackCheckoutUrl);
   const productName =
     asString(payload.product_name) ||
     asString(payload.productName) ||
@@ -837,7 +1086,7 @@ export function createHandlers(): HandlerMap {
 
     async send_cart_abandonment_email(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
       console.log(JSON.stringify({ stage: "handler", handler: "send_cart_abandonment_email", event_id: event.event_id }));
-      await sendBrevoEmail(event, env, resolveCartAbandonmentTemplateId(event, env), resolveCartAbandonmentParams(event, env));
+      await sendBrevoEmail(event, env, resolveCartAbandonmentTemplateId(event, env), await resolveCartAbandonmentParams(event, env));
     },
 
     async forward_n8n(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
