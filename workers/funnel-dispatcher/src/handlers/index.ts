@@ -45,6 +45,8 @@ interface CatalogEventConfig {
   eventType?: string;
   id?: string;
   brevoConfig?: {
+    listId?: string;
+    listIds?: Array<string | number>;
     doiTemplateId?: string;
     doiRedirectUrl?: string;
     cartAbandonmentTemplateId?: string;
@@ -56,6 +58,11 @@ interface CatalogProductConfig {
   aliases?: string[];
   brevo?: {
     doiRedirectUrl?: string;
+    lists?: {
+      precheckout?: {
+        id?: string;
+      };
+    };
     templates?: {
       doi?: {
         id?: string;
@@ -137,6 +144,36 @@ function asAbsoluteHttpUrl(value: unknown): string {
   } catch {
     return "";
   }
+}
+
+function asPositiveInteger(value: unknown): number | null {
+  const raw = asString(value);
+  if (!raw) return null;
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed <= 0) return null;
+  return parsed;
+}
+
+function normalizeUniqueIds(values: unknown[]): number[] {
+  const seen = new Set<number>();
+  const ids: number[] = [];
+  for (const value of values) {
+    if (Array.isArray(value)) {
+      for (const nested of normalizeUniqueIds(value)) {
+        if (!seen.has(nested)) {
+          seen.add(nested);
+          ids.push(nested);
+        }
+      }
+      continue;
+    }
+    const id = asPositiveInteger(value);
+    if (id && !seen.has(id)) {
+      seen.add(id);
+      ids.push(id);
+    }
+  }
+  return ids;
 }
 
 function isTruthyFlag(value: unknown): boolean {
@@ -507,7 +544,7 @@ function resolveCatalogEvent(event: FunnelEvent, env: DispatcherEnv): CatalogEve
   );
 }
 
-function resolveDoiConfirmationUrl(event: FunnelEvent, env: DispatcherEnv): string {
+function resolveDoiRedirectionUrl(event: FunnelEvent, env: DispatcherEnv): string {
   const catalog = getCatalog(env);
   const product = getCatalogProduct(catalog, event.product_code);
   const fromEventConfig = asAbsoluteHttpUrl(resolveCatalogEvent(event, env)?.brevoConfig?.doiRedirectUrl);
@@ -517,6 +554,18 @@ function resolveDoiConfirmationUrl(event: FunnelEvent, env: DispatcherEnv): stri
   if (fromProductConfig) return fromProductConfig;
 
   return asAbsoluteHttpUrl(env.BREVO_DOI_REDIRECT_URL);
+}
+
+function resolveDoiListIds(event: FunnelEvent, env: DispatcherEnv): number[] {
+  const catalog = getCatalog(env);
+  const product = getCatalogProduct(catalog, event.product_code);
+  const eventConfig = resolveCatalogEvent(event, env)?.brevoConfig;
+  return normalizeUniqueIds([
+    eventConfig?.listIds,
+    eventConfig?.listId,
+    product?.brevo?.lists?.precheckout?.id,
+    env.BREVO_DOI_LIST_ID,
+  ]);
 }
 
 function resolveDoiTemplateId(event: FunnelEvent, env: DispatcherEnv): string {
@@ -890,6 +939,122 @@ async function sendBrevoEmail(
   }
 }
 
+function setBrevoAttribute(attributes: Record<string, string>, key: string, value: unknown): void {
+  const normalized = asString(value);
+  if (!normalized) return;
+  attributes[key] = normalized;
+}
+
+function buildBrevoSmsAttribute(payload: Record<string, unknown>): string {
+  const rawPhone = nestedString(payload, [
+    "SMS",
+    "phone",
+    "phone_number",
+    "buyer.phone",
+    "data.buyer.phone",
+  ]);
+  if (!rawPhone) return "";
+
+  const phoneDigits = digitsOnly(rawPhone);
+  if (!phoneDigits) return "";
+  if (rawPhone.trim().startsWith("+")) return `+${phoneDigits}`;
+
+  const rawCountry = nestedString(payload, [
+    "SMS__COUNTRY_CODE",
+    "phone_country",
+    "country_code",
+    "buyer.phone_country",
+    "data.buyer.phone_country",
+  ]);
+  const countryDigits = digitsOnly(rawCountry);
+  if (!countryDigits) return phoneDigits;
+
+  const nationalNumber =
+    phoneDigits.startsWith(countryDigits) && phoneDigits.length > countryDigits.length
+      ? phoneDigits.slice(countryDigits.length)
+      : phoneDigits;
+  return `+${countryDigits}${nationalNumber}`;
+}
+
+function buildBrevoDoiAttributes(event: FunnelEvent, env: DispatcherEnv): Record<string, string> {
+  const payload = event.payload || {};
+  const attributes: Record<string, string> = {};
+  setBrevoAttribute(attributes, "FIRSTNAME", nestedString(payload, ["FIRSTNAME", "first_name", "firstName"]));
+  setBrevoAttribute(attributes, "LASTNAME", nestedString(payload, ["LASTNAME", "last_name", "lastName"]));
+  setBrevoAttribute(attributes, "SMS", buildBrevoSmsAttribute(payload));
+  setBrevoAttribute(attributes, "PRODUCT_CODE", event.product_code);
+
+  const fields = resolveBrevoFunnelFields(event, env);
+  if (fields) {
+    setBrevoAttribute(attributes, fields.stepsField, event.event_type);
+    setBrevoAttribute(attributes, fields.lastStepField, event.event_type);
+    setBrevoAttribute(attributes, fields.lastStepTimestampField, event.occurred_at);
+  }
+
+  return attributes;
+}
+
+async function createBrevoDoiContact(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
+  const apiKey = asString(env.BREVO_API_KEY);
+  const email = asString(event.lead?.email);
+  const templateId = asPositiveInteger(resolveDoiTemplateId(event, env));
+  const includeListIds = resolveDoiListIds(event, env);
+  const redirectionUrl = resolveDoiRedirectionUrl(event, env);
+
+  if (!apiKey || !email || !templateId || !includeListIds.length || !redirectionUrl) {
+    console.log(
+      JSON.stringify({
+        stage: "handler_skip",
+        handler: "brevo_doi",
+        reason: "missing_config_or_email",
+        product_code: event.product_code,
+        has_email: Boolean(email),
+        has_template_id: Boolean(templateId),
+        has_list_ids: includeListIds.length > 0,
+        has_redirection_url: Boolean(redirectionUrl),
+      })
+    );
+    return;
+  }
+
+  const url = `${asString(env.BREVO_BASE_URL) || BREVO_BASE_URL}/contacts/doubleOptinConfirmation`;
+  try {
+    await postJson(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "api-key": apiKey,
+      },
+      body: JSON.stringify({
+        email,
+        includeListIds,
+        redirectionUrl,
+        templateId,
+        attributes: buildBrevoDoiAttributes(event, env),
+      }),
+    });
+    console.log(
+      JSON.stringify({
+        stage: "handler_ok",
+        handler: "brevo_doi",
+        event_id: event.event_id,
+        templateId,
+        includeListIds,
+      })
+    );
+  } catch (err) {
+    // Non-fatal: Brevo errors must not cause queue retries that block event store and identity steps.
+    console.log(
+      JSON.stringify({
+        stage: "handler_warn",
+        handler: "brevo_doi",
+        event_id: event.event_id,
+        error: err instanceof Error ? err.message : String(err),
+      })
+    );
+  }
+}
+
 async function updateBrevoFunnel(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
   const apiKey = asString(env.BREVO_API_KEY);
   const email = asString(event.lead?.email);
@@ -1066,25 +1231,7 @@ export function createHandlers(): HandlerMap {
 
     async send_brevo_doi(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
       console.log(JSON.stringify({ stage: "handler", handler: "send_brevo_doi", event_id: event.event_id }));
-      const confirmationUrl = resolveDoiConfirmationUrl(event, env);
-      if (!confirmationUrl) {
-        console.log(
-          JSON.stringify({
-            stage: "handler_warn",
-            handler: "send_brevo_doi",
-            reason: "missing_absolute_confirmation_url",
-            product_code: event.product_code,
-            event_type: event.event_type,
-          })
-        );
-        return;
-      }
-      await sendBrevoEmail(event, env, resolveDoiTemplateId(event, env), {
-        confirmation_url: confirmationUrl,
-        confirmationUrl,
-        doi_redirect_url: confirmationUrl,
-        doiRedirectUrl: confirmationUrl,
-      });
+      await createBrevoDoiContact(event, env);
     },
 
     async update_brevo_funnel(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
