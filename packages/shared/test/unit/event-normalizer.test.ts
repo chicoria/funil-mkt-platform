@@ -51,7 +51,7 @@ describe("event-normalizer", () => {
     expect(evt.payload.transaction).toBe("HP16015479281022");
   });
 
-  it("normaliza PURCHASE_COMPLETE da Hotmart para PURCHASE_APPROVED", () => {
+  it("preserva PURCHASE_COMPLETE da Hotmart como evento proprio", () => {
     const evt = fromHotmartWebhook(
       {
         id: "evt-complete-1",
@@ -66,7 +66,7 @@ describe("event-normalizer", () => {
       "DECOLE_PLANOVOO"
     );
 
-    expect(evt.event_type).toBe("PURCHASE_APPROVED");
+    expect(evt.event_type).toBe("PURCHASE_COMPLETE");
     expect(evt.product_code).toBe("DECOLE_PLANOVOO");
     expect(evt.payload.transaction).toBe("HP-COMPLETE-1");
   });

@@ -63,7 +63,6 @@ function normalizeEventType(value: string, fallback = "UNKNOWN_EVENT"): string {
     .toUpperCase()
     .replace(/[^A-Z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
-  if (normalized === "PURCHASE_COMPLETE") return "PURCHASE_APPROVED";
   return normalized || fallback;
 }
 

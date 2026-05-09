@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Scenario 03: PURCHASE_APPROVED
- * Trigger: POST hotmart ingress with PURCHASE_COMPLETE
+ * Trigger: POST hotmart ingress with PURCHASE_APPROVED
  * Verifies: event in D1, identity resolved, attribution enriched, sGTM via replay
  */
 import { loadEnv, applyEnv, requireEnv, DEFAULT_ENV_FILE } from "../lib/config.mjs";
@@ -38,7 +38,7 @@ export async function run(opts = {}) {
     const res = await postJson(
       `${hotmart_ingress_url}/webhooks/v1/${productPath}/hotmart/purchase`,
       {
-        event: "PURCHASE_COMPLETE",
+        event: "PURCHASE_APPROVED",
         event_id: eventId,
         transaction: `txn-${eventId}`,
         buyer: { email },

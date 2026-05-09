@@ -563,6 +563,120 @@ describe("funnel-dispatcher", () => {
     vi.unstubAllGlobals();
   });
 
+  it("processa PURCHASE_COMPLETE da mentoria ESG como evento proprio sem tracking nem n8n", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const env = makeEnv({
+      BREVO_API_KEY: "set",
+      N8N_WEBHOOK_URL: "https://n8n.example.com/webhook/plano-de-voo/hotmart",
+      SGTM_ENDPOINT_URL: "https://sgtm.example.com/g/collect",
+    });
+
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: {
+              event_id: "evt-esg-complete-1",
+              event_type: "PURCHASE_COMPLETE",
+              product_code: "DECOLE_ESG_MENTORIA",
+              source: "hotmart",
+              occurred_at: "2026-05-09T18:30:00.000Z",
+              lead: { email: "qa.complete.esg@example.com" },
+              payload: {
+                event: "PURCHASE_COMPLETE",
+                data: {
+                  buyer: { email: "qa.complete.esg@example.com" },
+                  purchase: { transaction: "HP-ESG-COMPLETE-1" },
+                },
+              },
+            },
+          },
+        ],
+      },
+      env
+    );
+
+    const contactsCalls = fetchMock.mock.calls.filter((call) => String(call[0]).includes("/contacts"));
+    expect(contactsCalls.length).toBe(1);
+    const body = JSON.parse(String((contactsCalls[0]?.[1] as RequestInit)?.body || "{}")) as {
+      attributes?: Record<string, string>;
+    };
+    expect(body.attributes?.DECOLE_ESG_FUNIL_LAST_STEP).toBe("PURCHASE_COMPLETE");
+    expect(body.attributes?.DECOLE_ESG_FUNIL_STEPS).toBe("PURCHASE_COMPLETE");
+    expect(body.attributes?.DECOLE_ESG_FUNIL_LAST_STEP_TIMESTAMP).toBe("2026-05-09T18:30:00.000Z");
+
+    const urls = fetchMock.mock.calls.map((call) => String(call[0]));
+    expect(urls.some((url) => url.includes("sgtm.example.com"))).toBe(false);
+    expect(urls.some((url) => url.includes("n8n.example.com"))).toBe(false);
+    const hasEventInsert = (env.EVENT_STORE_DB.prepare as any).mock.calls.some((call: any[]) =>
+      String(call[0]).includes("INSERT INTO funnel_events")
+    );
+    expect(hasEventInsert).toBe(true);
+
+    vi.unstubAllGlobals();
+  });
+
+  it("processa PURCHASE_COMPLETE do Plano de Voo como evento proprio sem tracking nem n8n", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const env = makeEnv({
+      BREVO_API_KEY: "set",
+      N8N_WEBHOOK_URL: "https://n8n.example.com/webhook/plano-de-voo/hotmart",
+      SGTM_ENDPOINT_URL: "https://sgtm.example.com/g/collect",
+    });
+
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: {
+              event_id: "evt-planovoo-complete-1",
+              event_type: "PURCHASE_COMPLETE",
+              product_code: "DECOLE_PLANOVOO",
+              source: "hotmart",
+              occurred_at: "2026-05-09T18:00:00.000Z",
+              lead: { email: "qa.complete.planovoo@example.com" },
+              payload: {
+                event: "PURCHASE_COMPLETE",
+                data: {
+                  buyer: { email: "qa.complete.planovoo@example.com" },
+                  purchase: { transaction: "HP-COMPLETE-1" },
+                },
+              },
+            },
+          },
+        ],
+      },
+      env
+    );
+
+    const contactsCalls = fetchMock.mock.calls.filter((call) => String(call[0]).includes("/contacts"));
+    expect(contactsCalls.length).toBe(1);
+    const body = JSON.parse(String((contactsCalls[0]?.[1] as RequestInit)?.body || "{}")) as {
+      attributes?: Record<string, string>;
+    };
+    expect(body.attributes?.DECOLE_PLANOVOO_FUNIL_LAST_STEP).toBe("PURCHASE_COMPLETE");
+    expect(body.attributes?.DECOLE_PLANOVOO_FUNIL_STEPS).toBe("PURCHASE_COMPLETE");
+    expect(body.attributes?.DECOLE_PLANOVOO_FUNIL_LAST_STEP_TIMESTAMP).toBe("2026-05-09T18:00:00.000Z");
+
+    const urls = fetchMock.mock.calls.map((call) => String(call[0]));
+    expect(urls.some((url) => url.includes("sgtm.example.com"))).toBe(false);
+    expect(urls.some((url) => url.includes("n8n.example.com"))).toBe(false);
+    const hasEventInsert = (env.EVENT_STORE_DB.prepare as any).mock.calls.some((call: any[]) =>
+      String(call[0]).includes("INSERT INTO funnel_events")
+    );
+    expect(hasEventInsert).toBe(true);
+
+    vi.unstubAllGlobals();
+  });
+
   it("faz skip de update_brevo_funnel sem funnelFields no catalogo", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -729,6 +843,169 @@ describe("funnel-dispatcher", () => {
     const cartParams = (sgtmCartBody.events as Array<{ name: string; params: Record<string, unknown> }>)[0];
     expect(cartParams.name).toBe("begin_checkout");
     expect(cartParams.params.product_code).toBe("DECOLE_ESG_MENTORIA");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("encaminha compra Hotmart ao n8n no formato esperado pelo workflow legado", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const env = makeEnv({
+      N8N_WEBHOOK_URL: "https://n8n.example.com/webhook/plano-de-voo/hotmart",
+      CATALOG_JSON: JSON.stringify({
+        products: {
+          DECOLE_PLANOVOO: {
+            aliases: ["PLANOVOO"],
+            funnelEventArchitecture: {
+              events: [{ eventType: "PURCHASE_APPROVED", chain: ["forward_n8n"] }],
+            },
+          },
+        },
+      }),
+    });
+
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: {
+              event_id: "evt-n8n-planovoo-1",
+              event_type: "PURCHASE_APPROVED",
+              product_code: "DECOLE_PLANOVOO",
+              source: "hotmart",
+              occurred_at: "2026-05-09T12:45:39.000Z",
+              lead: { email: "buyer@example.com" },
+              payload: {
+                event: "PURCHASE_COMPLETE",
+                data: {
+                  buyer: { email: "buyer@example.com", name: "Buyer Test" },
+                  purchase: { transaction: "HP421796212" },
+                  product: { name: "DECOLE - Plano de Voo" },
+                },
+              },
+            },
+          },
+        ],
+      },
+      env
+    );
+
+    const n8nCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("n8n.example.com"));
+    expect(n8nCall).toBeTruthy();
+    const body = JSON.parse(String((n8nCall?.[1] as RequestInit)?.body || "{}")) as Record<string, any>;
+    expect(body.event).toBe("PURCHASE_COMPLETE");
+    expect(body.data?.buyer?.email).toBe("buyer@example.com");
+    expect(body.data?.purchase?.transaction).toBe("HP421796212");
+    expect(body._decole?.event_type).toBe("PURCHASE_APPROVED");
+    expect(body._decole?.product_code).toBe("DECOLE_PLANOVOO");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("normaliza payload Hotmart top-level antes de encaminhar ao n8n", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const env = makeEnv({
+      N8N_WEBHOOK_URL: "https://n8n.example.com/webhook/plano-de-voo/hotmart",
+      CATALOG_JSON: JSON.stringify({
+        products: {
+          DECOLE_PLANOVOO: {
+            funnelEventArchitecture: {
+              events: [{ eventType: "PURCHASE_APPROVED", chain: ["forward_n8n"] }],
+            },
+          },
+        },
+      }),
+    });
+
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: {
+              event_id: "evt-n8n-planovoo-2",
+              event_type: "PURCHASE_APPROVED",
+              product_code: "DECOLE_PLANOVOO",
+              source: "hotmart",
+              occurred_at: "2026-05-09T12:45:39.000Z",
+              payload: {
+                buyer: { email: "buyer@example.com" },
+                purchase: { transaction: "HP421796212" },
+              },
+            },
+          },
+        ],
+      },
+      env
+    );
+
+    const n8nCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("n8n.example.com"));
+    expect(n8nCall).toBeTruthy();
+    const body = JSON.parse(String((n8nCall?.[1] as RequestInit)?.body || "{}")) as Record<string, any>;
+    expect(body.event).toBe("PURCHASE_APPROVED");
+    expect(body.data?.buyer?.email).toBe("buyer@example.com");
+    expect(body.data?.purchase?.transaction).toBe("HP421796212");
+    expect(body.id).toBe("evt-n8n-planovoo-2");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("mantem formato canonico ao encaminhar n8n de produto sem compat legado", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const env = makeEnv({
+      N8N_WEBHOOK_URL: "https://n8n.example.com/webhook/plano-de-voo/hotmart",
+      CATALOG_JSON: JSON.stringify({
+        products: {
+          DECOLE_ESG_MENTORIA: {
+            funnelEventArchitecture: {
+              events: [{ eventType: "PURCHASE_APPROVED", chain: ["forward_n8n"] }],
+            },
+          },
+        },
+      }),
+    });
+
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: {
+              event_id: "evt-n8n-esg-1",
+              event_type: "PURCHASE_APPROVED",
+              product_code: "DECOLE_ESG_MENTORIA",
+              source: "hotmart",
+              occurred_at: "2026-05-09T12:45:39.000Z",
+              payload: {
+                event: "PURCHASE_COMPLETE",
+                data: {
+                  buyer: { email: "buyer@example.com" },
+                  purchase: { transaction: "HP-ESG-1" },
+                },
+              },
+            },
+          },
+        ],
+      },
+      env
+    );
+
+    const n8nCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("n8n.example.com"));
+    expect(n8nCall).toBeTruthy();
+    const body = JSON.parse(String((n8nCall?.[1] as RequestInit)?.body || "{}")) as Record<string, any>;
+    expect(body.event_type).toBe("PURCHASE_APPROVED");
+    expect(body.product_code).toBe("DECOLE_ESG_MENTORIA");
+    expect(body.event).toBeUndefined();
+    expect(body.payload?.data?.purchase?.transaction).toBe("HP-ESG-1");
 
     vi.unstubAllGlobals();
   });

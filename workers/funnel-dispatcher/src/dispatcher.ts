@@ -68,6 +68,7 @@ const DEFAULT_CHAIN_MAP: Record<string, string[]> = {
     "emit_tracking",
   ],
   PURCHASE_APPROVED: ["resolve_identity", "upsert_event_store", "update_brevo_funnel", "emit_tracking", "forward_n8n"],
+  PURCHASE_COMPLETE: ["resolve_identity", "upsert_event_store", "update_brevo_funnel"],
 };
 
 export function parseCatalog(raw: string | undefined): ParsedCatalog {

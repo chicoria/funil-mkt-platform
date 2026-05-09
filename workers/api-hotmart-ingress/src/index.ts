@@ -55,7 +55,7 @@ function isAuthorized(request: Request, env: Env): boolean {
 
 function productCodeFromSlug(slug: string): string {
   if (slug === "decole-esg") return "DECOLE_ESG_MENTORIA";
-  if (slug === "planodevoo" || slug === "plano-de-voo") return "DECOLE_PLANOVOO";
+  if (slug === "planodevoo" || slug === "planovoo" || slug === "plano-de-voo") return "DECOLE_PLANOVOO";
   return slug.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
 }
 

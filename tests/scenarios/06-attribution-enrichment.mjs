@@ -53,7 +53,7 @@ export async function run(opts = {}) {
     const res = await postJson(
       `${hotmart_ingress_url}/webhooks/v1/planovoo/hotmart/purchase`,
       {
-        event: "PURCHASE_COMPLETE",
+        event: "PURCHASE_APPROVED",
         event_id: hotmartEventId,
         transaction: `txn-${hotmartEventId}`,
         buyer: { email },

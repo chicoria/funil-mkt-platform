@@ -181,6 +181,15 @@ function isTruthyFlag(value: unknown): boolean {
   return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function isPlanovooProductCode(productCode: string): boolean {
+  const normalized = productCode.toUpperCase();
+  return normalized === "DECOLE_PLANOVOO" || normalized === "PLANOVOO" || normalized === "PLANO_VOO";
+}
+
 function unixTime(value: string): number {
   const ms = Date.parse(value);
   return Number.isFinite(ms) ? Math.floor(ms / 1000) : Math.floor(Date.now() / 1000);
@@ -1201,7 +1210,7 @@ async function forwardN8n(event: FunnelEvent, env: DispatcherEnv): Promise<void>
     await postJson(webhookUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(event),
+      body: JSON.stringify(buildN8nForwardPayload(event)),
     });
     console.log(JSON.stringify({ stage: "handler_ok", handler: "forward_n8n", event_id: event.event_id }));
   } catch (err) {
@@ -1215,6 +1224,41 @@ async function forwardN8n(event: FunnelEvent, env: DispatcherEnv): Promise<void>
       })
     );
   }
+}
+
+function buildN8nForwardPayload(event: FunnelEvent): Record<string, unknown> | FunnelEvent {
+  if (event.source !== "hotmart" || !isPlanovooProductCode(event.product_code)) return event;
+
+  const payload = isRecord(event.payload) ? { ...event.payload } : {};
+  const data = isRecord(payload.data) ? { ...payload.data } : {};
+  for (const key of ["buyer", "purchase", "product"] as const) {
+    if (data[key] === undefined && payload[key] !== undefined) {
+      data[key] = payload[key];
+    }
+  }
+
+  if (Object.keys(data).length > 0) {
+    payload.data = data;
+  }
+  if (!asString(payload.event)) {
+    payload.event = event.event_type;
+  }
+  if (!asString(payload.event_id)) {
+    payload.event_id = event.event_id;
+  }
+  if (!asString(payload.id)) {
+    payload.id = event.event_id;
+  }
+
+  payload._decole = {
+    event_id: event.event_id,
+    event_type: event.event_type,
+    product_code: event.product_code,
+    source: event.source,
+    occurred_at: event.occurred_at,
+  };
+
+  return payload;
 }
 
 export function createHandlers(): HandlerMap {
