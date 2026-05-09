@@ -2,7 +2,7 @@
 
 > Formato: PlantUML. Arquivos em [`config/diagramas/`](diagramas/).
 > Renderizar com VS Code (extensão PlantUML · `Alt+D`), IntelliJ, ou `plantuml -tsvg diagramas/*.puml`.
-> Última actualização: 2026-04-28.
+> Última actualização: 2026-05-09.
 
 ---
 
@@ -50,6 +50,8 @@ Cada evento entra na queue com um `event_type` e `product_code`. O `funnel-dispa
 | `PURCHASE_COMPLETE` | hotmart | resolve_identity → upsert_event_store → update_brevo_funnel |
 | `PURCHASE_OUT_OF_SHOPPING_CART` | hotmart | resolve_identity → upsert_event_store → update_brevo_funnel → send_cart_abandonment_email |
 
+`PURCHASE_APPROVED` e `PURCHASE_COMPLETE` são eventos Hotmart distintos no pipeline. `PURCHASE_APPROVED` é compra aprovada e pode disparar tracking/n8n; `PURCHASE_COMPLETE` é pós-garantia/reembolso e fica limitado a Event Store + Brevo por padrão.
+
 **O que cada handler faz:**
 
 | Handler | Acção | Storage |
@@ -58,9 +60,9 @@ Cada evento entra na queue com um `event_type` e `product_code`. O `funnel-dispa
 | `upsert_event_store` | Persiste evento + attribution merged no `payload_json` | D1 funnel_events |
 | `enrich_attribution` | Lê site events do D1 → recupera `fbp`/`fbc`/`client_ip` para eventos hotmart | D1 funnel_events (leitura) |
 | `update_brevo_funnel` | Actualiza campos de funil no CRM (estágio, datas) | Brevo Contacts API |
-| `send_brevo_doi` | Envia email DOI (double opt-in) via template Brevo | Brevo SMTP |
-| `sync_brevo_segments` | Adiciona/remove contacto das listas correctas | Brevo Lists API |
-| `send_cart_abandonment_email` | Email de carrinho abandonado via template | Brevo SMTP |
+| `send_brevo_doi` | Cria DOI nativo Brevo com `includeListIds`, template e redirection por produto | Brevo `/contacts/doubleOptinConfirmation` |
+| `sync_brevo_segments` | Ponto de extensão; hoje a entrada na lista confirmada vem do `includeListIds` do DOI nativo | Brevo Lists API (reservado) |
+| `send_cart_abandonment_email` | Email transacional de carrinho abandonado via template | Brevo `/smtp/email` |
 | `emit_tracking` | Envia payload para sGTM `/mp/collect` → GA4 + Meta CAPI | sGTM (GTM-K6Q4H6BR) |
 | `forward_n8n` | Webhook para n8n (automações pós-compra) | n8n |
 
@@ -110,12 +112,12 @@ Mapa completo de **o que chega, de onde e o que está em falta** em cada etapa d
 
 **Cobre:**
 - **AWARENESS** — PAGE_VIEW / CTA_CLICK via GTM → GA4 (cron diário)
-- **CONSIDERATION** — GENERATE_LEAD: campos do formulário, identity (anonymous_id, session_id), Meta attribution (fbp/fbc), gap de UTMs (fix BACKLOG-015)
+- **CONSIDERATION** — GENERATE_LEAD: campos do formulário, identity (anonymous_id, session_id), Meta attribution (fbp/fbc) e UTMs persistidos da URL no FormData
 - **CONVERSION** — BEGIN_CHECKOUT: UTMs ✅ capturados pelo `links-redirect` Worker da URL
-- **PURCHASE** — PURCHASE_APPROVED: enrich_attribution recupera fbp/fbc/utm do BEGIN_CHECKOUT
-- **RETENTION** — PURCHASE_COMPLETE: evento pós-garantia/reembolso preservado para fluxos posteriores
+- **PURCHASE** — PURCHASE_APPROVED: enrich_attribution recupera fbp/fbc/utm do BEGIN_CHECKOUT e executa tracking/n8n
+- **RETENTION** — PURCHASE_COMPLETE: evento pós-garantia/reembolso preservado para fluxos posteriores, sem tracking/n8n por padrão
 - **Dashboard** — Cloudflare Pages lendo D1 + GA4 Data API + Meta Marketing API
-- **Gap de UTMs** — GENERATE_LEAD não envia utm_source/campaign (BACKLOG-015)
+- **DOI Brevo** — GENERATE_LEAD aciona DOI nativo; o contato entra na lista do produto após confirmação e depois redireciona para a página confirmada
 
 **Diferenciação por produto:**
 

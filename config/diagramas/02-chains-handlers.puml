@@ -10,9 +10,9 @@ participant "resolve_identity" as RI #DAE8FC
 participant "upsert_event_store" as US #DAE8FC
 participant "enrich_attribution" as EA #FFF2CC
 participant "update_brevo_funnel" as UB #D5E8D4
-participant "send_brevo_doi" as SB #D5E8D4
+participant "send_brevo_doi\nBrevo native DOI" as SB #D5E8D4
 participant "sync_brevo_segments" as SS #D5E8D4
-participant "send_cart_abandonment" as SC #D5E8D4
+participant "send_cart_abandonment_email\nBrevo SMTP" as SC #D5E8D4
 participant "emit_tracking" as ET #FFE6CC
 participant "forward_n8n" as FN #FFE6CC
 
@@ -21,8 +21,19 @@ participant "forward_n8n" as FN #FFE6CC
 Q -> RI
 RI -> US
 US -> SB
+note right of SB
+  POST /contacts/doubleOptinConfirmation
+  includeListIds por produto
+  template usa {{ params.DOIurl }}
+  redirect pós-confirmação
+end note
 SB -> UB
 UB -> SS
+note right of SS
+  Ponto de extensão
+  Lista confirmada hoje vem do
+  includeListIds do DOI nativo
+end note
 
 == BEGIN_CHECKOUT · source: site ==
 
@@ -46,6 +57,10 @@ ET -> FN
 Q -> RI
 RI -> US
 US -> UB
+note right of UB
+  Sem emit_tracking
+  Sem forward_n8n
+end note
 
 == PURCHASE_OUT_OF_SHOPPING_CART · source: hotmart ==
 
@@ -53,5 +68,10 @@ Q -> RI
 RI -> US
 US -> UB
 UB -> SC
+note right of SC
+  POST /smtp/email
+  template transacional
+  link retoma checkout via links-redirect
+end note
 
 @enduml

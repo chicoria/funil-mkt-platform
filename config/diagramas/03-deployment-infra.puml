@@ -35,11 +35,11 @@ cloud "Cloudflare Edge" as CF {
   }
 
   node "decole-api-hotmart-ingress" as W_HI {
-    component "Route: api.decole…/webhooks/v1/decole-esg/hotmart/*\n         api.decole…/webhooks/v1/planovoo/hotmart/*\nProducer → FUNNEL_EVENTS\nsecret: HOTMART_WEBHOOK_TOKEN_*" as HI_C
+    component "Route: api.decole…/webhooks/v1/decole-esg/hotmart/*\n         api.decole…/webhooks/v1/plano-de-voo/hotmart/*\n         api.decole…/webhooks/v1/planodevoo/hotmart/*\n         api.decole…/webhooks/v1/planovoo/hotmart/*\nProducer → FUNNEL_EVENTS\nsecret: HOTMART_WEBHOOK_TOKEN" as HI_C
   }
 
   node "decole-funnel-dispatcher" as W_FD {
-    component "Consumer ← decole-q-funnel-events\nKV: DEDUPE_KV · IDENTITY_KV\nD1: decole-d1-identity · decole-d1-event-store\nDLQ: decole-q-funnel-events-dlq" as FD_C
+    component "Consumer ← decole-q-funnel-events\nKV: DEDUPE_KV · IDENTITY_KV\nD1: decole-d1-identity · decole-d1-event-store\nBrevo: DOI native + SMTP cart\nDLQ: decole-q-funnel-events-dlq" as FD_C
   }
 
   queue "decole-q-funnel-events" as Q_MAIN

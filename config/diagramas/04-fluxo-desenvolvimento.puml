@@ -12,6 +12,8 @@ start
 
 :Alteração de código\n(worker · handler · catalog · shared);
 
+:Verificar se products.catalog.json\nprecisa acompanhar a mudança\n(funil · Brevo · Hotmart · checkout);
+
 repeat
   :npm test\npor worker afectado\nvitest · sem rede;
 backward:corrigir código / teste;

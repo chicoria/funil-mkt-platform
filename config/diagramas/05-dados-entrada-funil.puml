@@ -57,15 +57,16 @@ package "CONSIDERATION — GENERATE_LEAD" as LeadLayer #E3F2FD {
     fbc           ← cookie _fbc | gerado de fbclid
     cf-turnstile-response
 
-    <b>❌ GAP — NÃO enviado (fix: BACKLOG-015):</b>
+    <b>✅ UTMs persistidos da URL:</b>
     ─────────────────────────────────
-    utm_source    ← não lido da URL
-    utm_medium    ← não lido da URL
-    utm_campaign  ← não lido da URL
-    gclid         ← não capturado
+    utm_source    ← URL → sessionStorage → FormData
+    utm_medium    ← URL → sessionStorage → FormData
+    utm_campaign  ← URL → sessionStorage → FormData
+    utm_content    ← URL → sessionStorage → FormData
+    utm_term       ← URL → sessionStorage → FormData
 
-    <b>Fix: ler UTMs da URL ao carregar</b>
-    <b>→ sessionStorage → incluir no FormData</b>
+    <b>Gap remanescente:</b>
+    gclid         ← não capturado no GENERATE_LEAD
   end note
 
   component "api-funnel-ingress\nPOST /funnel/precheckout" as FunnelIngress #90CAF9
@@ -118,6 +119,10 @@ package "CONVERSION / PURCHASE — Hotmart Webhook" as HotmartLayer #FFF3E0 {
   note right of HotmartWebhook
     <b>✅ Payload do webhook Hotmart:</b>
     ──────────────────────────────────
+    PURCHASE_APPROVED  → compra aprovada
+    PURCHASE_COMPLETE  → pós-garantia/reembolso
+    PURCHASE_OUT_OF_SHOPPING_CART
+
     email         → SHA-256 → lookup profile_id
     transaction_id
     product_id    → 5083704 (ESG) | 7592718 (PlanoVoo)
@@ -146,13 +151,23 @@ package "Pipeline Cloudflare" as Pipeline #ECEFF1 {
   component "funnel-dispatcher\nchain de handlers" as Dispatcher #CFD8DC
 
   note right of Dispatcher
-    Handlers executados:
+    Handlers por chain:
     ① resolve_identity   → profile_id unificado
     ② upsert_event_store → salva em funnel_events
     ③ enrich_attribution → recupera utm/fbp/fbc
        do evento site anterior (mesmo profile_id)
-    ④ emit_tracking      → sGTM → GA4 + Meta CAPI
+    ④ send_brevo_doi     → Brevo DOI nativo
+       /contacts/doubleOptinConfirmation
+       includeListIds por produto
     ⑤ update_brevo_funnel → Brevo CRM
+    ⑥ send_cart_abandonment_email
+       → Brevo SMTP /smtp/email
+    ⑦ emit_tracking      → sGTM → GA4 + Meta CAPI
+    ⑧ forward_n8n        → pós-compra
+
+    PURCHASE_COMPLETE executa só:
+    resolve_identity → upsert_event_store
+    → update_brevo_funnel
   end note
 
   Queue -down-> Dispatcher

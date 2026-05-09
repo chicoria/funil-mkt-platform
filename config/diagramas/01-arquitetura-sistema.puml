@@ -40,7 +40,7 @@ package "Storage · Cloudflare" as Storage {
 
 package "Destinos Externos" as Externos {
   component "sGTM\nGTM-K6Q4H6BR" as sGTM
-  component "Brevo\nCRM + Email" as Brevo
+  component "Brevo\nCRM + DOI nativo\nSMTP transacional" as Brevo
   component "n8n\nautomações" as N8N
 }
 
@@ -65,7 +65,7 @@ FD <-down-> D1I
 FD <-down-> KVD
 FD <-down-> KVI
 FD -right-> sGTM
-FD -right-> Brevo
+FD -right-> Brevo : contacts API\nDOI native\nSMTP carrinho
 FD -right-> N8N
 
 sGTM -down-> GA4

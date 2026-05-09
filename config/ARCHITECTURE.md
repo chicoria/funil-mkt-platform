@@ -1,6 +1,6 @@
 # Arquitetura de Eventos — DECOLE (estado atual)
 
-> Referência de estado atual. Última actualização: 2026-04-28.
+> Referência de estado atual. Última actualização: 2026-05-09.
 > Para diagramas visuais (arquitetura, chains, deployment, fluxo de dev) ver [`DIAGRAMS.md`](DIAGRAMS.md).
 
 ---
@@ -26,9 +26,9 @@ Browser / Hotmart / App
         ├── upsert_event_store    → D1 funnel_events
         ├── enrich_attribution    → recupera fbp/fbc/client_ip de eventos site
         ├── update_brevo_funnel   → Brevo contacts API
-        ├── send_brevo_doi        → Brevo SMTP (double opt-in)
+        ├── send_brevo_doi        → Brevo native DOI API
         ├── emit_tracking         → sGTM /mp/collect → GA4 + Meta CAPI
-        ├── send_cart_abandonment_email → Brevo SMTP
+        ├── send_cart_abandonment_email → Brevo SMTP transactional API
         └── forward_n8n           → n8n webhook
 ```
 
@@ -42,6 +42,12 @@ Browser / Hotmart / App
 | `decole-links-redirect` | `links.decolesuacarreiraesg.com.br/*` | Checkout redirect → BEGIN_CHECKOUT |
 | `decole-api-hotmart-ingress` | `api.decolesuacarreiraesg.com.br/webhooks/v1/*` | Webhooks Hotmart → PURCHASE_APPROVED / PURCHASE_COMPLETE / PURCHASE_OUT_OF_SHOPPING_CART |
 | `decole-funnel-dispatcher` | consumer queue | Processa chain de handlers por evento |
+
+**Rotas Hotmart aceitas pelo ingress:**
+- `api.decolesuacarreiraesg.com.br/webhooks/v1/decole-esg/hotmart/*` → `DECOLE_ESG_MENTORIA`
+- `api.decolesuacarreiraesg.com.br/webhooks/v1/plano-de-voo/hotmart/*` → `DECOLE_PLANOVOO`
+- `api.decolesuacarreiraesg.com.br/webhooks/v1/planodevoo/hotmart/*` → `DECOLE_PLANOVOO`
+- `api.decolesuacarreiraesg.com.br/webhooks/v1/planovoo/hotmart/*` → `DECOLE_PLANOVOO`
 
 ---
 
@@ -81,11 +87,20 @@ Browser / Hotmart / App
 
 ## Pipelines por evento (catálogo)
 
+O `api-hotmart-ingress` preserva o `event` recebido da Hotmart como `event_type`; ele não converte `PURCHASE_COMPLETE` para `PURCHASE_APPROVED`. A diferença operacional é:
+- `PURCHASE_APPROVED`: compra aprovada, usada para compra imediata, tracking e `forward_n8n`.
+- `PURCHASE_COMPLETE`: fim do ciclo de garantia/reembolso, declarado para `DECOLE_ESG_MENTORIA` e `DECOLE_PLANOVOO`, usado para D1/Brevo sem duplicar compra.
+
 ### GENERATE_LEAD (source: site)
 ```
 resolve_identity → upsert_event_store → send_brevo_doi → update_brevo_funnel → sync_brevo_segments
 ```
 - Sem `emit_tracking` (sem pixel GA4/Meta para leads)
+- `send_brevo_doi` usa DOI nativo Brevo via `POST /contacts/doubleOptinConfirmation`
+- O template DOI usa `{{ params.DOIurl }}`; a Brevo confirma o contato, inclui na lista do produto e redireciona para a página de confirmação:
+  - `DECOLE_ESG_MENTORIA`: template `1`, lista `7`, `https://decolesuacarreiraesg.com.br/confirmacao.html`
+  - `DECOLE_PLANOVOO`: template `10`, lista `8`, `https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html`
+- `sync_brevo_segments` permanece na chain como ponto de extensão; a entrada na lista de precheckout confirmada é feita hoje pelo `includeListIds` do DOI nativo.
 
 ### BEGIN_CHECKOUT (source: site, via links-redirect)
 ```
@@ -99,12 +114,14 @@ resolve_identity → upsert_event_store → enrich_attribution → update_brevo_
 ```
 - GA4: `purchase` | Meta: `Purchase`
 - `enrich_attribution` recupera `fbp`/`fbc`/`client_ip` de evento site anterior do mesmo `profile_id`
+- No Plano de Voo, `forward_n8n` mantém compatibilidade com o payload legado esperado pelo workflow `plano-de-voo/hotmart`
 
 ### PURCHASE_COMPLETE (source: hotmart)
 ```
 resolve_identity → upsert_event_store → update_brevo_funnel
 ```
 - Evento pós-garantia/reembolso mantido separado de `PURCHASE_APPROVED`
+- Declarado no catálogo para `DECOLE_ESG_MENTORIA` e `DECOLE_PLANOVOO`
 - Sem `emit_tracking` e sem `forward_n8n` por padrão
 
 ### PURCHASE_OUT_OF_SHOPPING_CART (source: hotmart)
@@ -112,6 +129,8 @@ resolve_identity → upsert_event_store → update_brevo_funnel
 resolve_identity → upsert_event_store → update_brevo_funnel → send_cart_abandonment_email
 ```
 - **Sem `emit_tracking`** — duplicaria `InitiateCheckout` (já emitido por BEGIN_CHECKOUT)
+- `send_cart_abandonment_email` continua transacional via Brevo SMTP API (`POST /smtp/email`)
+- O link de retomada aponta para o worker `links-redirect`, que reidrata dados de sessão/usuário antes do redirect Hotmart quando há `rid`
 
 ---
 
@@ -177,8 +196,10 @@ Cada handler só executa uma vez por `event_id`, mesmo em retries da queue.
 - Produtos e aliases
 - Pipelines de eventos (`funnelEventArchitecture.events[].chain`)
 - Configuração de tracking (sGTM endpoint, GA4 measurement ID, Meta pixel)
-- Configuração Brevo (listas, templates, campos de funil)
+- Configuração Brevo (DOI nativo, listas, templates, campos de funil, emails transacionais)
 - Links de checkout
+
+Ao alterar funis, produtos, checkout, Brevo, Hotmart, workers ou páginas públicas relacionadas, verificar se o catálogo precisa mudar. Ver também [`config/README.md`](README.md).
 
 ---
 
@@ -210,7 +231,9 @@ Quando um evento Hotmart chega com email igual ao de um evento site anterior:
 | Var | Worker | Descrição |
 |-----|--------|-----------|
 | `BREVO_API_KEY` | dispatcher | API key Brevo |
-| `BREVO_DOI_TEMPLATE_ID` | dispatcher | Template ID DOI |
+| `BREVO_DOI_TEMPLATE_ID` | dispatcher | Fallback de template ID para DOI nativo |
+| `BREVO_DOI_REDIRECT_URL` | dispatcher | Fallback de redirection URL para DOI nativo |
+| `BREVO_CART_ABANDONMENT_TEMPLATE_ID` | dispatcher | Fallback de template transacional para carrinho abandonado |
 | `BREVO_SANDBOX` | dispatcher | `true` → X-Sib-Sandbox: drop |
 | `SGTM_ENDPOINT_URL` | dispatcher | URL do container sGTM |
 | `GA4_MEASUREMENT_ID` | dispatcher | ou via catálogo por produto |
@@ -273,8 +296,8 @@ bash backend/cloudflare/tests/run-scenarios.sh --scenario 04         # PURCHASE_
 | `upsertEventStoreRecord` | 01, 02, 03, 07 |
 | `fromPrecheckoutForm` (ingress) | 01 |
 | `buildBeginCheckoutEvent` (links-redirect) | 02 |
-| `fromHotmartWebhook` (hotmart-ingress) | 03, 04, 05 |
-| `products.catalog.json` chains | 03, 04 |
+| `fromHotmartWebhook` (hotmart-ingress) | 03, 04, 05 + smoke `PURCHASE_COMPLETE` |
+| `products.catalog.json` chains | 03, 04 + unit/smoke `PURCHASE_COMPLETE` |
 
 ### Comando único de verificação
 
