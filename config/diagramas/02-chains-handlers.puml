@@ -41,6 +41,12 @@ EA -> UB
 UB -> ET
 ET -> FN
 
+== PURCHASE_COMPLETE · source: hotmart ==
+
+Q -> RI
+RI -> US
+US -> UB
+
 == PURCHASE_OUT_OF_SHOPPING_CART · source: hotmart ==
 
 Q -> RI

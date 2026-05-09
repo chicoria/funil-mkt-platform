@@ -113,7 +113,7 @@ package "CONVERSION — BEGIN_CHECKOUT" as CheckoutLayer #E8F5E9 {
 
 package "CONVERSION / PURCHASE — Hotmart Webhook" as HotmartLayer #FFF3E0 {
 
-  component "Hotmart\nPURCHASE_APPROVED\nPURCHASE_OUT_OF_SHOPPING_CART" as HotmartWebhook #FFCC80
+  component "Hotmart\nPURCHASE_APPROVED\nPURCHASE_COMPLETE\nPURCHASE_OUT_OF_SHOPPING_CART" as HotmartWebhook #FFCC80
 
   note right of HotmartWebhook
     <b>✅ Payload do webhook Hotmart:</b>

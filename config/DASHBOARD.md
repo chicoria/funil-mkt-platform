@@ -8,7 +8,7 @@
 
 ## Contexto
 
-O DECOLE já tem um pipeline de eventos completo em Cloudflare D1 (`funnel_events`) capturando GENERATE_LEAD → BEGIN_CHECKOUT → PURCHASE_OUT_OF_CART → PURCHASE_APPROVED com identidade unificada (`profile_id`) e atribuição completa (utm, fbp, fbc). Os eventos de topo de funil (PAGE_VIEW, CTA_CLICK, BUTTON_CLICK) vão apenas para GA4 via GTM e serão trazidos via GA4 Data API com pull diário em cache D1. Dados de investimento e métricas de campanha vêm da Meta Marketing API.
+O DECOLE já tem um pipeline de eventos completo em Cloudflare D1 (`funnel_events`) capturando GENERATE_LEAD → BEGIN_CHECKOUT → PURCHASE_OUT_OF_CART → PURCHASE_APPROVED e PURCHASE_COMPLETE como evento pós-garantia. O pipeline usa identidade unificada (`profile_id`) e atribuição completa (utm, fbp, fbc). Os eventos de topo de funil (PAGE_VIEW, CTA_CLICK, BUTTON_CLICK) vão apenas para GA4 via GTM e serão trazidos via GA4 Data API com pull diário em cache D1. Dados de investimento e métricas de campanha vêm da Meta Marketing API.
 
 O dashboard corre **inteiramente na Cloudflare** — Next.js no Cloudflare Pages com acesso direto ao D1 via bindings, sem VPS/Docker adicional.
 
@@ -228,7 +228,7 @@ Calculados no dashboard: **Connect Rate** (LP views / cliques), **Conversão LP*
 
 ### D1 `funnel_events` (já existente)
 
-- `GENERATE_LEAD`, `BEGIN_CHECKOUT`, `PURCHASE_OUT_OF_SHOPPING_CART`, `PURCHASE_APPROVED`
+- `GENERATE_LEAD`, `BEGIN_CHECKOUT`, `PURCHASE_OUT_OF_SHOPPING_CART`, `PURCHASE_APPROVED`, `PURCHASE_COMPLETE`
 - Com `profile_id`, `utm_source`, `utm_campaign`, `fbp`, `fbc`
 
 ---

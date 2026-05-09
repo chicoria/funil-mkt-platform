@@ -47,6 +47,7 @@ Cada evento entra na queue com um `event_type` e `product_code`. O `funnel-dispa
 | `GENERATE_LEAD` | site | resolve_identity → upsert_event_store → send_brevo_doi → update_brevo_funnel → sync_brevo_segments |
 | `BEGIN_CHECKOUT` | site | resolve_identity → upsert_event_store → enrich_attribution → update_brevo_funnel → emit_tracking |
 | `PURCHASE_APPROVED` | hotmart | resolve_identity → upsert_event_store → enrich_attribution → update_brevo_funnel → emit_tracking → forward_n8n |
+| `PURCHASE_COMPLETE` | hotmart | resolve_identity → upsert_event_store → update_brevo_funnel |
 | `PURCHASE_OUT_OF_SHOPPING_CART` | hotmart | resolve_identity → upsert_event_store → update_brevo_funnel → send_cart_abandonment_email |
 
 **O que cada handler faz:**
@@ -112,6 +113,7 @@ Mapa completo de **o que chega, de onde e o que está em falta** em cada etapa d
 - **CONSIDERATION** — GENERATE_LEAD: campos do formulário, identity (anonymous_id, session_id), Meta attribution (fbp/fbc), gap de UTMs (fix BACKLOG-015)
 - **CONVERSION** — BEGIN_CHECKOUT: UTMs ✅ capturados pelo `links-redirect` Worker da URL
 - **PURCHASE** — PURCHASE_APPROVED: enrich_attribution recupera fbp/fbc/utm do BEGIN_CHECKOUT
+- **RETENTION** — PURCHASE_COMPLETE: evento pós-garantia/reembolso preservado para fluxos posteriores
 - **Dashboard** — Cloudflare Pages lendo D1 + GA4 Data API + Meta Marketing API
 - **Gap de UTMs** — GENERATE_LEAD não envia utm_source/campaign (BACKLOG-015)
 

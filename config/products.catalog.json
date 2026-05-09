@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "updatedAt": "2026-04-23",
+  "updatedAt": "2026-05-09",
   "description": "Catálogo central de produtos — cada produto declara seus subsistemas.",
   "global": {
     "hotmart": {
@@ -76,7 +76,7 @@
         "templates": {
           "doi": {
             "id": "1",
-            "description": "Double Opt-In confirmation",
+            "description": "Double Opt-In confirmation via Brevo native DOI",
             "localFile": "backend/cloudflare/config/email-templates/decole-esg/doi-v1.html",
             "version": "v1"
           },
@@ -87,15 +87,21 @@
             "version": "v1"
           }
         },
-        "transactionalEmails": [
+        "doiFlows": [
           {
-            "key": "doi",
+            "key": "precheckoutDoi",
             "templateId": "1",
             "triggerEvent": "GENERATE_LEAD",
-            "description": "Confirmação Double Opt-In para lead de precheckout.",
-            "managedVia": "manual_dashboard",
+            "endpoint": "/contacts/doubleOptinConfirmation",
+            "includeListId": "7",
+            "redirectionUrl": "https://decolesuacarreiraesg.com.br/confirmacao.html",
+            "templatePlaceholder": "{{ params.DOIurl }}",
+            "description": "Confirmação Double Opt-In nativa da Brevo para lead de precheckout.",
+            "managedVia": "api",
             "localTemplateFile": "backend/cloudflare/config/email-templates/decole-esg/doi-v1.html"
-          },
+          }
+        ],
+        "transactionalEmails": [
           {
             "key": "cartAbandonment",
             "templateId": "8",
@@ -296,6 +302,27 @@
               "sGTM",
               "n8n"
             ]
+          },
+          {
+            "funnelStage": "RETENTION",
+            "eventType": "PURCHASE_COMPLETE",
+            "delivery": "server_queue",
+            "source": "hotmart",
+            "ingress": "api-hotmart-ingress",
+            "queue": "decole-q-funnel-events",
+            "description": "Fim do ciclo de garantia/reembolso na Hotmart. Evento mantido separado de PURCHASE_APPROVED para permitir fluxos pós-garantia da mentoria sem duplicar compra aprovada.",
+            "chain": [
+              "resolve_identity",
+              "upsert_event_store",
+              "update_brevo_funnel"
+            ],
+            "destinations": [
+              "Brevo",
+              "Event Store"
+            ],
+            "brevoConfig": {
+              "funnelPrefix": "DECOLE_ESG"
+            }
           }
         ]
       },
@@ -489,7 +516,7 @@
           "doi": {
             "id": "10",
             "tag": "optin",
-            "description": "Double Opt-In confirmation - Plano de Voo",
+            "description": "Double Opt-In confirmation via Brevo native DOI - Plano de Voo",
             "localFile": "backend/cloudflare/config/email-templates/planovoo/doi-v1.html",
             "version": "v1"
           },
@@ -500,15 +527,21 @@
             "version": "v1"
           }
         },
-        "transactionalEmails": [
+        "doiFlows": [
           {
-            "key": "doi",
+            "key": "precheckoutDoi",
             "templateId": "10",
             "triggerEvent": "GENERATE_LEAD",
-            "description": "Confirmação Double Opt-In para lead de precheckout Plano de Voo.",
-            "managedVia": "manual_dashboard",
+            "endpoint": "/contacts/doubleOptinConfirmation",
+            "includeListId": "8",
+            "redirectionUrl": "https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html",
+            "templatePlaceholder": "{{ params.DOIurl }}",
+            "description": "Confirmação Double Opt-In nativa da Brevo para lead de precheckout Plano de Voo.",
+            "managedVia": "api",
             "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/doi-v1.html"
-          },
+          }
+        ],
+        "transactionalEmails": [
           {
             "key": "cartAbandonment",
             "templateId": "11",
@@ -687,6 +720,27 @@
               "sGTM",
               "n8n"
             ]
+          },
+          {
+            "funnelStage": "RETENTION",
+            "eventType": "PURCHASE_COMPLETE",
+            "delivery": "server_queue",
+            "source": "hotmart",
+            "ingress": "api-hotmart-ingress",
+            "queue": "decole-q-funnel-events",
+            "description": "Fim do ciclo de garantia/reembolso na Hotmart. Evento mantido separado de PURCHASE_APPROVED para permitir fluxos pós-garantia do Plano de Voo sem duplicar compra aprovada.",
+            "chain": [
+              "resolve_identity",
+              "upsert_event_store",
+              "update_brevo_funnel"
+            ],
+            "destinations": [
+              "Brevo",
+              "Event Store"
+            ],
+            "brevoConfig": {
+              "funnelPrefix": "DECOLE_PLANOVOO"
+            }
           }
         ]
       },
@@ -871,7 +925,7 @@
       ]
     },
     "api-precheckout": {
-      "description": "Lead capture via Brevo DOI. Resolve produto por aliases → funnelPrefix.",
+      "description": "Lead capture que publica GENERATE_LEAD na queue; o funnel-dispatcher executa DOI nativo Brevo por produto.",
       "derivedConfig": "Para cada produto → {code, aliases, listId: brevo.lists.precheckout.id, doiTemplateId: brevo.templates.doi.id, doiRedirectUrl}"
     },
     "links-redirect": {
@@ -924,7 +978,8 @@
     },
     "send_brevo_doi": {
       "worker": "funnel-dispatcher",
-      "binding": "BREVO_API_KEY"
+      "binding": "BREVO_API_KEY",
+      "endpoint": "/contacts/doubleOptinConfirmation"
     },
     "update_brevo_funnel": {
       "worker": "funnel-dispatcher",
@@ -932,7 +987,8 @@
     },
     "send_cart_abandonment_email": {
       "worker": "funnel-dispatcher",
-      "binding": "BREVO_API_KEY"
+      "binding": "BREVO_API_KEY",
+      "endpoint": "/smtp/email"
     },
     "forward_n8n": {
       "worker": "funnel-dispatcher",

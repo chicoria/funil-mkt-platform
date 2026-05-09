@@ -51,7 +51,7 @@ package "Tracking Final" as Tracking {
 
 Browser -right-> FI : GENERATE_LEAD · SIGN_UP
 Browser -right-> LR : BEGIN_CHECKOUT + redirect
-Hotmart -right-> HI : PURCHASE_APPROVED\nPURCHASE_OUT_OF_SHOPPING_CART
+Hotmart -right-> HI : PURCHASE_APPROVED\nPURCHASE_COMPLETE\nPURCHASE_OUT_OF_SHOPPING_CART
 
 FI -right-> Q
 LR -right-> Q

@@ -40,7 +40,7 @@ Browser / Hotmart / App
 |--------|-------|--------|
 | `decole-api-funnel-ingress` | `api.decolesuacarreiraesg.com.br/funnel/*` | Precheckout do site → GENERATE_LEAD |
 | `decole-links-redirect` | `links.decolesuacarreiraesg.com.br/*` | Checkout redirect → BEGIN_CHECKOUT |
-| `decole-api-hotmart-ingress` | `api.decolesuacarreiraesg.com.br/webhooks/v1/*` | Webhooks Hotmart → PURCHASE_APPROVED / PURCHASE_OUT_OF_SHOPPING_CART |
+| `decole-api-hotmart-ingress` | `api.decolesuacarreiraesg.com.br/webhooks/v1/*` | Webhooks Hotmart → PURCHASE_APPROVED / PURCHASE_COMPLETE / PURCHASE_OUT_OF_SHOPPING_CART |
 | `decole-funnel-dispatcher` | consumer queue | Processa chain de handlers por evento |
 
 ---
@@ -50,7 +50,7 @@ Browser / Hotmart / App
 ```typescript
 {
   event_id: string          // uuid — chave de idempotência global
-  event_type: string        // GENERATE_LEAD | BEGIN_CHECKOUT | PURCHASE_APPROVED | ...
+  event_type: string        // GENERATE_LEAD | BEGIN_CHECKOUT | PURCHASE_APPROVED | PURCHASE_COMPLETE | ...
   product_code: string      // DECOLE_ESG_MENTORIA | DECOLE_PLANOVOO
   source: string            // "site" | "hotmart" | "app"
   occurred_at: string       // ISO 8601
@@ -99,6 +99,13 @@ resolve_identity → upsert_event_store → enrich_attribution → update_brevo_
 ```
 - GA4: `purchase` | Meta: `Purchase`
 - `enrich_attribution` recupera `fbp`/`fbc`/`client_ip` de evento site anterior do mesmo `profile_id`
+
+### PURCHASE_COMPLETE (source: hotmart)
+```
+resolve_identity → upsert_event_store → update_brevo_funnel
+```
+- Evento pós-garantia/reembolso mantido separado de `PURCHASE_APPROVED`
+- Sem `emit_tracking` e sem `forward_n8n` por padrão
 
 ### PURCHASE_OUT_OF_SHOPPING_CART (source: hotmart)
 ```
