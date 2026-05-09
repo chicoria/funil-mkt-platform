@@ -270,8 +270,12 @@ function resolveTracking(event, catalog, envFileValues) {
     envValue(envFileValues, tracking.metaPixel?.testEventCodeEnvVar) ||
     envValue(envFileValues, fallbackMeta.testEventCodeEnvVar) ||
     envValue(envFileValues, "META_TEST_EVENT_CODE");
+  const productDimensionValue =
+    String(tracking.ga4?.differentiationKeys?.produto || "").trim() ||
+    String(tracking.productCode || "").trim() ||
+    event.product_code;
 
-  return { sgtmEndpointUrl, ga4MeasurementId, ga4ApiSecret, metaTestEventCode };
+  return { sgtmEndpointUrl, ga4MeasurementId, ga4ApiSecret, metaTestEventCode, productDimensionValue };
 }
 
 function trackingFields(event, forcedMetaTestEventCode = "") {
@@ -334,6 +338,7 @@ async function replayEvent(event, tracking, apply, args) {
           name: eventToGa4Name(event.event_type),
           params: {
             event_id: event.event_id,
+            produto: tracking.productDimensionValue,
             product_code: event.product_code,
             source: event.source,
             currency: fields.currency,

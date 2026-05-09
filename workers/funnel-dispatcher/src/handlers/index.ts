@@ -79,6 +79,7 @@ interface CatalogProductConfig {
     checkoutBaseUrl?: string;
   };
   tracking?: {
+    productCode?: string;
     sgtm?: {
       endpointUrl?: string;
       endpointEnvVar?: string;
@@ -87,6 +88,7 @@ interface CatalogProductConfig {
       measurementId?: string;
       measurementIdEnvVar?: string;
       apiSecretEnvVar?: string;
+      differentiationKeys?: Record<string, string>;
     };
     metaPixel?: {
       pixelId?: string;
@@ -116,6 +118,7 @@ interface TrackingDestinationConfig {
   ga4MeasurementId: string;
   ga4ApiSecret: string;
   metaTestEventCode: string;
+  productDimensionValue: string;
 }
 
 interface BrevoFunnelFieldsConfig {
@@ -537,8 +540,12 @@ function resolveTrackingConfig(event: FunnelEvent, env: DispatcherEnv): Tracking
     envString(env, tracking?.metaPixel?.testEventCodeEnvVar) ||
     envString(env, fallbackMeta?.testEventCodeEnvVar) ||
     asString(env.META_TEST_EVENT_CODE);
+  const productDimensionValue =
+    asString(tracking?.ga4?.differentiationKeys?.produto) ||
+    asString(tracking?.productCode) ||
+    event.product_code;
 
-  return { sgtmEndpointUrl, ga4MeasurementId, ga4ApiSecret, metaTestEventCode };
+  return { sgtmEndpointUrl, ga4MeasurementId, ga4ApiSecret, metaTestEventCode, productDimensionValue };
 }
 
 function resolveCatalogEvent(event: FunnelEvent, env: DispatcherEnv): CatalogEventConfig | null {
@@ -1170,6 +1177,7 @@ async function emitTracking(event: FunnelEvent, env: DispatcherEnv): Promise<voi
           name: eventToGa4Name(event.event_type),
           params: {
             event_id: event.event_id,
+            produto: tracking.productDimensionValue,
             product_code: event.product_code,
             source: event.source,
             currency,

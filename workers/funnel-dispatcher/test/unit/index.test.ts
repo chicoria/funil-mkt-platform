@@ -736,8 +736,13 @@ describe("funnel-dispatcher", () => {
         products: {
           DECOLE_ESG_MENTORIA: {
             tracking: {
+              productCode: "DECOLE_ESG_MENTORIA",
               sgtm: { endpointEnvVar: "SGTM_ENDPOINT_URL_DECOLE_ESG" },
-              ga4: { measurementIdEnvVar: "GA4_MEASUREMENT_ID", apiSecretEnvVar: "GA4_API_SECRET" },
+              ga4: {
+                measurementIdEnvVar: "GA4_MEASUREMENT_ID",
+                apiSecretEnvVar: "GA4_API_SECRET",
+                differentiationKeys: { produto: "DECOLE_ESG_MENTORIA" },
+              },
             },
             funnelEventArchitecture: {
               events: [{ eventType: "PURCHASE_APPROVED", chain: ["emit_tracking"] }, { eventType: "PURCHASE_OUT_OF_SHOPPING_CART", chain: ["emit_tracking"] }],
@@ -746,8 +751,13 @@ describe("funnel-dispatcher", () => {
           DECOLE_PLANOVOO: {
             aliases: ["PLANOVOO"],
             tracking: {
+              productCode: "DECOLE_PLANOVOO",
               sgtm: { endpointEnvVar: "SGTM_ENDPOINT_URL_PLANOVOO" },
-              ga4: { measurementIdEnvVar: "GA4_MEASUREMENT_ID", apiSecretEnvVar: "GA4_API_SECRET" },
+              ga4: {
+                measurementIdEnvVar: "GA4_MEASUREMENT_ID",
+                apiSecretEnvVar: "GA4_API_SECRET",
+                differentiationKeys: { produto: "DECOLE_PLANOVOO" },
+              },
             },
             funnelEventArchitecture: {
               events: [{ eventType: "PURCHASE_APPROVED", chain: ["emit_tracking"] }],
@@ -792,6 +802,7 @@ describe("funnel-dispatcher", () => {
     expect(esgParams.params.page_location).toBe("https://pay.hotmart.com/K98068530F");
     expect(esgParams.params.currency).toBe("BRL");
     expect(esgParams.params.value).toBe(1500);
+    expect(esgParams.params.produto).toBe("DECOLE_ESG_MENTORIA");
 
     await worker.queue(
       {
@@ -816,6 +827,7 @@ describe("funnel-dispatcher", () => {
     const sgtmPlanovooBody = JSON.parse(String((sgtmPlanovooCall?.[1] as RequestInit)?.body || "{}")) as Record<string, unknown>;
     const planovooParams = (sgtmPlanovooBody.events as Array<{ name: string; params: Record<string, unknown> }>)[0];
     expect(planovooParams.name).toBe("purchase");
+    expect(planovooParams.params.produto).toBe("DECOLE_PLANOVOO");
     expect(planovooParams.params.product_code).toBe("PLANOVOO");
 
     fetchMock.mock.calls.length = 0;
@@ -842,6 +854,7 @@ describe("funnel-dispatcher", () => {
     const sgtmCartBody = JSON.parse(String((sgtmCartCall?.[1] as RequestInit)?.body || "{}")) as Record<string, unknown>;
     const cartParams = (sgtmCartBody.events as Array<{ name: string; params: Record<string, unknown> }>)[0];
     expect(cartParams.name).toBe("begin_checkout");
+    expect(cartParams.params.produto).toBe("DECOLE_ESG_MENTORIA");
     expect(cartParams.params.product_code).toBe("DECOLE_ESG_MENTORIA");
 
     vi.unstubAllGlobals();
