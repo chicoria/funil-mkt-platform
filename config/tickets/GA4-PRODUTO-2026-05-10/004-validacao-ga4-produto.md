@@ -35,12 +35,13 @@ Validar ponta a ponta que `produto` aparece como parametro de evento no GA4 para
   - Tag `51`: `produto = {{DL - produto}}`
   - Tag `20`: pausada
 - [x] Browser headless / Network para a property alvo `G-BQQB6X5XN1`:
-  - `/`: `page_view` com `ep.produto=DECOLE_ESG_MENTORIA`
-  - `/planodevoo/`: `page_view` com `ep.produto=DECOLE_PLANOVOO`
-  - `/bio-insta.html`: `page_view` com `ep.produto=DECOLE_ESG_MENTORIA`
+  - `/`: 1 `page_view`, `ep.produto=DECOLE_ESG_MENTORIA`
+  - `/planodevoo/`: 1 `page_view`, `ep.produto=DECOLE_PLANOVOO`
+  - `/bio-insta.html`: 1 `page_view`, `ep.produto=DECOLE_ESG_MENTORIA`
 - [x] Duplicidade identificada em Bio Insta:
   - causa: `site/bio-insta.html` ainda fazia `dataLayer.push({ event: "page_view", ... })`
   - fix no repo: remover a chave `event` desse push e manter apenas dados de origem no `dataLayer`
+  - fix publicado via push e revalidado no site publicado
 - [x] Property externa observada:
   - `G-22ZR1Q37JD` envia `page_view` sem `produto`
   - nao esta no GTM Web `GTM-58CQ9K7X` nem no HTML versionado

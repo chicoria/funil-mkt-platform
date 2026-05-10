@@ -37,6 +37,9 @@ O `page_view` atual e gerado automaticamente por tags Google Tag / GA4 Config em
 - [ ] GTM Preview em `/planodevoo/`.
 - [ ] GTM Preview em `/bio-insta.html`.
 - [x] Network browser confirma `en=page_view` com `ep.produto` para a property alvo `G-BQQB6X5XN1`.
+  - `/`: 1 `page_view`, `ep.produto=DECOLE_ESG_MENTORIA`
+  - `/planodevoo/`: 1 `page_view`, `ep.produto=DECOLE_PLANOVOO`
+  - `/bio-insta.html`: 1 `page_view`, `ep.produto=DECOLE_ESG_MENTORIA`
 - [ ] GA4 DebugView mostra `page_view` com parametro `produto`.
 
 ## Gate
