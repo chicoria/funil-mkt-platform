@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "updatedAt": "2026-05-09",
+  "updatedAt": "2026-05-10",
   "description": "Catálogo central de produtos — cada produto declara seus subsistemas.",
   "global": {
     "hotmart": {
@@ -173,17 +173,6 @@
           },
           {
             "funnelStage": "CONSIDERATION",
-            "eventType": "BUTTON_CLICK",
-            "delivery": "gtm_web_only",
-            "source": "site",
-            "destinations": [
-              "GA4",
-              "Meta Pixel"
-            ],
-            "trackingConfigRef": "products.DECOLE_ESG_MENTORIA.tracking"
-          },
-          {
-            "funnelStage": "CONSIDERATION",
             "eventType": "CTA_CLICK",
             "delivery": "gtm_web_only",
             "source": "site",
@@ -197,6 +186,9 @@
             "funnelStage": "CONSIDERATION",
             "eventType": "GENERATE_LEAD",
             "delivery": "both",
+            "trackingDelivery": "gtm_web_to_sgtm",
+            "serverTracking": false,
+            "deliveryNotes": "Tracking de lead segue pelo browser: dataLayer/GTM Web -> sGTM -> GA4 + Meta CAPI. A chain server_queue não executa emit_tracking para evitar dupla contagem.",
             "source": "site",
             "ingress": "api-funnel-ingress",
             "queue": "decole-q-funnel-events",
@@ -384,15 +376,15 @@
               }
             },
             {
-              "name": "button_click",
+              "name": "cta_click",
               "produto": "DECOLE_ESG_MENTORIA",
               "google": {
                 "channel": "ga4_via_gtm",
-                "eventName": "button_click"
+                "eventName": "cta_click"
               },
               "meta": {
                 "channel": "pixel_via_gtm",
-                "eventName": "button_click"
+                "eventName": "cta_click"
               }
             }
           ]
@@ -431,6 +423,18 @@
           "ga4": "G-BQQB6X5XN1",
           "metaPixel": "",
           "events": [
+            {
+              "name": "page_view",
+              "produto": "DECOLE_ESG_MENTORIA",
+              "google": {
+                "channel": "ga4_via_gtm",
+                "eventName": "page_view"
+              },
+              "meta": {
+                "channel": "pixel_via_gtm",
+                "eventName": "PageView"
+              }
+            },
             {
               "name": "generate_lead",
               "produto": "DECOLE_ESG_MENTORIA",
@@ -601,6 +605,17 @@
         },
         "events": [
           {
+            "funnelStage": "AWARENESS",
+            "eventType": "PAGE_VIEW",
+            "delivery": "gtm_web_only",
+            "source": "site",
+            "destinations": [
+              "GA4",
+              "Meta Pixel"
+            ],
+            "trackingConfigRef": "products.DECOLE_PLANOVOO.tracking"
+          },
+          {
             "funnelStage": "CONSIDERATION",
             "eventType": "CTA_CLICK",
             "delivery": "gtm_web_only",
@@ -615,6 +630,9 @@
             "funnelStage": "CONSIDERATION",
             "eventType": "GENERATE_LEAD",
             "delivery": "both",
+            "trackingDelivery": "gtm_web_to_sgtm",
+            "serverTracking": false,
+            "deliveryNotes": "Tracking de lead segue pelo browser: dataLayer/GTM Web -> sGTM -> GA4 + Meta CAPI. A chain server_queue não executa emit_tracking para evitar dupla contagem.",
             "source": "site",
             "ingress": "api-funnel-ingress",
             "queue": "decole-q-funnel-events",
@@ -789,6 +807,18 @@
           "ga4": "G-BQQB6X5XN1",
           "metaPixel": "",
           "events": [
+            {
+              "name": "page_view",
+              "produto": "DECOLE_PLANOVOO",
+              "google": {
+                "channel": "ga4_via_gtm",
+                "eventName": "page_view"
+              },
+              "meta": {
+                "channel": "pixel_via_gtm",
+                "eventName": "PageView"
+              }
+            },
             {
               "name": "generate_lead",
               "produto": "DECOLE_PLANOVOO",

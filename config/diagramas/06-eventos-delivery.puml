@@ -1,0 +1,158 @@
+@startuml eventos-delivery
+!theme plain
+skinparam linetype ortho
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 11
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam noteBackgroundColor #FFFDE7
+skinparam noteBorderColor #F9A825
+skinparam arrowColor #555555
+
+top to bottom direction
+
+title Eventos do products.catalog.json — delivery e motivo de uso
+
+legend left
+  <b>Delivery no catálogo</b>
+  |= Cor |= Valor |= Semântica |
+  |<#EDE7F6>  | <b>gtm_web_only</b> | Evento de tracking via dataLayer -> GTM Web -> sGTM -> GA4/Meta. Nao entra no nosso funil operacional. |
+  |<#E3F2FD>  | <b>both</b> | Mesmo marco de jornada precisa de tracking e tambem de processamento operacional no funil. |
+  |<#E8F5E9>  | <b>server_queue</b> | Evento entra na queue canonica e o dispatcher executa handlers por produto/evento. |
+endlegend
+
+' ══════════════════════════════════════════════════
+' CAMINHOS DE DELIVERY
+' ══════════════════════════════════════════════════
+
+package "delivery: gtm_web_only" as WebOnly #EDE7F6 {
+  component "PAGE_VIEW\nESG + PlanoVoo" as PageView #CE93D8
+  component "CTA_CLICK\nESG + PlanoVoo" as CtaClick #CE93D8
+
+  component "Browser\ndataLayer" as BrowserTracking #D1C4E9
+  component "GTM Web\nGTM-58CQ9K7X" as GTMWeb #D1C4E9
+  component "sGTM\nsgtm.decolesuacarreiraesg.com.br" as SGTM #D1C4E9
+  component "GA4 + Meta\nmensuracao e midia" as TrackingDestinations #D1C4E9
+
+  PageView -down-> BrowserTracking
+  CtaClick -down-> BrowserTracking
+  BrowserTracking -right-> GTMWeb
+  GTMWeb -right-> SGTM
+  SGTM -right-> TrackingDestinations
+
+  note bottom of WebOnly
+    <b>Por que usar:</b>
+    Sinais auxiliares de jornada e decisao: visita, interesse, clique e navegacao.
+
+    Esses eventos podem ter alto volume e baixa necessidade operacional.
+    Eles medem comportamento para GA4/Meta, mas nao precisam acionar:
+    queue, D1 funnel_events, Brevo, n8n ou handlers de funil.
+
+    <b>Importante:</b>
+    "gtm_web_only" nao significa "somente browser".
+    Significa "somente stack de tracking": GTM Web -> sGTM -> destinos de analytics/media.
+  end note
+}
+
+package "delivery: both" as BothDelivery #E3F2FD {
+  component "GENERATE_LEAD\nESG + PlanoVoo" as GenerateLead #90CAF9
+  component "SIGN_UP\nESG + PlanoVoo" as SignUp #90CAF9
+
+  component "Tracking web\nGTM Web -> sGTM\nGA4 + Meta" as BothTracking #CE93D8
+  queue "decole-q-funnel-events" as BothQueue #FFE0B2
+  component "funnel-dispatcher\nhandlers operacionais" as BothDispatcher #B3E5FC
+  database "D1 funnel_events\n+ identity_links" as BothD1 #DAE8FC
+  component "Brevo\nDOI/listas/funil" as BothBrevo #D5E8D4
+
+  GenerateLead -right-> BothTracking : dataLayer generate_lead\ntrackingDelivery=gtm_web_to_sgtm
+  GenerateLead -down-> BothQueue : api-funnel-ingress\nserverTracking=false
+  SignUp -right-> BothTracking : pagina de confirmacao\nsign_up
+  SignUp -down-> BothQueue : quando enviado ao funil\nSIGN_UP
+
+  BothQueue -down-> BothDispatcher
+  BothDispatcher -down-> BothD1 : resolve_identity\nupsert_event_store
+  BothDispatcher -right-> BothBrevo : send_brevo_doi\nupdate_brevo_funnel\nsync_brevo_segments
+
+  note bottom of BothDelivery
+    <b>Por que usar:</b>
+    Marcos reais do funil precisam dos dois mundos:
+    1. tracking para atribuicao, audiencias, GA4 e Meta;
+    2. processamento operacional para DOI, listas, CRM, identidade e Event Store.
+
+    <b>GENERATE_LEAD:</b>
+    tracking sai pelo browser para nao duplicar evento.
+    A chain backend nao executa emit_tracking.
+
+    <b>SIGN_UP:</b>
+    confirma a etapa de DOI/lista e pode ser medido no tracking,
+    mas tambem precisa existir como etapa de funil quando processado no backend.
+  end note
+}
+
+package "delivery: server_queue" as ServerQueue #E8F5E9 {
+  component "BEGIN_CHECKOUT\nsource: site" as BeginCheckout #A5D6A7
+  component "PURCHASE_APPROVED\nsource: hotmart" as PurchaseApproved #A5D6A7
+  component "PURCHASE_OUT_OF_SHOPPING_CART\nsource: hotmart" as CartAbandon #A5D6A7
+  component "PURCHASE_COMPLETE\nsource: hotmart" as PurchaseComplete #A5D6A7
+
+  component "Ingress Worker\nlinks-redirect | api-hotmart-ingress" as Ingress #C8E6C9
+  queue "decole-q-funnel-events" as ServerQueueNode #FFE0B2
+  component "funnel-dispatcher\nchain por eventType" as Dispatcher #C8E6C9
+  database "Event Store + Identity\nD1/KV" as Store #DAE8FC
+  component "Brevo\nfunil/email transacional" as Brevo #D5E8D4
+  component "sGTM\nemit_tracking quando chain pede" as ServerTracking #FFE6CC
+  component "n8n\npos-compra" as N8N #FFE6CC
+
+  BeginCheckout -down-> Ingress
+  PurchaseApproved -down-> Ingress
+  CartAbandon -down-> Ingress
+  PurchaseComplete -down-> Ingress
+
+  Ingress -down-> ServerQueueNode
+  ServerQueueNode -down-> Dispatcher
+  Dispatcher -down-> Store
+  Dispatcher -right-> Brevo
+  Dispatcher -left-> ServerTracking : BEGIN_CHECKOUT\nPURCHASE_APPROVED
+  Dispatcher -right-> N8N : PURCHASE_APPROVED
+
+  note bottom of ServerQueue
+    <b>Por que usar:</b>
+    Eventos que mudam estado operacional do funil ou exigem acao confiavel:
+    checkout iniciado, compra aprovada, abandono de carrinho e fim de garantia.
+
+    Eles entram na queue para garantir idempotencia, retry, D1, identidade,
+    enriquecimento de atribuicao e execucao controlada de handlers.
+
+    <b>Tracking server-side:</b>
+    BEGIN_CHECKOUT e PURCHASE_APPROVED executam emit_tracking porque sao
+    eventos de conversao que precisam chegar ao GA4/Meta mesmo quando
+    a origem principal e Worker/Hotmart.
+
+    <b>Sem tracking por padrao:</b>
+    PURCHASE_OUT_OF_SHOPPING_CART aciona recuperacao por email.
+    PURCHASE_COMPLETE atualiza ciclo pos-garantia/reembolso.
+  end note
+}
+
+' ══════════════════════════════════════════════════
+' PRODUTOS E ESCOPO
+' ══════════════════════════════════════════════════
+
+package "Produtos no catálogo" as Products #F5F5F5 {
+  component "DECOLE_ESG_MENTORIA\nPAGE_VIEW, CTA_CLICK\nGENERATE_LEAD, SIGN_UP\nBEGIN_CHECKOUT, PURCHASE_*" as ESG #F5F5F5
+  component "DECOLE_PLANOVOO\nPAGE_VIEW, CTA_CLICK\nGENERATE_LEAD, SIGN_UP\nBEGIN_CHECKOUT, PURCHASE_*" as PLANOVOO #F5F5F5
+
+  note bottom of Products
+    Todos os eventos carregam product_code no funil.
+    Para GA4, a dimensao customizada e produto.
+
+    A decisao de nao enviar gtm_web_only ao funil evita inundar
+    funnel_events/Brevo/n8n com eventos de suporte a decisao.
+  end note
+}
+
+Products ..> WebOnly
+Products ..> BothDelivery
+Products ..> ServerQueue
+
+@enduml

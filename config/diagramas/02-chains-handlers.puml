@@ -34,6 +34,11 @@ note right of SS
   Lista confirmada hoje vem do
   includeListIds do DOI nativo
 end note
+note over SB,SS
+  Sem emit_tracking no dispatcher:
+  generate_lead é rastreado via
+  dataLayer -> GTM Web -> sGTM
+end note
 
 == BEGIN_CHECKOUT · source: site ==
 

@@ -8,7 +8,7 @@
 
 ## Contexto
 
-O DECOLE já tem um pipeline de eventos completo em Cloudflare D1 (`funnel_events`) capturando GENERATE_LEAD → BEGIN_CHECKOUT → PURCHASE_OUT_OF_CART → PURCHASE_APPROVED e PURCHASE_COMPLETE como evento pós-garantia. O pipeline usa identidade unificada (`profile_id`) e atribuição completa (utm, fbp, fbc). Os eventos de topo de funil (PAGE_VIEW, CTA_CLICK, BUTTON_CLICK) vão apenas para GA4 via GTM e serão trazidos via GA4 Data API com pull diário em cache D1. Dados de investimento e métricas de campanha vêm da Meta Marketing API.
+O DECOLE já tem um pipeline de eventos completo em Cloudflare D1 (`funnel_events`) capturando GENERATE_LEAD → BEGIN_CHECKOUT → PURCHASE_OUT_OF_CART → PURCHASE_APPROVED e PURCHASE_COMPLETE como evento pós-garantia. O pipeline usa identidade unificada (`profile_id`) e atribuição completa (utm, fbp, fbc). Os eventos web (PAGE_VIEW, CTA_CLICK e GENERATE_LEAD) seguem via GTM Web → sGTM → GA4/Meta CAPI e serão trazidos via GA4 Data API com pull diário em cache D1. Dados de investimento e métricas de campanha vêm da Meta Marketing API.
 
 O dashboard corre **inteiramente na Cloudflare** — Next.js no Cloudflare Pages com acesso direto ao D1 via bindings, sem VPS/Docker adicional.
 
@@ -48,7 +48,7 @@ Cada etapa do funil tem uma origem diferente e carrega campos distintos. Esta se
 
 ---
 
-### Etapa 0 — PAGE_VIEW / CTA_CLICK / BUTTON_CLICK (AWARENESS / CONSIDERATION)
+### Etapa 0 — PAGE_VIEW / CTA_CLICK (AWARENESS / CONSIDERATION)
 
 **Origem:** GTM Web (browser) → GA4 + Meta Pixel  
 **Produto diferenciado por:** dimensão `customEvent:produto` no GA4  
@@ -65,6 +65,7 @@ Cada etapa do funil tem uma origem diferente e carrega campos distintos. Esta se
 ### Etapa 1 — GENERATE_LEAD (CONSIDERATION)
 
 **Origem:** Formulário precheckout → `api-funnel-ingress` → queue → dispatcher  
+**Tracking:** `dataLayer generate_lead` → GTM Web → sGTM → GA4/Meta CAPI. O dispatcher não executa `emit_tracking` para `GENERATE_LEAD`, evitando dupla contagem.
 **Ficheiros frontend:** `site/index.html`, `site/planodevoo/index.html`  
 **Endpoint:** `POST api.decolesuacarreiraesg.com.br/funnel/precheckout`
 
@@ -77,32 +78,14 @@ Cada etapa do funil tem uma origem diferente e carrega campos distintos. Esta se
 | `product_code` | ✅ | Hidden field (`DECOLE_ESG_MENTORIA` \| `DECOLE_PLANOVOO`) |
 | `fbp` | ✅ | Cookie `_fbp` (Meta Pixel first-party) |
 | `fbc` | ✅ | Cookie `_fbc` ou gerado de `fbclid` na URL |
-| `utm_source` | ❌ **GAP** | Não lido da URL — **fix: BACKLOG-015** |
-| `utm_medium` | ❌ **GAP** | Não lido da URL — **fix: BACKLOG-015** |
-| `utm_campaign` | ❌ **GAP** | Não lido da URL — **fix: BACKLOG-015** |
-| `gclid` | ❌ **GAP** | Não capturado — **fix: BACKLOG-015** |
+| `utm_source` | ✅ | URL → sessionStorage → FormData |
+| `utm_medium` | ✅ | URL → sessionStorage → FormData |
+| `utm_campaign` | ✅ | URL → sessionStorage → FormData |
+| `utm_content` | ✅ | URL → sessionStorage → FormData |
+| `utm_term` | ✅ | URL → sessionStorage → FormData |
+| `gclid` | ❌ **GAP** | Não capturado no GENERATE_LEAD |
 
-**Fix BACKLOG-015 (10 linhas de JS):**
-```js
-// Ao carregar a página: guardar UTMs em sessionStorage
-(function saveUtms() {
-  var p = new URLSearchParams(window.location.search);
-  ['utm_source','utm_medium','utm_campaign','gclid'].forEach(function(k) {
-    if (p.get(k)) sessionStorage.setItem('decole_' + k, p.get(k));
-  });
-})();
-
-// No submit: adicionar ao FormData
-function getUtmParams() {
-  var p = new URLSearchParams(window.location.search);
-  return {
-    utm_source:   p.get('utm_source')   || sessionStorage.getItem('decole_utm_source')   || '',
-    utm_medium:   p.get('utm_medium')   || sessionStorage.getItem('decole_utm_medium')   || '',
-    utm_campaign: p.get('utm_campaign') || sessionStorage.getItem('decole_utm_campaign') || '',
-    gclid:        p.get('gclid')        || sessionStorage.getItem('decole_gclid')        || '',
-  };
-}
-```
+Nota: `delivery: "both"` no catálogo de `GENERATE_LEAD` significa captura backend via queue + tracking web via GTM/sGTM. Não significa `emit_tracking` pelo dispatcher.
 
 ---
 
@@ -223,7 +206,7 @@ Calculados no dashboard: **Connect Rate** (LP views / cliques), **Conversão LP*
 
 ### GA4 Data API → `ga4_daily_metrics`
 
-- `page_view`, `cta_click`, `button_click`
+- `page_view`, `cta_click`
 - Dimensão: `customEvent:produto` (diferencia ESG de PlanoVoo)
 
 ### D1 `funnel_events` (já existente)
@@ -362,7 +345,7 @@ crons = ["0 4 * * *"]
 4. POST `https://analyticsdata.googleapis.com/v1beta/properties/{GA4_PROPERTY_ID}:runReport`
    - dimensions: `eventName`, `customEvent:produto`
    - metrics: `eventCount`
-   - filter: `eventName IN [page_view, cta_click, button_click]`
+   - filter: `eventName IN [page_view, cta_click]`
 5. UPSERT em `ga4_daily_metrics`
 
 ### Meta Marketing API

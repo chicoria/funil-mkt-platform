@@ -21,7 +21,7 @@ package "AWARENESS / CONSIDERATION — via GTM web-only" as GTMLayer #EDE7F6 {
 
   component "Meta Ad\n(impressão)" as MetaImpressao #CE93D8
   component "PAGE_VIEW\n(landing page)" as PageView #CE93D8
-  component "CTA_CLICK\nBUTTON_CLICK" as CtaClick #CE93D8
+  component "CTA_CLICK" as CtaClick #CE93D8
 
   MetaImpressao -right-> PageView : clique\n+ fbclid na URL\n+ utm_* na URL
   PageView -right-> CtaClick
@@ -69,8 +69,10 @@ package "CONSIDERATION — GENERATE_LEAD" as LeadLayer #E3F2FD {
     gclid         ← não capturado no GENERATE_LEAD
   end note
 
+  component "GTM Web → sGTM\nGENERATE_LEAD\nGA4 + Meta CAPI" as LeadTracking #CE93D8
   component "api-funnel-ingress\nPOST /funnel/precheckout" as FunnelIngress #90CAF9
   Form -down-> FunnelIngress : POST FormData
+  Form -right-> LeadTracking : dataLayer generate_lead
 }
 
 ' ══════════════════════════════════════════════════
@@ -202,7 +204,7 @@ package "D1: decole-d1-event-store" as D1Layer #DAE8FC {
 ' ══════════════════════════════════════════════════
 
 package "APIs Externas — Cron 4h UTC" as ExternalAPIs #F3E5F5 {
-  component "GA4 Data API\nG-BQQB6X5XN1\npage_view · cta_click · button_click\nper produto" as GA4API #CE93D8
+  component "GA4 Data API\nG-BQQB6X5XN1\npage_view · cta_click\nper produto" as GA4API #CE93D8
   component "Meta Marketing API\nESG: act_XXX | PlanoVoo: act_YYY\nspend · impressions · cpc\nleads · ctr · cpm · cost_per_lead" as MetaAPI #CE93D8
 }
 

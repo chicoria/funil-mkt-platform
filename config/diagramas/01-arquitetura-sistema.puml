@@ -51,6 +51,7 @@ package "Tracking Final" as Tracking {
 
 Browser -right-> FI : GENERATE_LEAD · SIGN_UP
 Browser -right-> LR : BEGIN_CHECKOUT + redirect
+Browser -down-> sGTM : GTM Web\nPAGE_VIEW · CTA_CLICK\nGENERATE_LEAD
 Hotmart -right-> HI : PURCHASE_APPROVED\nPURCHASE_COMPLETE\nPURCHASE_OUT_OF_SHOPPING_CART
 
 FI -right-> Q
@@ -64,7 +65,7 @@ FD <-down-> D1E
 FD <-down-> D1I
 FD <-down-> KVD
 FD <-down-> KVI
-FD -right-> sGTM
+FD -right-> sGTM : emit_tracking\nBEGIN_CHECKOUT\nPURCHASE_APPROVED
 FD -right-> Brevo : contacts API\nDOI native\nSMTP carrinho
 FD -right-> N8N
 

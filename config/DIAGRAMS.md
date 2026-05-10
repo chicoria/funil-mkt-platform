@@ -2,7 +2,7 @@
 
 > Formato: PlantUML. Arquivos em [`config/diagramas/`](diagramas/).
 > Renderizar com VS Code (extensão PlantUML · `Alt+D`), IntelliJ, ou `plantuml -tsvg diagramas/*.puml`.
-> Última actualização: 2026-05-09.
+> Última actualização: 2026-05-10.
 
 ---
 
@@ -15,6 +15,7 @@
 | 3 | [Deployment & Infraestrutura](#3--deployment--infraestrutura) | [`03-deployment-infra.puml`](diagramas/03-deployment-infra.puml) | Workers, routes, bindings, CI/CD |
 | 4 | [Fluxo de Desenvolvimento](#4--fluxo-de-desenvolvimento) | [`04-fluxo-desenvolvimento.puml`](diagramas/04-fluxo-desenvolvimento.puml) | Change → test → commit → deploy → go-live |
 | 5 | [Dados de Entrada do Funil](#5--dados-de-entrada-do-funil) | [`05-dados-entrada-funil.puml`](diagramas/05-dados-entrada-funil.puml) | Campos por evento, gaps de UTM, encaixe no funil por produto, dashboard |
+| 6 | [Eventos E Delivery](#6--eventos-e-delivery) | [`06-eventos-delivery.puml`](diagramas/06-eventos-delivery.puml) | Eventos do catálogo por tipo de delivery e motivo de uso |
 
 ---
 
@@ -49,6 +50,8 @@ Cada evento entra na queue com um `event_type` e `product_code`. O `funnel-dispa
 | `PURCHASE_APPROVED` | hotmart | resolve_identity → upsert_event_store → enrich_attribution → update_brevo_funnel → emit_tracking → forward_n8n |
 | `PURCHASE_COMPLETE` | hotmart | resolve_identity → upsert_event_store → update_brevo_funnel |
 | `PURCHASE_OUT_OF_SHOPPING_CART` | hotmart | resolve_identity → upsert_event_store → update_brevo_funnel → send_cart_abandonment_email |
+
+No `GENERATE_LEAD`, `delivery: "both"` no catálogo significa backend (`api-funnel-ingress` → queue → dispatcher) + tracking web (`dataLayer` → GTM Web → sGTM → GA4/Meta CAPI). A chain do dispatcher não executa `emit_tracking` para evitar dupla contagem.
 
 `PURCHASE_APPROVED` e `PURCHASE_COMPLETE` são eventos Hotmart distintos no pipeline. `PURCHASE_APPROVED` é compra aprovada e pode disparar tracking/n8n; `PURCHASE_COMPLETE` é pós-garantia/reembolso e fica limitado a Event Store + Brevo por padrão.
 
@@ -112,7 +115,7 @@ Mapa completo de **o que chega, de onde e o que está em falta** em cada etapa d
 
 **Cobre:**
 - **AWARENESS** — PAGE_VIEW / CTA_CLICK via GTM → GA4 (cron diário)
-- **CONSIDERATION** — GENERATE_LEAD: campos do formulário, identity (anonymous_id, session_id), Meta attribution (fbp/fbc) e UTMs persistidos da URL no FormData
+- **CONSIDERATION** — GENERATE_LEAD: campos do formulário, identity (anonymous_id, session_id), Meta attribution (fbp/fbc), UTMs no FormData e tracking web via GTM/sGTM
 - **CONVERSION** — BEGIN_CHECKOUT: UTMs ✅ capturados pelo `links-redirect` Worker da URL
 - **PURCHASE** — PURCHASE_APPROVED: enrich_attribution recupera fbp/fbc/utm do BEGIN_CHECKOUT e executa tracking/n8n
 - **RETENTION** — PURCHASE_COMPLETE: evento pós-garantia/reembolso preservado para fluxos posteriores, sem tracking/n8n por padrão
@@ -129,3 +132,16 @@ Mapa completo de **o que chega, de onde e o que está em falta** em cada etapa d
 | PlanoVoo (GA4) | `customEvent:produto = DECOLE_PLANOVOO` | GTM dataLayer |
 | ESG (Meta) | `META_AD_ACCOUNT_ID_ESG` | cron usa conta ESG |
 | PlanoVoo (Meta) | `META_AD_ACCOUNT_ID_PLANOVOO` | cron usa conta PlanoVoo |
+
+---
+
+## 6 · Eventos E Delivery
+
+→ [`diagramas/06-eventos-delivery.puml`](diagramas/06-eventos-delivery.puml)
+
+Visão focada em `products.catalog.json`: quais eventos usam `gtm_web_only`, `both` e `server_queue`, e por que cada decisão existe.
+
+**Regras semânticas:**
+- `gtm_web_only` — envia pelo stack de tracking (`dataLayer` → GTM Web → sGTM → GA4/Meta), mas não entra no funil operacional para evitar inundar queue, D1, Brevo e n8n com sinais auxiliares de decisão.
+- `both` — usado quando o mesmo marco precisa de tracking e processamento operacional, como `GENERATE_LEAD` e `SIGN_UP`.
+- `server_queue` — usado para eventos que mudam estado operacional, precisam de idempotência/retry, ou disparam handlers como Brevo, `emit_tracking` e n8n.

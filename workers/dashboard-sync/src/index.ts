@@ -147,7 +147,7 @@ async function syncGa4(db: D1Database, env: Env, dateStr: string): Promise<void>
       filter: {
         fieldName: "eventName",
         inListFilter: {
-          values: ["page_view", "cta_click", "button_click"],
+          values: ["page_view", "cta_click"],
         },
       },
     },

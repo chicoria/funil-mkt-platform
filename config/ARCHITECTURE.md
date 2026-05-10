@@ -95,7 +95,8 @@ O `api-hotmart-ingress` preserva o `event` recebido da Hotmart como `event_type`
 ```
 resolve_identity → upsert_event_store → send_brevo_doi → update_brevo_funnel → sync_brevo_segments
 ```
-- Sem `emit_tracking` (sem pixel GA4/Meta para leads)
+- Sem `emit_tracking` no dispatcher: o tracking de lead segue pelo browser (`dataLayer` → GTM Web → sGTM → GA4 + Meta CAPI).
+- No catálogo, `delivery: "both"` para `GENERATE_LEAD` significa **backend server_queue + tracking web/sGTM**, não envio duplicado pelo dispatcher.
 - `send_brevo_doi` usa DOI nativo Brevo via `POST /contacts/doubleOptinConfirmation`
 - O template DOI usa `{{ params.DOIurl }}`; a Brevo confirma o contato, inclui na lista do produto e redireciona para a página de confirmação:
   - `DECOLE_ESG_MENTORIA`: template `1`, lista `7`, `https://decolesuacarreiraesg.com.br/confirmacao.html`
@@ -164,6 +165,11 @@ resolve_identity → upsert_event_store → update_brevo_funnel → send_cart_ab
 ---
 
 ## Tracking: sGTM → GA4 + Meta CAPI
+
+Há dois caminhos de tracking para sGTM:
+
+- **Web/GTM:** `PAGE_VIEW`, `CTA_CLICK` e `GENERATE_LEAD` saem do browser via `dataLayer`/GTM Web e são repassados pelo sGTM para GA4 + Meta CAPI.
+- **Dispatcher:** `BEGIN_CHECKOUT` e `PURCHASE_APPROVED` usam `emit_tracking` server-side, com attribution enriquecida pelo Event Store.
 
 O handler `emit_tracking` envia para `sGTM /mp/collect` com:
 
