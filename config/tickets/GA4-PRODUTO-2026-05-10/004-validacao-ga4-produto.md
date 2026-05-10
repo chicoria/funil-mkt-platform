@@ -44,8 +44,18 @@ Validar ponta a ponta que `produto` aparece como parametro de evento no GA4 para
   - fix publicado via push e revalidado no site publicado
 - [x] Property externa observada:
   - `G-22ZR1Q37JD` envia `page_view` sem `produto`
-  - nao esta no GTM Web `GTM-58CQ9K7X` nem no HTML versionado
-  - origem no navegador: script first-party `/syvi/...`
+  - pertence ao container `GTM-KLVRLSWN` (`elizetefazza.com`), nao ao `GTM-58CQ9K7X`
+  - origem no navegador em DECOLE: script first-party `/syvi/...`
+- [x] Fix da property externa:
+  - Container `GTM-KLVRLSWN`
+  - Versao publicada `14`: `Restrict Elizete GTM to own hostname`
+  - Tags ativas restringidas ao trigger `Page View - somente elizetefazza.com`
+  - Tags afetadas: `[Pixel] Facebook`, `Google Tag G-22ZR1Q37JD`, `G4 Fluxo de Dados para decolesuacarreiraesg.com.br`
+- [x] Revalidacao apos fix externo:
+  - `/`: nenhum hit `G-22ZR1Q37JD`; 1 `page_view` `G-BQQB6X5XN1` com `DECOLE_ESG_MENTORIA`
+  - `/planodevoo/`: nenhum hit `G-22ZR1Q37JD`; 1 `page_view` `G-BQQB6X5XN1` com `DECOLE_PLANOVOO`
+  - `/bio-insta.html`: nenhum hit `G-22ZR1Q37JD`; 1 `page_view` `G-BQQB6X5XN1` com `DECOLE_ESG_MENTORIA`
+  - `https://elizetefazza.com/`: continua enviando `page_view` para `G-22ZR1Q37JD`
 - [ ] GA4 Data API por `eventName` + `customEvent:produto` apos janela de processamento.
 - [ ] Confirmar que `page_view` e `cta_click` aparecem para `DECOLE_ESG_MENTORIA`.
 - [ ] Confirmar que `page_view` e `cta_click` aparecem para `DECOLE_PLANOVOO`.

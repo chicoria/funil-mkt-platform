@@ -48,3 +48,12 @@ Eventos web canonicos para dashboard:
 - Versao publicada: `18` — `GA4 produto page_view explicito`
 - Estado: publicado.
 - Observacao: o workspace `21` configurado no `.env.local` estava submetido e nao aceitava edicao via API.
+
+## Correcao de container externo
+
+Tambem foi identificado que o stream GA4 `G-22ZR1Q37JD` pertence ao container `GTM-KLVRLSWN` (`elizetefazza.com`) e estava sendo carregado em `decolesuacarreiraesg.com.br` via script first-party `/syvi/`.
+
+- Container: `GTM-KLVRLSWN`
+- Versao publicada: `14` — `Restrict Elizete GTM to own hostname`
+- Fix: tags ativas do container Elizete restritas a `elizetefazza.com` e `www.elizetefazza.com`.
+- Resultado: DECOLE deixou de enviar hits para `G-22ZR1Q37JD`; `elizetefazza.com` continua enviando `page_view` para esse stream.
