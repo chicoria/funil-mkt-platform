@@ -56,6 +56,14 @@ Validar ponta a ponta que `produto` aparece como parametro de evento no GA4 para
   - `/planodevoo/`: nenhum hit `G-22ZR1Q37JD`; 1 `page_view` `G-BQQB6X5XN1` com `DECOLE_PLANOVOO`
   - `/bio-insta.html`: nenhum hit `G-22ZR1Q37JD`; 1 `page_view` `G-BQQB6X5XN1` com `DECOLE_ESG_MENTORIA`
   - `https://elizetefazza.com/`: continua enviando `page_view` para `G-22ZR1Q37JD`
+- [x] Fix `sign_up` Plano de Voo:
+  - Container `GTM-58CQ9K7X`
+  - Versao publicada `19`: `GA4 sign_up PlanoVoo`
+  - Tag criada `69`: `GA4 - Sign Up - PlanoVoo`
+  - Trigger criado `68`: `Sign Up - PlanoVoo`
+- [x] Revalidacao das paginas de confirmacao:
+  - `/confirmacao.html`: `sign_up` com `produto=DECOLE_ESG_MENTORIA`, `event_name=CompleteRegistration`; `page_view` com `produto=DECOLE_ESG_MENTORIA`
+  - `/planodevoo/confirmacao.html`: `sign_up` com `produto=DECOLE_PLANOVOO`, `event_name=CompleteRegistration`; `page_view` com `produto=DECOLE_PLANOVOO`
 - [ ] GA4 Data API por `eventName` + `customEvent:produto` apos janela de processamento.
 - [ ] Confirmar que `page_view` e `cta_click` aparecem para `DECOLE_ESG_MENTORIA`.
 - [ ] Confirmar que `page_view` e `cta_click` aparecem para `DECOLE_PLANOVOO`.

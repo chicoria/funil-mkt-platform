@@ -57,3 +57,13 @@ Tambem foi identificado que o stream GA4 `G-22ZR1Q37JD` pertence ao container `G
 - Versao publicada: `14` — `Restrict Elizete GTM to own hostname`
 - Fix: tags ativas do container Elizete restritas a `elizetefazza.com` e `www.elizetefazza.com`.
 - Resultado: DECOLE deixou de enviar hits para `G-22ZR1Q37JD`; `elizetefazza.com` continua enviando `page_view` para esse stream.
+
+## Correcao `sign_up` Plano de Voo
+
+O `sign_up` da pagina `site/planodevoo/confirmacao.html` ja existia no `dataLayer`, mas nao chegava ao GA4 porque a tag GA4 generica exclui paths `/planodevoo`.
+
+- Container Web: `GTM-58CQ9K7X`
+- Versao publicada: `19` — `GA4 sign_up PlanoVoo`
+- Tag criada: `69` — `GA4 - Sign Up - PlanoVoo`
+- Trigger criado: `68` — `Sign Up - PlanoVoo`
+- Resultado: `/planodevoo/confirmacao.html` envia `sign_up` com `produto=DECOLE_PLANOVOO`.
