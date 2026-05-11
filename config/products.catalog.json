@@ -966,17 +966,19 @@
             "source": "hotmart",
             "ingress": "api-hotmart-ingress",
             "queue": "decole-q-funnel-events",
-            "description": "Compra cancelada antes de permanecer ativa. Invalida token de recuperacao associado para nao reidratar checkout de uma tentativa encerrada.",
+            "description": "Compra cancelada antes de permanecer ativa. Invalida token de recuperacao em KV e encaminha ao n8n para bloquear o token do app Plano de Voo.",
             "chain": [
               "resolve_identity",
               "upsert_event_store",
               "invalidate_purchase_token",
-              "update_brevo_funnel"
+              "update_brevo_funnel",
+              "forward_n8n"
             ],
             "destinations": [
               "Brevo",
               "Event Store",
-              "Identity KV"
+              "Identity KV",
+              "n8n"
             ],
             "brevoConfig": {
               "funnelPrefix": "DECOLE_PLANOVOO"
@@ -989,17 +991,19 @@
             "source": "hotmart",
             "ingress": "api-hotmart-ingress",
             "queue": "decole-q-funnel-events",
-            "description": "Reembolso processado, normalmente por desistencia dentro do periodo de garantia. Invalida token associado a compra.",
+            "description": "Reembolso processado, normalmente por desistencia dentro do periodo de garantia. Invalida token de recuperacao em KV e encaminha ao n8n para bloquear o token do app Plano de Voo.",
             "chain": [
               "resolve_identity",
               "upsert_event_store",
               "invalidate_purchase_token",
-              "update_brevo_funnel"
+              "update_brevo_funnel",
+              "forward_n8n"
             ],
             "destinations": [
               "Brevo",
               "Event Store",
-              "Identity KV"
+              "Identity KV",
+              "n8n"
             ],
             "brevoConfig": {
               "funnelPrefix": "DECOLE_PLANOVOO"
@@ -1012,17 +1016,19 @@
             "source": "hotmart",
             "ingress": "api-hotmart-ingress",
             "queue": "decole-q-funnel-events",
-            "description": "Contestacao/reversao de pagamento junto ao emissor do cartao. Invalida token associado a compra.",
+            "description": "Contestacao/reversao de pagamento junto ao emissor do cartao. Invalida token de recuperacao em KV e encaminha ao n8n para bloquear o token do app Plano de Voo.",
             "chain": [
               "resolve_identity",
               "upsert_event_store",
               "invalidate_purchase_token",
-              "update_brevo_funnel"
+              "update_brevo_funnel",
+              "forward_n8n"
             ],
             "destinations": [
               "Brevo",
               "Event Store",
-              "Identity KV"
+              "Identity KV",
+              "n8n"
             ],
             "brevoConfig": {
               "funnelPrefix": "DECOLE_PLANOVOO"
@@ -1035,17 +1041,19 @@
             "source": "hotmart",
             "ingress": "api-hotmart-ingress",
             "queue": "decole-q-funnel-events",
-            "description": "Disputa/protesto da compra. Invalida token preventivamente enquanto a compra esta sob contestacao.",
+            "description": "Disputa/protesto da compra. Invalida token de recuperacao em KV e encaminha ao n8n para bloquear preventivamente o token do app Plano de Voo enquanto a compra esta sob contestacao.",
             "chain": [
               "resolve_identity",
               "upsert_event_store",
               "invalidate_purchase_token",
-              "update_brevo_funnel"
+              "update_brevo_funnel",
+              "forward_n8n"
             ],
             "destinations": [
               "Brevo",
               "Event Store",
-              "Identity KV"
+              "Identity KV",
+              "n8n"
             ],
             "brevoConfig": {
               "funnelPrefix": "DECOLE_PLANOVOO"
@@ -1058,17 +1066,19 @@
             "source": "hotmart",
             "ingress": "api-hotmart-ingress",
             "queue": "decole-q-funnel-events",
-            "description": "Pagamento expirado sem conclusao. Invalida token da tentativa antiga para evitar reuso de checkout expirado.",
+            "description": "Pagamento expirado sem conclusao. Invalida token de recuperacao em KV e encaminha ao n8n para bloquear o token do app Plano de Voo quando existir token associado.",
             "chain": [
               "resolve_identity",
               "upsert_event_store",
               "invalidate_purchase_token",
-              "update_brevo_funnel"
+              "update_brevo_funnel",
+              "forward_n8n"
             ],
             "destinations": [
               "Brevo",
               "Event Store",
-              "Identity KV"
+              "Identity KV",
+              "n8n"
             ],
             "brevoConfig": {
               "funnelPrefix": "DECOLE_PLANOVOO"

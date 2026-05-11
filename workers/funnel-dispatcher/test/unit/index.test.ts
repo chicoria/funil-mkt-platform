@@ -516,11 +516,84 @@ describe("funnel-dispatcher", () => {
 	      env
 	    );
 
-	    expect(env.IDENTITY_KV.delete).toHaveBeenCalledWith("checkout_recovery:rec-123");
-	    expect(env.IDENTITY_KV.delete).toHaveBeenCalledWith("checkout_recovery_index:transaction:DECOLE_PLANOVOO:hp-123");
-	  });
+		  expect(env.IDENTITY_KV.delete).toHaveBeenCalledWith("checkout_recovery:rec-123");
+		  expect(env.IDENTITY_KV.delete).toHaveBeenCalledWith("checkout_recovery_index:transaction:DECOLE_PLANOVOO:hp-123");
+		});
 
-	  it("atualiza Brevo com campos de funil por produto", async () => {
+		  it("encaminha eventos terminais do Plano de Voo ao n8n sem afetar a mentoria", async () => {
+		    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+		      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+		    });
+		    vi.stubGlobal("fetch", fetchMock);
+
+		    const env = makeEnv({
+		      N8N_WEBHOOK_URL: "https://n8n.example.com/webhook/plano-de-voo/hotmart",
+		    });
+
+		    await worker.queue(
+		      {
+		        messages: [
+		          {
+		            body: {
+		              event_id: "evt-planovoo-protest-n8n-1",
+		              event_type: "PURCHASE_PROTEST",
+		              product_code: "PLANOVOO",
+		              source: "hotmart",
+		              occurred_at: "2026-05-11T12:05:54.078Z",
+		              lead: { email: "buyer@example.com" },
+		              payload: {
+		                event: "PURCHASE_PROTEST",
+		                data: {
+		                  buyer: { email: "buyer@example.com" },
+		                  purchase: { transaction: "HP-PLANOVOO-PROTEST-1", status: "DISPUTE" },
+		                },
+		              },
+		            },
+		          },
+		        ],
+		      },
+		      env
+		    );
+
+		    await worker.queue(
+		      {
+		        messages: [
+		          {
+		            body: {
+		              event_id: "evt-esg-protest-no-n8n-1",
+		              event_type: "PURCHASE_PROTEST",
+		              product_code: "DECOLE_ESG_MENTORIA",
+		              source: "hotmart",
+		              occurred_at: "2026-05-11T12:06:00.000Z",
+		              lead: { email: "buyer@example.com" },
+		              payload: {
+		                event: "PURCHASE_PROTEST",
+		                data: {
+		                  buyer: { email: "buyer@example.com" },
+		                  purchase: { transaction: "HP-ESG-PROTEST-1", status: "DISPUTE" },
+		                },
+		              },
+		            },
+		          },
+		        ],
+		      },
+		      env
+		    );
+
+		    const n8nCalls = fetchMock.mock.calls.filter((call) => String(call[0]).includes("n8n.example.com"));
+		    expect(n8nCalls).toHaveLength(1);
+		    const body = JSON.parse(String((n8nCalls[0]?.[1] as RequestInit)?.body || "{}")) as {
+		      event?: string;
+		      data?: { purchase?: { transaction?: string; status?: string } };
+		    };
+		    expect(body.event).toBe("PURCHASE_PROTEST");
+		    expect(body.data?.purchase?.transaction).toBe("HP-PLANOVOO-PROTEST-1");
+		    expect(body.data?.purchase?.status).toBe("DISPUTE");
+
+		    vi.unstubAllGlobals();
+		  });
+
+		  it("atualiza Brevo com campos de funil por produto", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
     });
