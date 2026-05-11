@@ -4,6 +4,8 @@ import { DispatcherEnv, HandlerFn } from "../dispatcher";
 
 const BREVO_BASE_URL = "https://api.brevo.com/v3";
 const LINKS_BASE_URL = "https://links.decolesuacarreiraesg.com.br";
+const CHECKOUT_RECOVERY_KEY_PREFIX = "checkout_recovery:";
+const CHECKOUT_RECOVERY_INDEX_PREFIX = "checkout_recovery_index:";
 const CHECKOUT_RECOVERY_TTL_SECONDS = 14 * 24 * 60 * 60;
 const CHECKOUT_RECOVERY_PARAM_KEYS = [
   "email",
@@ -30,6 +32,7 @@ const CHECKOUT_RECOVERY_PARAM_KEYS = [
 
 type HandlerMap = Record<string, HandlerFn>;
 type SqlBindable = string | number | null;
+type KVNamespaceLike = NonNullable<DispatcherEnv["IDENTITY_KV"]>;
 
 interface D1StatementLike {
   bind(...values: SqlBindable[]): D1StatementLike;
@@ -125,6 +128,16 @@ interface BrevoFunnelFieldsConfig {
   stepsField: string;
   lastStepField: string;
   lastStepTimestampField: string;
+}
+
+interface CheckoutRecoveryRecord {
+  version: number;
+  product_code: string;
+  event_id: string;
+  profile_id?: string;
+  params: Record<string, string>;
+  index_keys?: string[];
+  created_at: string;
 }
 
 function asString(value: unknown): string {
@@ -702,6 +715,216 @@ function cartRecoveryCampaignName(productCode: string): string {
   return `cart_abandonment_${campaignProduct || "checkout"}`;
 }
 
+function checkoutRecoveryTokenKey(recoveryId: string): string {
+  const normalized = asString(recoveryId);
+  if (!normalized) return "";
+  return normalized.startsWith(CHECKOUT_RECOVERY_KEY_PREFIX)
+    ? normalized
+    : `${CHECKOUT_RECOVERY_KEY_PREFIX}${normalized}`;
+}
+
+function parseRecoveryIndexToken(raw: string | null): string {
+  const value = asString(raw);
+  if (!value) return "";
+  try {
+    const parsed = JSON.parse(value);
+    if (isRecord(parsed)) {
+      return asString(parsed.recovery_id || parsed.recoveryId || parsed.token || parsed.id);
+    }
+  } catch {
+    // Index values are plain recovery ids today. Keep JSON support for forward compatibility.
+  }
+  return value;
+}
+
+function parseRecoveryRecordIndexKeys(raw: string | null): string[] {
+  const value = asString(raw);
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (!isRecord(parsed) || !Array.isArray(parsed.index_keys)) return [];
+    return parsed.index_keys.map((entry) => asString(entry)).filter((entry) => entry.startsWith(CHECKOUT_RECOVERY_INDEX_PREFIX));
+  } catch {
+    return [];
+  }
+}
+
+function recoveryIndexComponent(value: string): string {
+  return encodeURIComponent(value.toLowerCase());
+}
+
+function collectPurchaseTokenHints(event: FunnelEvent): string[] {
+  const payload = event.payload || {};
+  return [
+    nestedString(payload, ["rid", "recovery_id", "recoveryId", "checkout_recovery_id", "checkoutRecoveryId"]),
+    nestedString(payload, ["params.rid", "params.recovery_id", "params.recoveryId"]),
+  ].filter(Boolean);
+}
+
+function purchaseTransactionFromPayload(payload: Record<string, unknown>): string {
+  return nestedString(payload, [
+    "transaction",
+    "transaction_id",
+    "transactionId",
+    "data.transaction",
+    "data.purchase.transaction",
+    "purchase.transaction",
+  ]);
+}
+
+function resolveCanonicalProductCode(event: FunnelEvent, env: DispatcherEnv): string {
+  const rawProductCode = asString(event.product_code).toUpperCase() || "UNKNOWN_PRODUCT";
+  const products = getCatalog(env).products || {};
+  if (products[rawProductCode]) return rawProductCode;
+
+  const matchedEntry = Object.entries(products).find(([, product]) =>
+    (product.aliases || []).some((alias) => alias.toUpperCase() === rawProductCode)
+  );
+  return matchedEntry?.[0] || rawProductCode;
+}
+
+async function buildCheckoutRecoveryIndexKeys(
+  event: FunnelEvent,
+  env: DispatcherEnv,
+  recoveryParams: Record<string, string> = {}
+): Promise<string[]> {
+  const payload = event.payload || {};
+  const productCode = resolveCanonicalProductCode(event, env);
+  const keys = new Set<string>();
+  const add = (kind: string, value: string): void => {
+    const normalized = asString(value);
+    if (!normalized) return;
+    keys.add(`${CHECKOUT_RECOVERY_INDEX_PREFIX}${kind}:${productCode}:${recoveryIndexComponent(normalized)}`);
+  };
+
+  add("profile", asString(payload.profile_id));
+
+  const email = asString(event.lead?.email || recoveryParams.email).toLowerCase();
+  const emailHash = asString(event.identity?.email_hash) || (email ? await sha256Hex(email) : "");
+  add("email", emailHash);
+
+  add("transaction", purchaseTransactionFromPayload(payload));
+
+  return [...keys];
+}
+
+async function deleteKvKey(kv: KVNamespaceLike, key: string): Promise<void> {
+  if (!key) return;
+  if (typeof kv.delete === "function") {
+    await kv.delete(key);
+    return;
+  }
+  await kv.put(key, "", { expirationTtl: 60 });
+}
+
+async function deleteCheckoutRecoveryToken(
+  kv: KVNamespaceLike,
+  recoveryId: string,
+  indexKeysToDelete: Set<string>
+): Promise<boolean> {
+  const tokenKey = checkoutRecoveryTokenKey(recoveryId);
+  if (!tokenKey) return false;
+
+  const recordRaw = await kv.get(tokenKey);
+  for (const indexKey of parseRecoveryRecordIndexKeys(recordRaw)) {
+    indexKeysToDelete.add(indexKey);
+  }
+
+  await deleteKvKey(kv, tokenKey);
+  return Boolean(recordRaw);
+}
+
+async function storeCheckoutRecoveryRecord(
+  event: FunnelEvent,
+  env: DispatcherEnv,
+  recoveryId: string,
+  recoveryParams: Record<string, string>
+): Promise<void> {
+  if (!env.IDENTITY_KV) return;
+
+  const indexKeys = await buildCheckoutRecoveryIndexKeys(event, env, recoveryParams);
+  const staleIndexKeys = new Set<string>();
+  const staleRecoveryIds = new Set<string>();
+
+  for (const indexKey of indexKeys) {
+    const previousRecoveryId = parseRecoveryIndexToken(await env.IDENTITY_KV.get(indexKey));
+    if (previousRecoveryId && previousRecoveryId !== recoveryId) {
+      staleRecoveryIds.add(previousRecoveryId);
+    }
+  }
+
+  for (const previousRecoveryId of staleRecoveryIds) {
+    await deleteCheckoutRecoveryToken(env.IDENTITY_KV, previousRecoveryId, staleIndexKeys);
+  }
+  for (const staleIndexKey of staleIndexKeys) {
+    await deleteKvKey(env.IDENTITY_KV, staleIndexKey);
+  }
+
+  const recoveryRecord: CheckoutRecoveryRecord = {
+    version: 2,
+    product_code: event.product_code,
+    event_id: event.event_id,
+    profile_id: asString((event.payload || {}).profile_id) || undefined,
+    params: recoveryParams,
+    index_keys: indexKeys,
+    created_at: new Date().toISOString(),
+  };
+
+  await env.IDENTITY_KV.put(checkoutRecoveryTokenKey(recoveryId), JSON.stringify(recoveryRecord), {
+    expirationTtl: CHECKOUT_RECOVERY_TTL_SECONDS,
+  });
+
+  for (const indexKey of indexKeys) {
+    await env.IDENTITY_KV.put(indexKey, recoveryId, { expirationTtl: CHECKOUT_RECOVERY_TTL_SECONDS });
+  }
+}
+
+async function invalidatePurchaseToken(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
+  if (!env.IDENTITY_KV) {
+    console.log(
+      JSON.stringify({
+        stage: "handler_skip",
+        handler: "invalidate_purchase_token",
+        reason: "missing_identity_kv",
+        event_id: event.event_id,
+      })
+    );
+    return;
+  }
+
+  const indexKeys = await buildCheckoutRecoveryIndexKeys(event, env);
+  const indexKeysToDelete = new Set(indexKeys);
+  const recoveryIds = new Set(collectPurchaseTokenHints(event));
+
+  for (const indexKey of indexKeys) {
+    const recoveryId = parseRecoveryIndexToken(await env.IDENTITY_KV.get(indexKey));
+    if (recoveryId) recoveryIds.add(recoveryId);
+  }
+
+  let deletedTokens = 0;
+  for (const recoveryId of recoveryIds) {
+    if (await deleteCheckoutRecoveryToken(env.IDENTITY_KV, recoveryId, indexKeysToDelete)) {
+      deletedTokens += 1;
+    }
+  }
+  for (const indexKey of indexKeysToDelete) {
+    await deleteKvKey(env.IDENTITY_KV, indexKey);
+  }
+
+  console.log(
+    JSON.stringify({
+      stage: "handler_ok",
+      handler: "invalidate_purchase_token",
+      event_id: event.event_id,
+      event_type: event.event_type,
+      product_code: event.product_code,
+      matched_tokens: recoveryIds.size,
+      deleted_tokens: deletedTokens,
+      deleted_indexes: indexKeysToDelete.size,
+    })
+  );
+}
+
 async function readLatestSitePayloadForRecovery(event: FunnelEvent, env: DispatcherEnv): Promise<Record<string, unknown>> {
   const db = getEventStoreDb(env);
   const profileId = asString((event.payload || {}).profile_id);
@@ -786,18 +1009,7 @@ async function buildCheckoutRecoveryLink(
   checkoutUrl.searchParams.set("utm_campaign", cartRecoveryCampaignName(event.product_code));
 
   const recoveryParams = await buildCheckoutRecoveryParams(event, env);
-  await env.IDENTITY_KV.put(
-    `checkout_recovery:${recoveryId}`,
-    JSON.stringify({
-      version: 1,
-      product_code: event.product_code,
-      event_id: event.event_id,
-      profile_id: asString((event.payload || {}).profile_id) || undefined,
-      params: recoveryParams,
-      created_at: new Date().toISOString(),
-    }),
-    { expirationTtl: CHECKOUT_RECOVERY_TTL_SECONDS }
-  );
+  await storeCheckoutRecoveryRecord(event, env, recoveryId, recoveryParams);
 
   return checkoutUrl.toString();
 }
@@ -1279,6 +1491,11 @@ export function createHandlers(): HandlerMap {
     async upsert_event_store(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
       console.log(JSON.stringify({ stage: "handler", handler: "upsert_event_store", event_id: event.event_id }));
       await upsertEventStoreRecord(event, env);
+    },
+
+    async invalidate_purchase_token(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
+      console.log(JSON.stringify({ stage: "handler", handler: "invalidate_purchase_token", event_id: event.event_id }));
+      await invalidatePurchaseToken(event, env);
     },
 
     async send_brevo_doi(event: FunnelEvent, env: DispatcherEnv): Promise<void> {

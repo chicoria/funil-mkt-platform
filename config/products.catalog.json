@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "updatedAt": "2026-05-10",
+  "updatedAt": "2026-05-11",
   "description": "Catálogo central de produtos — cada produto declara seus subsistemas.",
   "global": {
     "hotmart": {
@@ -258,6 +258,48 @@
           },
           {
             "funnelStage": "CONVERSION",
+            "eventType": "PURCHASE_BILLET_PRINTED",
+            "delivery": "server_queue",
+            "source": "hotmart",
+            "ingress": "api-hotmart-ingress",
+            "queue": "decole-q-funnel-events",
+            "description": "Boleto/PIX gerado ou pagamento iniciado ainda pendente. Capturado para acompanhamento de funil; nao invalida token porque a compra ainda pode ser concluida.",
+            "chain": [
+              "resolve_identity",
+              "upsert_event_store",
+              "update_brevo_funnel"
+            ],
+            "destinations": [
+              "Brevo",
+              "Event Store"
+            ],
+            "brevoConfig": {
+              "funnelPrefix": "DECOLE_ESG"
+            }
+          },
+          {
+            "funnelStage": "CONVERSION",
+            "eventType": "PURCHASE_DELAYED",
+            "delivery": "server_queue",
+            "source": "hotmart",
+            "ingress": "api-hotmart-ingress",
+            "queue": "decole-q-funnel-events",
+            "description": "Pagamento atrasado/pendente. Capturado para suporte de decisao na jornada; nao invalida token porque ainda existe tentativa ativa de pagamento.",
+            "chain": [
+              "resolve_identity",
+              "upsert_event_store",
+              "update_brevo_funnel"
+            ],
+            "destinations": [
+              "Brevo",
+              "Event Store"
+            ],
+            "brevoConfig": {
+              "funnelPrefix": "DECOLE_ESG"
+            }
+          },
+          {
+            "funnelStage": "CONVERSION",
             "eventType": "SIGN_UP",
             "delivery": "both",
             "source": "site",
@@ -311,6 +353,121 @@
             "destinations": [
               "Brevo",
               "Event Store"
+            ],
+            "brevoConfig": {
+              "funnelPrefix": "DECOLE_ESG"
+            }
+          },
+          {
+            "funnelStage": "CONVERSION",
+            "eventType": "PURCHASE_CANCELED",
+            "delivery": "server_queue",
+            "source": "hotmart",
+            "ingress": "api-hotmart-ingress",
+            "queue": "decole-q-funnel-events",
+            "description": "Compra cancelada antes de permanecer ativa. Invalida token de recuperacao associado para nao reidratar checkout de uma tentativa encerrada.",
+            "chain": [
+              "resolve_identity",
+              "upsert_event_store",
+              "invalidate_purchase_token",
+              "update_brevo_funnel"
+            ],
+            "destinations": [
+              "Brevo",
+              "Event Store",
+              "Identity KV"
+            ],
+            "brevoConfig": {
+              "funnelPrefix": "DECOLE_ESG"
+            }
+          },
+          {
+            "funnelStage": "RETENTION",
+            "eventType": "PURCHASE_REFUNDED",
+            "delivery": "server_queue",
+            "source": "hotmart",
+            "ingress": "api-hotmart-ingress",
+            "queue": "decole-q-funnel-events",
+            "description": "Reembolso processado, normalmente por desistencia dentro do periodo de garantia. Invalida token associado a compra.",
+            "chain": [
+              "resolve_identity",
+              "upsert_event_store",
+              "invalidate_purchase_token",
+              "update_brevo_funnel"
+            ],
+            "destinations": [
+              "Brevo",
+              "Event Store",
+              "Identity KV"
+            ],
+            "brevoConfig": {
+              "funnelPrefix": "DECOLE_ESG"
+            }
+          },
+          {
+            "funnelStage": "RETENTION",
+            "eventType": "PURCHASE_CHARGEBACK",
+            "delivery": "server_queue",
+            "source": "hotmart",
+            "ingress": "api-hotmart-ingress",
+            "queue": "decole-q-funnel-events",
+            "description": "Contestacao/reversao de pagamento junto ao emissor do cartao. Invalida token associado a compra.",
+            "chain": [
+              "resolve_identity",
+              "upsert_event_store",
+              "invalidate_purchase_token",
+              "update_brevo_funnel"
+            ],
+            "destinations": [
+              "Brevo",
+              "Event Store",
+              "Identity KV"
+            ],
+            "brevoConfig": {
+              "funnelPrefix": "DECOLE_ESG"
+            }
+          },
+          {
+            "funnelStage": "RETENTION",
+            "eventType": "PURCHASE_PROTEST",
+            "delivery": "server_queue",
+            "source": "hotmart",
+            "ingress": "api-hotmart-ingress",
+            "queue": "decole-q-funnel-events",
+            "description": "Disputa/protesto da compra. Invalida token preventivamente enquanto a compra esta sob contestacao.",
+            "chain": [
+              "resolve_identity",
+              "upsert_event_store",
+              "invalidate_purchase_token",
+              "update_brevo_funnel"
+            ],
+            "destinations": [
+              "Brevo",
+              "Event Store",
+              "Identity KV"
+            ],
+            "brevoConfig": {
+              "funnelPrefix": "DECOLE_ESG"
+            }
+          },
+          {
+            "funnelStage": "CONVERSION",
+            "eventType": "PURCHASE_EXPIRED",
+            "delivery": "server_queue",
+            "source": "hotmart",
+            "ingress": "api-hotmart-ingress",
+            "queue": "decole-q-funnel-events",
+            "description": "Pagamento expirado sem conclusao. Invalida token da tentativa antiga para evitar reuso de checkout expirado.",
+            "chain": [
+              "resolve_identity",
+              "upsert_event_store",
+              "invalidate_purchase_token",
+              "update_brevo_funnel"
+            ],
+            "destinations": [
+              "Brevo",
+              "Event Store",
+              "Identity KV"
             ],
             "brevoConfig": {
               "funnelPrefix": "DECOLE_ESG"
@@ -702,6 +859,48 @@
           },
           {
             "funnelStage": "CONVERSION",
+            "eventType": "PURCHASE_BILLET_PRINTED",
+            "delivery": "server_queue",
+            "source": "hotmart",
+            "ingress": "api-hotmart-ingress",
+            "queue": "decole-q-funnel-events",
+            "description": "Boleto/PIX gerado ou pagamento iniciado ainda pendente. Capturado para acompanhamento de funil; nao invalida token porque a compra ainda pode ser concluida.",
+            "chain": [
+              "resolve_identity",
+              "upsert_event_store",
+              "update_brevo_funnel"
+            ],
+            "destinations": [
+              "Brevo",
+              "Event Store"
+            ],
+            "brevoConfig": {
+              "funnelPrefix": "DECOLE_PLANOVOO"
+            }
+          },
+          {
+            "funnelStage": "CONVERSION",
+            "eventType": "PURCHASE_DELAYED",
+            "delivery": "server_queue",
+            "source": "hotmart",
+            "ingress": "api-hotmart-ingress",
+            "queue": "decole-q-funnel-events",
+            "description": "Pagamento atrasado/pendente. Capturado para suporte de decisao na jornada; nao invalida token porque ainda existe tentativa ativa de pagamento.",
+            "chain": [
+              "resolve_identity",
+              "upsert_event_store",
+              "update_brevo_funnel"
+            ],
+            "destinations": [
+              "Brevo",
+              "Event Store"
+            ],
+            "brevoConfig": {
+              "funnelPrefix": "DECOLE_PLANOVOO"
+            }
+          },
+          {
+            "funnelStage": "CONVERSION",
             "eventType": "SIGN_UP",
             "delivery": "both",
             "source": "site",
@@ -755,6 +954,121 @@
             "destinations": [
               "Brevo",
               "Event Store"
+            ],
+            "brevoConfig": {
+              "funnelPrefix": "DECOLE_PLANOVOO"
+            }
+          },
+          {
+            "funnelStage": "CONVERSION",
+            "eventType": "PURCHASE_CANCELED",
+            "delivery": "server_queue",
+            "source": "hotmart",
+            "ingress": "api-hotmart-ingress",
+            "queue": "decole-q-funnel-events",
+            "description": "Compra cancelada antes de permanecer ativa. Invalida token de recuperacao associado para nao reidratar checkout de uma tentativa encerrada.",
+            "chain": [
+              "resolve_identity",
+              "upsert_event_store",
+              "invalidate_purchase_token",
+              "update_brevo_funnel"
+            ],
+            "destinations": [
+              "Brevo",
+              "Event Store",
+              "Identity KV"
+            ],
+            "brevoConfig": {
+              "funnelPrefix": "DECOLE_PLANOVOO"
+            }
+          },
+          {
+            "funnelStage": "RETENTION",
+            "eventType": "PURCHASE_REFUNDED",
+            "delivery": "server_queue",
+            "source": "hotmart",
+            "ingress": "api-hotmart-ingress",
+            "queue": "decole-q-funnel-events",
+            "description": "Reembolso processado, normalmente por desistencia dentro do periodo de garantia. Invalida token associado a compra.",
+            "chain": [
+              "resolve_identity",
+              "upsert_event_store",
+              "invalidate_purchase_token",
+              "update_brevo_funnel"
+            ],
+            "destinations": [
+              "Brevo",
+              "Event Store",
+              "Identity KV"
+            ],
+            "brevoConfig": {
+              "funnelPrefix": "DECOLE_PLANOVOO"
+            }
+          },
+          {
+            "funnelStage": "RETENTION",
+            "eventType": "PURCHASE_CHARGEBACK",
+            "delivery": "server_queue",
+            "source": "hotmart",
+            "ingress": "api-hotmart-ingress",
+            "queue": "decole-q-funnel-events",
+            "description": "Contestacao/reversao de pagamento junto ao emissor do cartao. Invalida token associado a compra.",
+            "chain": [
+              "resolve_identity",
+              "upsert_event_store",
+              "invalidate_purchase_token",
+              "update_brevo_funnel"
+            ],
+            "destinations": [
+              "Brevo",
+              "Event Store",
+              "Identity KV"
+            ],
+            "brevoConfig": {
+              "funnelPrefix": "DECOLE_PLANOVOO"
+            }
+          },
+          {
+            "funnelStage": "RETENTION",
+            "eventType": "PURCHASE_PROTEST",
+            "delivery": "server_queue",
+            "source": "hotmart",
+            "ingress": "api-hotmart-ingress",
+            "queue": "decole-q-funnel-events",
+            "description": "Disputa/protesto da compra. Invalida token preventivamente enquanto a compra esta sob contestacao.",
+            "chain": [
+              "resolve_identity",
+              "upsert_event_store",
+              "invalidate_purchase_token",
+              "update_brevo_funnel"
+            ],
+            "destinations": [
+              "Brevo",
+              "Event Store",
+              "Identity KV"
+            ],
+            "brevoConfig": {
+              "funnelPrefix": "DECOLE_PLANOVOO"
+            }
+          },
+          {
+            "funnelStage": "CONVERSION",
+            "eventType": "PURCHASE_EXPIRED",
+            "delivery": "server_queue",
+            "source": "hotmart",
+            "ingress": "api-hotmart-ingress",
+            "queue": "decole-q-funnel-events",
+            "description": "Pagamento expirado sem conclusao. Invalida token da tentativa antiga para evitar reuso de checkout expirado.",
+            "chain": [
+              "resolve_identity",
+              "upsert_event_store",
+              "invalidate_purchase_token",
+              "update_brevo_funnel"
+            ],
+            "destinations": [
+              "Brevo",
+              "Event Store",
+              "Identity KV"
             ],
             "brevoConfig": {
               "funnelPrefix": "DECOLE_PLANOVOO"
@@ -1005,6 +1319,11 @@
     "upsert_event_store": {
       "worker": "funnel-dispatcher",
       "binding": "EVENT_STORE_DB"
+    },
+    "invalidate_purchase_token": {
+      "worker": "funnel-dispatcher",
+      "binding": "IDENTITY_KV",
+      "description": "Remove checkout_recovery:<rid> e indices checkout_recovery_index:* associados ao produto/email/profile/transacao quando a compra deixa de precisar de recuperacao ou e revertida."
     },
     "send_brevo_doi": {
       "worker": "funnel-dispatcher",

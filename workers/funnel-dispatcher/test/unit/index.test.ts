@@ -50,6 +50,9 @@ function makeEnv(overrides: Record<string, unknown> = {}): any {
       put: vi.fn(async (key: string, value: string) => {
         identityStore.set(key, value);
       }),
+      delete: vi.fn(async (key: string) => {
+        identityStore.delete(key);
+      }),
     },
     IDENTITY_DB: identityDb.db,
     EVENT_STORE_DB: eventStoreDb.db,
@@ -364,6 +367,10 @@ describe("funnel-dispatcher", () => {
 	    expect(recoveryPayload.params?.email).toBe("qa.cart@example.com");
 	    expect(recoveryPayload.params?.utm_source).toBe("brevo");
 	    expect(recoveryPayload.params?.utm_medium).toBe("email");
+	    const indexPutCalls = (env.IDENTITY_KV.put as any).mock.calls.filter((call: unknown[]) =>
+	      String(call[0]).startsWith("checkout_recovery_index:")
+	    );
+	    expect(indexPutCalls.length).toBeGreaterThan(0);
 
 	    vi.unstubAllGlobals();
 	  });
@@ -460,6 +467,57 @@ describe("funnel-dispatcher", () => {
 	    });
 
 	    vi.unstubAllGlobals();
+	  });
+
+	  it("invalida token de recuperacao associado a transacao Hotmart terminal", async () => {
+	    const env = makeEnv({
+	      CATALOG_JSON: JSON.stringify({
+	        products: {
+	          DECOLE_PLANOVOO: {
+	            aliases: ["PLANOVOO"],
+	            funnelEventArchitecture: {
+	              events: [{ eventType: "PURCHASE_REFUNDED", chain: ["invalidate_purchase_token"] }],
+	            },
+	          },
+	        },
+	      }),
+	    });
+	    await env.IDENTITY_KV.put(
+	      "checkout_recovery:rec-123",
+	      JSON.stringify({
+	        version: 2,
+	        product_code: "DECOLE_PLANOVOO",
+	        index_keys: ["checkout_recovery_index:transaction:DECOLE_PLANOVOO:hp-123"],
+	        params: { email: "buyer@example.com" },
+	      })
+	    );
+	    await env.IDENTITY_KV.put("checkout_recovery_index:transaction:DECOLE_PLANOVOO:hp-123", "rec-123");
+
+	    await worker.queue(
+	      {
+	        messages: [
+	          {
+	            body: {
+	              event_id: "evt-refund-1",
+	              event_type: "PURCHASE_REFUNDED",
+	              product_code: "PLANOVOO",
+	              source: "hotmart",
+	              occurred_at: "2026-05-10T10:00:00.000Z",
+	              lead: { email: "buyer@example.com" },
+	              payload: {
+	                data: {
+	                  purchase: { transaction: "HP-123" },
+	                },
+	              },
+	            },
+	          },
+	        ],
+	      },
+	      env
+	    );
+
+	    expect(env.IDENTITY_KV.delete).toHaveBeenCalledWith("checkout_recovery:rec-123");
+	    expect(env.IDENTITY_KV.delete).toHaveBeenCalledWith("checkout_recovery_index:transaction:DECOLE_PLANOVOO:hp-123");
 	  });
 
 	  it("atualiza Brevo com campos de funil por produto", async () => {
@@ -608,6 +666,7 @@ describe("funnel-dispatcher", () => {
     expect(body.attributes?.DECOLE_ESG_FUNIL_LAST_STEP).toBe("PURCHASE_COMPLETE");
     expect(body.attributes?.DECOLE_ESG_FUNIL_STEPS).toBe("PURCHASE_COMPLETE");
     expect(body.attributes?.DECOLE_ESG_FUNIL_LAST_STEP_TIMESTAMP).toBe("2026-05-09T18:30:00.000Z");
+    expect(env.IDENTITY_KV.delete).not.toHaveBeenCalled();
 
     const urls = fetchMock.mock.calls.map((call) => String(call[0]));
     expect(urls.some((url) => url.includes("sgtm.example.com"))).toBe(false);
@@ -665,6 +724,7 @@ describe("funnel-dispatcher", () => {
     expect(body.attributes?.DECOLE_PLANOVOO_FUNIL_LAST_STEP).toBe("PURCHASE_COMPLETE");
     expect(body.attributes?.DECOLE_PLANOVOO_FUNIL_STEPS).toBe("PURCHASE_COMPLETE");
     expect(body.attributes?.DECOLE_PLANOVOO_FUNIL_LAST_STEP_TIMESTAMP).toBe("2026-05-09T18:00:00.000Z");
+    expect(env.IDENTITY_KV.delete).not.toHaveBeenCalled();
 
     const urls = fetchMock.mock.calls.map((call) => String(call[0]));
     expect(urls.some((url) => url.includes("sgtm.example.com"))).toBe(false);
@@ -1119,6 +1179,7 @@ describe("funnel-dispatcher", () => {
     const params = body.events?.[0]?.params ?? {};
     expect(params.fbp).toBe("fb.1.site.111");
     expect(params.client_ip_address).toBe("9.9.9.9");
+    expect(env.IDENTITY_KV.delete).not.toHaveBeenCalled();
 
     vi.unstubAllGlobals();
   });

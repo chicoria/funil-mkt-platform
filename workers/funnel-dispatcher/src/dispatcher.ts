@@ -4,6 +4,7 @@ import bundledCatalogJson from "../../../config/products.catalog.json";
 interface KVNamespaceLike {
   get(key: string): Promise<string | null>;
   put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
+  delete?(key: string): Promise<void>;
 }
 
 export interface DispatcherEnv {
@@ -67,8 +68,21 @@ const DEFAULT_CHAIN_MAP: Record<string, string[]> = {
     "send_cart_abandonment_email",
     "emit_tracking",
   ],
-  PURCHASE_APPROVED: ["resolve_identity", "upsert_event_store", "update_brevo_funnel", "emit_tracking", "forward_n8n"],
+  PURCHASE_BILLET_PRINTED: ["resolve_identity", "upsert_event_store", "update_brevo_funnel"],
+  PURCHASE_DELAYED: ["resolve_identity", "upsert_event_store", "update_brevo_funnel"],
+  PURCHASE_APPROVED: [
+    "resolve_identity",
+    "upsert_event_store",
+    "update_brevo_funnel",
+    "emit_tracking",
+    "forward_n8n",
+  ],
   PURCHASE_COMPLETE: ["resolve_identity", "upsert_event_store", "update_brevo_funnel"],
+  PURCHASE_CANCELED: ["resolve_identity", "upsert_event_store", "invalidate_purchase_token", "update_brevo_funnel"],
+  PURCHASE_REFUNDED: ["resolve_identity", "upsert_event_store", "invalidate_purchase_token", "update_brevo_funnel"],
+  PURCHASE_CHARGEBACK: ["resolve_identity", "upsert_event_store", "invalidate_purchase_token", "update_brevo_funnel"],
+  PURCHASE_PROTEST: ["resolve_identity", "upsert_event_store", "invalidate_purchase_token", "update_brevo_funnel"],
+  PURCHASE_EXPIRED: ["resolve_identity", "upsert_event_store", "invalidate_purchase_token", "update_brevo_funnel"],
 };
 
 export function parseCatalog(raw: string | undefined): ParsedCatalog {
