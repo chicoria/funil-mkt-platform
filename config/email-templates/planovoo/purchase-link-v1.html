@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light only" />
+  <meta name="supported-color-schemes" content="light only" />
+  <style>
+    :root { color-scheme: light only; }
+  </style>
+</head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#0d1a0d 0%,#1a2a10 50%,#1a0d2e 100%);padding:40px 48px 36px;">
+            <p style="margin:0 0 20px;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,0.5);">DECOLE Sua Carreira ESG</p>
+            <h1 style="margin:0 0 12px;font-size:28px;font-weight:800;line-height:1.2;color:#ffffff;">Seu <span style="color:#7ed957;">Plano de Voo</span><br/>está pronto para decolar</h1>
+            <p style="margin:0;font-size:15px;color:rgba(255,255,255,0.65);line-height:1.6;">A sua jornada para uma carreira de impacto começa agora.</p>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:40px 48px;">
+            <p style="margin:0 0 20px;font-size:16px;color:#333333;line-height:1.7;">Olá, <strong>{{primeiroNome}}!</strong></p>
+            <p style="margin:0 0 20px;font-size:15px;color:#555555;line-height:1.7;">Sua compra de <strong>{{produto}}</strong> foi confirmada. Em poucos minutos de respostas no formulário abaixo, nossa IA vai montar o seu <strong>Plano de Voo ESG</strong> — um diagnóstico completo da sua carreira com recomendações práticas de posicionamento, habilidades e próximos passos.</p>
+
+            <p style="margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#888888;">O que você vai encontrar no link:</p>
+            <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:28px;">
+              <tr>
+                <td style="padding:10px 0;border-bottom:1px solid #f0f0f0;">
+                  <span style="color:#7ed957;font-weight:700;margin-right:10px;">✦</span>
+                  <span style="font-size:14px;color:#444444;">Formulário rápido sobre sua trajetória e objetivos</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:10px 0;border-bottom:1px solid #f0f0f0;">
+                  <span style="color:#ff914d;font-weight:700;margin-right:10px;">✦</span>
+                  <span style="font-size:14px;color:#444444;">Análise de maturidade ESG personalizada para o seu perfil</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:10px 0;">
+                  <span style="color:#8c52ff;font-weight:700;margin-right:10px;">✦</span>
+                  <span style="font-size:14px;color:#444444;">Plano de voo com rotas claras para sua carreira de impacto</span>
+                </td>
+              </tr>
+            </table>
+
+            <!-- CTA -->
+            <table cellpadding="0" cellspacing="0" style="margin:8px 0 32px;">
+              <tr>
+                <td style="background:linear-gradient(135deg,#7ed957,#60da7d);border-radius:8px;">
+                  <a href="{{formUrl}}" style="display:inline-block;padding:16px 36px;font-size:16px;font-weight:700;color:#0d1a0d;text-decoration:none;letter-spacing:.01em;">Preencher meu formulário →</a>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:0 0 24px;font-size:13px;color:#999999;line-height:1.6;">Se o botão não funcionar, copie e cole este link no seu navegador:<br/>
+              <a href="{{formUrl}}" style="color:#7ed957;word-break:break-all;">{{formUrl}}</a>
+            </p>
+
+            {{#if transacao}}
+            <p style="margin:0;font-size:12px;color:#cccccc;">Código da transação: {{transacao}}</p>
+            {{/if}}
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#f9f9f9;padding:24px 48px;border-top:1px solid #eeeeee;">
+            <p style="margin:0 0 4px;font-size:13px;color:#aaaaaa;line-height:1.6;">Dúvidas? Responda este e-mail ou fale com a gente em <a href="mailto:contato@decolesuacarreiraesg.com.br" style="color:#555555;text-decoration:none;">contato@decolesuacarreiraesg.com.br</a></p>
+            <p style="margin:0;font-size:12px;color:#cccccc;">© DECOLE Sua Carreira ESG</p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
