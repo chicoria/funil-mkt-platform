@@ -8,17 +8,24 @@
  *   2. D1 event-store  — apaga funnel_events do profile
  *   3. D1 identity     — apaga identity_links do profile
  *   4. KV DEDUPE_KV    — apaga chaves de dedupe de cada event_id encontrado
- *   5. Postgres (VPS)  — apaga plano_voo_tokens PENDENTE/ERRO + plano_voo_resultados órfãos do email
+ *   5. Postgres (VPS)  — lista tokens da transação e pergunta interativamente se deve apagá-los
+ *                        (apaga plano_voo_resultados em cascata antes dos tokens)
  *
  * Uso:
- *   node backend/cloudflare/scripts/cleanup-transaction.mjs <TRANSACTION_ID> [--apply]
+ *   node backend/cloudflare/scripts/cleanup-transaction.mjs <TRANSACTION_ID> [--apply] [--delete-tokens]
+ *
+ * Flags:
+ *   --apply           Executa as deleções (sem este flag roda em dry-run)
+ *   --delete-tokens   Apaga tokens Postgres sem perguntar (útil em pipelines não-interativos)
  *
  * Exemplos:
- *   node backend/cloudflare/scripts/cleanup-transaction.mjs HP4217962122           # dry-run
- *   node backend/cloudflare/scripts/cleanup-transaction.mjs HP4217962122 --apply   # executa
+ *   node backend/cloudflare/scripts/cleanup-transaction.mjs HP4217962122                           # dry-run
+ *   node backend/cloudflare/scripts/cleanup-transaction.mjs HP4217962122 --apply                   # executa, pergunta sobre tokens
+ *   node backend/cloudflare/scripts/cleanup-transaction.mjs HP4217962122 --apply --delete-tokens   # executa tudo sem perguntar
  */
 
 import { execFileSync, execSync } from "node:child_process";
+import { createInterface } from "node:readline";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -48,6 +55,13 @@ const KNOWN_HANDLERS = [
 ];
 
 // ─── helpers ────────────────────────────────────────────────────────────────
+
+function prompt(question) {
+  return new Promise((res) => {
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    rl.question(question, (answer) => { rl.close(); res(answer.trim()); });
+  });
+}
 
 function usage() {
   console.log(`
@@ -122,6 +136,7 @@ async function main() {
   const args = process.argv.slice(2);
   const transactionId = args.find((a) => !a.startsWith("--"));
   const apply = args.includes("--apply");
+  const deleteTokensFlag = args.includes("--delete-tokens");
 
   if (!transactionId) {
     usage();
@@ -158,7 +173,8 @@ async function main() {
     for (const profileId of profileIds) {
       const meta = d1Execute(
         EVENT_STORE_DB,
-        `DELETE FROM funnel_events WHERE profile_id = '${profileId}'`
+        `DELETE FROM funnel_events WHERE profile_id = '${profileId}'`,
+        apply
       );
       console.log(`   profile=${profileId} → ${apply ? `${meta.changes} linhas apagadas` : "dry-run"}`);
     }
@@ -172,7 +188,8 @@ async function main() {
     for (const profileId of profileIds) {
       const meta = d1Execute(
         IDENTITY_DB,
-        `DELETE FROM identity_links WHERE profile_id = '${profileId}'`
+        `DELETE FROM identity_links WHERE profile_id = '${profileId}'`,
+        apply
       );
       console.log(`   profile=${profileId} → ${apply ? `${meta.changes} linhas apagadas` : "dry-run"}`);
     }
@@ -202,32 +219,48 @@ async function main() {
   // ── 5. Apagar tokens associados à transação no Postgres ─────────────────
   console.log("\n5. Operações no Postgres (VPS)...");
 
-  const tokenFilter = `hotmart_transacao = '${transactionId}' AND status IN ('PENDENTE','ERRO')`;
+  const tokenFilter = `hotmart_transacao = '${transactionId}'`;
 
-  // Listar tokens candidatos
+  // Listar sempre os tokens (independente de apply)
   const candidateRows = psql(
     `SELECT token, status, hotmart_transacao, criado_at FROM plano_voo_tokens WHERE ${tokenFilter} ORDER BY criado_at`,
     true
   );
-  console.log(`   Tokens candidatos: ${candidateRows.length}`);
-  candidateRows.forEach((r) => console.log(`   ${r}`));
 
   if (candidateRows.length === 0) {
-    console.log("   Nenhum token PENDENTE/ERRO para esta transação.");
+    console.log("   Nenhum token encontrado para esta transação.");
   } else {
-    // Apagar resultados órfãos primeiro (FK)
-    const deletedResultados = psql(
-      `DELETE FROM plano_voo_resultados WHERE token IN (SELECT token FROM plano_voo_tokens WHERE ${tokenFilter}) RETURNING token`,
-      apply
-    );
-    if (apply) console.log(`   plano_voo_resultados apagados: ${deletedResultados.length}`);
+    console.log(`   Tokens encontrados: ${candidateRows.length}`);
+    candidateRows.forEach((r) => console.log(`   ${r}`));
 
-    // Apagar tokens
-    const deletedTokens = psql(
-      `DELETE FROM plano_voo_tokens WHERE ${tokenFilter} RETURNING token, status, criado_at`,
-      apply
-    );
-    if (apply) {
+    // Decidir se apaga tokens
+    let shouldDeleteTokens = false;
+
+    if (!apply) {
+      console.log("   [dry-run] tokens não seriam apagados sem --apply");
+    } else if (deleteTokensFlag) {
+      shouldDeleteTokens = true;
+      console.log("   --delete-tokens: apagando tokens sem confirmação interativa");
+    } else {
+      // Pergunta interativa
+      const answer = await prompt("\n   Apagar estes tokens e seus resultados? [s/N] ");
+      shouldDeleteTokens = answer.toLowerCase() === "s" || answer.toLowerCase() === "sim";
+      if (!shouldDeleteTokens) {
+        console.log("   Tokens mantidos.");
+      }
+    }
+
+    if (shouldDeleteTokens) {
+      const deletedResultados = psql(
+        `DELETE FROM plano_voo_resultados WHERE token IN (SELECT token FROM plano_voo_tokens WHERE ${tokenFilter}) RETURNING token`,
+        true
+      );
+      console.log(`   plano_voo_resultados apagados: ${deletedResultados.length}`);
+
+      const deletedTokens = psql(
+        `DELETE FROM plano_voo_tokens WHERE ${tokenFilter} RETURNING token, status, criado_at`,
+        true
+      );
       console.log(`   plano_voo_tokens apagados: ${deletedTokens.length}`);
       deletedTokens.forEach((r) => console.log(`   ${r}`));
     }
