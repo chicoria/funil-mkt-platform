@@ -4,35 +4,31 @@
  *
  * Ferramenta operacional para gerir uma transação Hotmart.
  *
- * O que FAZ:
- *   1. Inspeciona o historial de eventos no D1 (read-only — nunca apaga)
- *   2. Limpa chaves DEDUPE_KV → permite reprocessar/replay de eventos
- *   3. (Opcional/interativo) Apaga tokens Postgres da transação
- *
- * O que NÃO FAZ:
- *   - Não apaga funnel_events do D1 (historial é permanente)
- *   - Não apaga identity_links (identidade do perfil é permanente)
- *
- * Uso:
- *   node backend/cloudflare/scripts/cleanup-transaction.mjs <TRANSACTION_ID> [opções]
- *
- * Opções:
- *   --replay          Limpa chaves DEDUPE_KV para permitir reprocessar os eventos
- *   --delete-tokens   Apaga tokens Postgres (pergunta interativamente; combinar com --yes para forçar)
- *   --yes             Responde "sim" a todas as perguntas (útil em pipelines)
+ * Modos de operação:
+ *   (sem flags)              Inspeciona historial D1 + tokens Postgres (read-only)
+ *   --replay                 Limpa DEDUPE_KV de todos os eventos → permite reenvio completo
+ *   --remove-event <TIPO>    Remove evento(s) de um tipo específico do D1 + DEDUPE_KV
+ *                            ⚠️  Apaga historial — só usar em testes
+ *   --remove-all-events      Remove TODOS os eventos da transação do D1 + DEDUPE_KV
+ *                            ⚠️  Apaga historial completo — só usar em testes
+ *   --delete-tokens          Apaga tokens Postgres da transação (pergunta antes)
+ *   --yes                    Responde "sim" a todas as perguntas (pipelines)
  *
  * Exemplos:
- *   # Só inspecionar — não altera nada
+ *   # Inspecionar — não altera nada
  *   node backend/cloudflare/scripts/cleanup-transaction.mjs HP4217962122
  *
- *   # Limpar dedupe para reprocessar eventos (ex: reenvio do Hotmart)
+ *   # Remover só o PURCHASE_REFUNDED e limpar dedupe (re-testar desde esse evento)
+ *   node backend/cloudflare/scripts/cleanup-transaction.mjs HP4217962122 --remove-event PURCHASE_REFUNDED
+ *
+ *   # Reset completo para re-testar desde o início (remove tudo + tokens)
+ *   node backend/cloudflare/scripts/cleanup-transaction.mjs HP4217962122 --remove-all-events --delete-tokens --yes
+ *
+ *   # Só limpar dedupe para reenvio sem perder historial
  *   node backend/cloudflare/scripts/cleanup-transaction.mjs HP4217962122 --replay
  *
  *   # Apagar tokens Postgres (pergunta antes)
  *   node backend/cloudflare/scripts/cleanup-transaction.mjs HP4217962122 --delete-tokens
- *
- *   # Replay + apagar tokens sem perguntar
- *   node backend/cloudflare/scripts/cleanup-transaction.mjs HP4217962122 --replay --delete-tokens --yes
  */
 
 import { execFileSync } from "node:child_process";
@@ -73,16 +69,6 @@ function prompt(question) {
   });
 }
 
-function usage() {
-  console.log(`
-Uso: node backend/cloudflare/scripts/cleanup-transaction.mjs <TRANSACTION_ID> [opções]
-
-  --replay          Limpa DEDUPE_KV para permitir replay dos eventos
-  --delete-tokens   Apaga tokens Postgres da transação (pergunta antes)
-  --yes             Responde "sim" a todas as perguntas sem interação
-`);
-}
-
 function d1Query(dbName, sql) {
   const out = execFileSync(
     "npx", ["wrangler", "d1", "execute", dbName, "--remote", "--json", "--command", sql],
@@ -91,11 +77,31 @@ function d1Query(dbName, sql) {
   return JSON.parse(out)?.[0]?.results ?? [];
 }
 
-function kvDelete(binding, key) {
+function d1Execute(dbName, sql) {
+  const out = execFileSync(
+    "npx", ["wrangler", "d1", "execute", dbName, "--remote", "--json", "--command", sql],
+    { cwd: wranglerDispatcherCwd, encoding: "utf8" }
+  );
+  return JSON.parse(out)?.[0]?.meta ?? { changes: 0 };
+}
+
+function kvDeleteKey(binding, key) {
   execFileSync(
     "npx", ["wrangler", "kv", "key", "delete", key, `--binding=${binding}`, "--remote"],
     { cwd: wranglerDispatcherCwd, encoding: "utf8", stdio: "pipe" }
   );
+}
+
+function clearDedupeKeys(eventIds) {
+  let deleted = 0;
+  let notFound = 0;
+  for (const eventId of eventIds) {
+    for (const handler of KNOWN_HANDLERS) {
+      try { kvDeleteKey(DEDUPE_KV_BINDING, `${eventId}:${handler}`); deleted++; }
+      catch { notFound++; }
+    }
+  }
+  return { deleted, notFound };
 }
 
 function psql(sql) {
@@ -118,16 +124,30 @@ async function main() {
   const transactionId = args.find((a) => !a.startsWith("--"));
   const doReplay = args.includes("--replay");
   const doDeleteTokens = args.includes("--delete-tokens");
+  const doRemoveAllEvents = args.includes("--remove-all-events");
   const yes = args.includes("--yes");
 
-  if (!transactionId) { usage(); process.exit(1); }
+  // --remove-event PURCHASE_REFUNDED  (valor após o flag)
+  const removeEventIdx = args.indexOf("--remove-event");
+  const removeEventType = removeEventIdx !== -1 ? args[removeEventIdx + 1]?.toUpperCase() : null;
 
-  const flags = [doReplay && "--replay", doDeleteTokens && "--delete-tokens", yes && "--yes"]
-    .filter(Boolean).join(" ") || "(só inspecionar)";
-  console.log(`\n=== transaction ${transactionId} [${flags}] ===\n`);
+  if (!transactionId) {
+    console.log("Uso: node cleanup-transaction.mjs <TRANSACTION_ID> [--replay] [--remove-event TIPO] [--remove-all-events] [--delete-tokens] [--yes]");
+    process.exit(1);
+  }
 
-  // ── 1. Inspecionar historial no D1 (read-only) ────────────────────────────
-  console.log("1. Historial de eventos no D1 (read-only)...");
+  const activeFlags = [
+    doReplay && "--replay",
+    removeEventType && `--remove-event ${removeEventType}`,
+    doRemoveAllEvents && "--remove-all-events",
+    doDeleteTokens && "--delete-tokens",
+    yes && "--yes",
+  ].filter(Boolean).join(" ") || "inspecionar";
+
+  console.log(`\n=== transaction ${transactionId} [${activeFlags}] ===\n`);
+
+  // ── 1. Inspecionar historial no D1 (sempre read-only) ────────────────────
+  console.log("1. Historial de eventos no D1...");
   const events = d1Query(
     EVENT_STORE_DB,
     `SELECT event_id, event_type, source, occurred_at, profile_id
@@ -139,14 +159,14 @@ async function main() {
   if (events.length === 0) {
     console.log("   Nenhum evento encontrado para esta transação.");
   } else {
-    console.log(`   ${events.length} evento(s) no historial:`);
+    console.log(`   ${events.length} evento(s):`);
     for (const e of events) {
-      console.log(`   ${e.occurred_at.slice(0, 19)}  ${e.event_type.padEnd(25)} ${e.event_id}`);
+      console.log(`   ${e.occurred_at.slice(0, 19)}  ${e.event_type.padEnd(28)} ${e.event_id}`);
     }
   }
 
-  const eventIds = [...new Set(events.map((e) => e.event_id).filter(Boolean))];
-  const profileIds = [...new Set(events.map((e) => e.profile_id).filter(Boolean))];
+  const allEventIds = [...new Set(events.map((e) => e.event_id).filter(Boolean))];
+  const profileIds  = [...new Set(events.map((e) => e.profile_id).filter(Boolean))];
   if (profileIds.length) console.log(`   profile: ${profileIds[0]}`);
 
   // ── 2. Inspecionar Postgres ───────────────────────────────────────────────
@@ -156,40 +176,87 @@ async function main() {
   );
 
   if (tokenRows.length === 0) {
-    console.log("   Nenhum token encontrado para esta transação.");
+    console.log("   Nenhum token encontrado.");
   } else {
-    console.log(`   ${tokenRows.length} token(s) encontrado(s):`);
+    console.log(`   ${tokenRows.length} token(s):`);
     tokenRows.forEach((r) => console.log(`   ${r}`));
   }
 
-  // ── 3. Replay — limpar DEDUPE_KV ─────────────────────────────────────────
+  // ── 3. Replay — limpar DEDUPE_KV sem apagar historial ────────────────────
   if (doReplay) {
-    console.log("\n3. Limpando DEDUPE_KV para permitir replay...");
-    if (eventIds.length === 0) {
-      console.log("   Nenhum event_id encontrado — nada a limpar.");
+    console.log("\n3. --replay: limpando DEDUPE_KV (historial D1 preservado)...");
+    if (allEventIds.length === 0) {
+      console.log("   Nenhum event_id — nada a limpar.");
     } else {
-      let deleted = 0;
-      let notFound = 0;
-      for (const eventId of eventIds) {
-        for (const handler of KNOWN_HANDLERS) {
-          try {
-            kvDelete(DEDUPE_KV_BINDING, `${eventId}:${handler}`);
-            deleted++;
-          } catch {
-            notFound++;
-          }
-        }
-      }
+      const { deleted, notFound } = clearDedupeKeys(allEventIds);
       console.log(`   ${deleted} chave(s) removida(s), ${notFound} já não existiam.`);
-      console.log("   ✓ Eventos prontos para replay — reenvie o webhook do Hotmart.");
+      console.log("   ✓ Prontos para replay — reenvie os webhooks pelo Hotmart.");
     }
-  } else {
-    console.log("\n3. Replay DEDUPE_KV — não solicitado (use --replay para activar).");
   }
 
-  // ── 4. Apagar tokens Postgres (opcional/interativo) ───────────────────────
+  // ── 4. Remover evento específico do D1 + DEDUPE_KV ───────────────────────
+  if (removeEventType) {
+    console.log(`\n4. --remove-event ${removeEventType}: ⚠️  apaga do historial D1...`);
+
+    const toRemove = events.filter((e) => e.event_type === removeEventType);
+    if (toRemove.length === 0) {
+      console.log(`   Nenhum evento do tipo ${removeEventType} encontrado.`);
+    } else {
+      console.log(`   Encontrado(s): ${toRemove.length}`);
+      toRemove.forEach((e) => console.log(`   ${e.occurred_at.slice(0, 19)}  ${e.event_id}`));
+
+      let confirmed = yes;
+      if (!confirmed) {
+        const answer = await prompt(`   Apagar estes ${toRemove.length} evento(s) do D1 + DEDUPE_KV? [s/N] `);
+        confirmed = answer.toLowerCase() === "s" || answer.toLowerCase() === "sim";
+      }
+
+      if (!confirmed) {
+        console.log("   Cancelado — eventos mantidos.");
+      } else {
+        const toRemoveIds = toRemove.map((e) => e.event_id);
+        const inClause = toRemoveIds.map((id) => `'${id}'`).join(",");
+        const meta = d1Execute(EVENT_STORE_DB, `DELETE FROM funnel_events WHERE event_id IN (${inClause})`);
+        console.log(`   D1: ${meta.changes} evento(s) apagado(s).`);
+        const { deleted, notFound } = clearDedupeKeys(toRemoveIds);
+        console.log(`   DEDUPE_KV: ${deleted} chave(s) removida(s), ${notFound} já não existiam.`);
+        console.log(`   ✓ Reenvie o evento ${removeEventType} pelo Hotmart para re-testar.`);
+      }
+    }
+  }
+
+  // ── 5. Remover TODOS os eventos do D1 + DEDUPE_KV ────────────────────────
+  if (doRemoveAllEvents) {
+    console.log("\n5. --remove-all-events: ⚠️  apaga TODO o historial D1 da transação...");
+
+    if (allEventIds.length === 0) {
+      console.log("   Nenhum evento encontrado — nada a apagar.");
+    } else {
+      console.log(`   Serão apagados ${allEventIds.length} evento(s):`);
+      events.forEach((e) => console.log(`   ${e.occurred_at.slice(0, 19)}  ${e.event_type.padEnd(28)} ${e.event_id}`));
+
+      let confirmed = yes;
+      if (!confirmed) {
+        const answer = await prompt(`\n   ⚠️  Apagar TODOS os ${allEventIds.length} eventos do D1 + DEDUPE_KV? [s/N] `);
+        confirmed = answer.toLowerCase() === "s" || answer.toLowerCase() === "sim";
+      }
+
+      if (!confirmed) {
+        console.log("   Cancelado — eventos mantidos.");
+      } else {
+        const inClause = allEventIds.map((id) => `'${id}'`).join(",");
+        const meta = d1Execute(EVENT_STORE_DB, `DELETE FROM funnel_events WHERE event_id IN (${inClause})`);
+        console.log(`   D1: ${meta.changes} evento(s) apagado(s).`);
+        const { deleted, notFound } = clearDedupeKeys(allEventIds);
+        console.log(`   DEDUPE_KV: ${deleted} chave(s) removida(s), ${notFound} já não existiam.`);
+        console.log("   ✓ Historial limpo — podes re-testar desde o início.");
+      }
+    }
+  }
+
+  // ── 6. Apagar tokens Postgres (opcional/interativo) ───────────────────────
   if (doDeleteTokens) {
-    console.log("\n4. Apagar tokens Postgres...");
+    console.log("\n6. --delete-tokens: apagar tokens Postgres...");
     if (tokenRows.length === 0) {
       console.log("   Nenhum token para apagar.");
     } else {
@@ -206,7 +273,6 @@ async function main() {
           `DELETE FROM plano_voo_resultados WHERE token IN (SELECT token FROM plano_voo_tokens WHERE hotmart_transacao = '${transactionId}') RETURNING token`
         );
         console.log(`   plano_voo_resultados apagados: ${deletedResultados.length}`);
-
         const deletedTokens = psql(
           `DELETE FROM plano_voo_tokens WHERE hotmart_transacao = '${transactionId}' RETURNING token, status`
         );
@@ -214,8 +280,6 @@ async function main() {
         deletedTokens.forEach((r) => console.log(`   ${r}`));
       }
     }
-  } else {
-    console.log("\n4. Apagar tokens — não solicitado (use --delete-tokens para activar).");
   }
 
   console.log(`\n=== concluído ===\n`);
