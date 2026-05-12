@@ -19,13 +19,16 @@
  *   Postgres tokens    — token LIKE 'load-%' | 'e2e-%'
  *   Postgres candidatos — email LIKE '%-test.local' | '%@example.com' | 'e2e-%'
  *
+ *   Brevo contacts     — email LIKE '%@example.com' | 'e2e.%' | '%-test.local'
+ *                        (obtidos via paginação da API Brevo)
+ *
  * Uso:
  *   node backend/cloudflare/scripts/cleanup-test-data.mjs           # dry-run
  *   node backend/cloudflare/scripts/cleanup-test-data.mjs --apply   # executa
  */
 
 import { execFileSync } from "node:child_process";
-import { writeFileSync, unlinkSync } from "node:fs";
+import { writeFileSync, unlinkSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -35,6 +38,57 @@ const wranglerCwd = resolve(rootDir, "backend/cloudflare/workers/funnel-dispatch
 
 const EVENT_STORE_DB = "decole-d1-event-store";
 const IDENTITY_DB = "decole-d1-identity";
+const BREVO_BASE_URL = "https://api.brevo.com/v3";
+
+function getBrevoApiKey() {
+  // Lê do .env.local na raiz do repo (nunca hardcoded)
+  try {
+    const envPath = resolve(rootDir, ".env.local");
+    const env = readFileSync(envPath, "utf8");
+    const match = env.match(/^BREVO_API_KEY=(.+)$/m);
+    if (match) return match[1].trim();
+  } catch { /* sem .env.local — usa variável de ambiente */ }
+  return process.env.BREVO_API_KEY ?? "";
+}
+
+async function brevoFetch(path, options = {}) {
+  const apiKey = getBrevoApiKey();
+  if (!apiKey) throw new Error("BREVO_API_KEY não encontrada em .env.local nem em variáveis de ambiente");
+  const res = await fetch(`${BREVO_BASE_URL}${path}`, {
+    ...options,
+    headers: { "api-key": apiKey, "content-type": "application/json", ...(options.headers ?? {}) },
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Brevo API ${path} → ${res.status}: ${body.slice(0, 200)}`);
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+async function brevoGetTestContacts() {
+  const testContacts = [];
+  let offset = 0;
+  const limit = 50;
+
+  while (true) {
+    const data = await brevoFetch(`/contacts?limit=${limit}&offset=${offset}&sort=desc`);
+    const contacts = data?.contacts ?? [];
+    for (const c of contacts) {
+      const email = c.email ?? "";
+      if (!email) continue;
+      if (
+        email.endsWith("@example.com") ||
+        email.startsWith("e2e.") ||
+        email.includes("-test.local")
+      ) {
+        testContacts.push({ id: c.id, email });
+      }
+    }
+    if (contacts.length < limit) break;
+    offset += limit;
+  }
+  return testContacts;
+}
 const VPS_HOST = "45.55.244.11";
 const VPS_POSTGRES_CONTAINER = "n8n-docker-caddy-postgres-1";
 const VPS_POSTGRES_USER = "decole";
@@ -289,6 +343,25 @@ async function main() {
     if (apply) console.log(`   Apagados: ${totalCandidatos}`);
   }
 
+  // ── 6. Brevo — contactos de teste ────────────────────────────────────────
+  console.log("\n6. Brevo — contactos de teste...");
+  const brevoTestContacts = await brevoGetTestContacts();
+  console.log(`   Encontrados: ${brevoTestContacts.length} contacto(s)`);
+  brevoTestContacts.forEach((c) => console.log(`   ${c.email} (id=${c.id})`));
+
+  let totalBrevo = 0;
+  if (brevoTestContacts.length > 0) {
+    if (!apply) {
+      console.log(`  [dry-run] DELETE /contacts/{email} × ${brevoTestContacts.length}`);
+    } else {
+      for (const c of brevoTestContacts) {
+        await brevoFetch(`/contacts/${encodeURIComponent(c.email)}`, { method: "DELETE" });
+        console.log(`   ✓ apagado: ${c.email}`);
+        totalBrevo++;
+      }
+    }
+  }
+
   // ── Resumo ────────────────────────────────────────────────────────────────
   console.log(`\n─── Resumo ───────────────────────────────────────`);
   console.log(`   DEDUPE_KV:               ${testDedupeKeys.length}`);
@@ -298,6 +371,7 @@ async function main() {
   console.log(`   plano_voo_resultados:    ${totalResultados}`);
   console.log(`   plano_voo_tokens:        ${totalTokens}`);
   console.log(`   candidatos:              ${totalCandidatos}`);
+  console.log(`   brevo contactos:         ${apply ? totalBrevo : brevoTestContacts.length}`);
   console.log(`\n=== cleanup concluído [${apply ? "APPLY" : "dry-run"}] ===\n`);
 }
 
