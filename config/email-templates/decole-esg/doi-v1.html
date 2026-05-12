@@ -1,23 +1,125 @@
-<!doctype html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Confirme seu email</title>
-  </head>
-  <body style="font-family: Arial, sans-serif; line-height: 1.5; color: #1f2937;">
-    <h1>Confirme seu cadastro</h1>
-    <p>Oi {{ params.first_name | default("Profissional") }},</p>
-    <p>
-      Recebemos seu interesse na mentoria DECOLE ESG. Para confirmar seu cadastro,
-      clique no botao abaixo:
-    </p>
-    <p>
-      <a href="{{ params.DOIurl }}" style="display:inline-block;padding:12px 18px;background:#0f766e;color:#fff;text-decoration:none;border-radius:6px;">
-        Confirmar email
-      </a>
-    </p>
-    <p>Se voce nao solicitou, pode ignorar esta mensagem.</p>
-    <p>Equipe DECOLE</p>
-  </body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="pt-BR">
+<head>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <meta name="format-detection" content="telephone=no"/>
+  <meta name="color-scheme" content="light only"/>
+  <meta name="supported-color-schemes" content="light only"/>
+  <title>DECOLE sua Carreira ESG - Confirme seu cadastro</title>
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,600,700" rel="stylesheet" type="text/css"/>
+  <style type="text/css">
+    *{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
+    :root{color-scheme:light only;}
+    body{margin:0;padding:0;background:#1e1e1e;font-family:Helvetica,Arial,sans-serif;}
+    table{border-collapse:collapse;margin:0 auto;}
+    img{display:block;border:0;outline:none;text-decoration:none;}
+    a{text-decoration:none;}
+    @media screen{body{font-family:"Open Sans",Helvetica,Arial,sans-serif;}}
+  </style>
+</head>
+<body>
+<table width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#1e1e1e">
+  <tbody>
+  <tr>
+    <td align="center" style="padding:32px 12px;">
+      <table width="600" cellspacing="0" cellpadding="0" border="0" bgcolor="#ffffff" style="border-radius:12px;overflow:hidden;">
+        <tbody>
+
+        <!-- Header -->
+        <tr>
+          <td align="center" style="padding:26px 24px;background:#0f1210;">
+            <img src="https://decolesuacarreiraesg.com.br/assets/decole-logo-nov-2025.png" alt="DECOLE sua Carreira ESG" width="190" height="39" style="max-width:190px;height:auto;"/>
+            <div style="font-size:12px;color:#c8c8c8;margin-top:10px;letter-spacing:1px;">
+              DECOLE sua Carreira ESG
+            </div>
+          </td>
+        </tr>
+
+        <!-- Title -->
+        <tr>
+          <td align="center" style="padding:26px 28px 10px 28px;">
+            <div style="font-size:22px;font-weight:700;color:#1a1a1a;line-height:28px;">
+              Confirme seu cadastro
+            </div>
+          </td>
+        </tr>
+
+        <!-- Greeting -->
+        <tr>
+          <td align="center" style="padding:0 28px 18px 28px;">
+            <div style="font-size:15px;color:#4b4b4b;line-height:24px;text-align:center;">
+              Olá {{ contact.NAME }}!
+            </div>
+          </td>
+        </tr>
+
+        <!-- Message 1 -->
+        <tr>
+          <td align="center" style="padding:0 28px 12px 28px;">
+            <div style="font-size:15px;color:#4b4b4b;line-height:24px;text-align:center;">
+              Eu sou a <strong>Elizete</strong> e estou muito feliz por você querer dar esse passo no DECOLE.
+            </div>
+          </td>
+        </tr>
+
+        <!-- Message 2 -->
+        <tr>
+          <td align="center" style="padding:0 28px 18px 28px;">
+            <div style="font-size:15px;color:#4b4b4b;line-height:24px;text-align:center;">
+              Confirme sua inscrição para receber informações exclusivas por e-mail e WhatsApp
+              sobre o <strong>DECOLE sua Carreira ESG</strong> e para ter suporte em qualquer dúvida sobre a mentoria.
+            </div>
+          </td>
+        </tr>
+
+        <!-- CTA -->
+        <tr>
+          <td align="center" style="padding:8px 28px 24px 28px;">
+            <table cellspacing="0" cellpadding="0" border="0">
+              <tbody>
+              <tr>
+                <td align="center" bgcolor="#ffd700" height="48" style="border-radius:8px;padding:0 26px;">
+                  <a href="{{ params.DOIurl }}?utm_source=sendinblue&utm_campaign=Default_Template_Double_opt-in_confirmation&utm_medium=email" target="_blank"
+                     style="color:#1a1a1a;font-size:15px;font-weight:700;display:inline-block;line-height:48px;text-transform:uppercase;">
+                    Confirmar cadastro
+                  </a>
+                </td>
+              </tr>
+              </tbody>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Disclaimer -->
+        <tr>
+          <td align="center" style="padding:0 28px 18px 28px;">
+            <div style="font-size:13px;color:#6b6b6b;line-height:20px;text-align:center;">
+              Se você não solicitou este cadastro, pode ignorar este e-mail com tranquilidade.
+            </div>
+            <div style="font-size:12px;color:#7a7a7a;line-height:18px;text-align:center;margin-top:10px;">
+              Este e-mail foi enviado para <strong>{{ contact.EMAIL }}</strong> após cadastro no site
+              <a href="https://decolesuacarreiraesg.com.br?utm_source=sendinblue&utm_campaign=Default_Template_Double_opt-in_confirmation&utm_medium=email" target="_blank" style="color:#7a7a7a;text-decoration:underline;">decolesuacarreiraesg.com.br</a>.
+            </div>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td align="center" style="padding:22px 28px;background:#f7f7f7;">
+            <div style="font-size:13px;color:#7a7a7a;line-height:20px;text-align:center;">
+              Até já, <strong>Elizete Fazza</strong><br/>
+              Mentora do DECOLE sua Carreira ESG
+            </div>
+          </td>
+        </tr>
+
+        </tbody>
+      </table>
+    </td>
+  </tr>
+  </tbody>
+</table>
+</body>
 </html>
