@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "updatedAt": "2026-05-14",
-  "description": "Catálogo central de produtos — cada produto declara seus subsistemas.",
+  "description": "Catálogo central multi-tenant — tenants.{id}.products.{code} declara cada produto.",
   "global": {
     "hotmart": {
       "auth": {
@@ -40,1387 +40,1414 @@
       }
     }
   },
-  "products": {
-    "DECOLE_ESG_MENTORIA": {
+  "tenants": {
+    "decole": {
       "name": "DECOLE sua Carreira ESG",
-      "aliases": [
-        "DECOLE_ESG",
-        "MENTORIA",
-        "ESG"
+      "domains": [
+        "api.decolesuacarreiraesg.com.br",
+        "links.decolesuacarreiraesg.com.br",
+        "decolesuacarreiraesg.com.br"
       ],
-      "hotmart": {
-        "productId": "5083704",
-        "productName": "DECOLE sua Carreira ESG",
-        "checkoutCode": "K98068530F",
-        "defaultOfferCode": "3j6lto4t"
+      "credentials": {
+        "brevo_api_key_env": "BREVO_API_KEY",
+        "hotmart_token_env": "HOTMART_WEBHOOK_TOKEN",
+        "replyToEmail": "contato@decolesuacarreiraesg.com.br"
       },
-      "brevo": {
-        "opsModel": {
-          "managedVia": "manual_dashboard",
-          "apiManaged": false,
-          "owner": "marketing_ops",
-          "lastReviewedAt": "2026-04-22"
-        },
-        "funnelPrefix": "DECOLE_ESG",
-        "funnelFields": {
-          "steps": "DECOLE_ESG_FUNIL_STEPS",
-          "lastStep": "DECOLE_ESG_FUNIL_LAST_STEP",
-          "lastStepTimestamp": "DECOLE_ESG_FUNIL_LAST_STEP_TIMESTAMP"
-        },
-        "lists": {
-          "precheckout": {
-            "id": "7",
-            "name": "Leads Precheckout"
-          }
-        },
-        "templates": {
-          "doi": {
-            "id": "1",
-            "description": "Double Opt-In confirmation via Brevo native DOI",
-            "localFile": "backend/cloudflare/config/email-templates/decole-esg/doi-v1.html",
-            "version": "v1"
-          },
-          "cartAbandonment": {
-            "id": "8",
-            "description": "Email carrinho abandonado",
-            "localFile": "backend/cloudflare/config/email-templates/decole-esg/cart-abandonment-v1.html",
-            "version": "v1"
-          }
-        },
-        "doiFlows": [
-          {
-            "key": "precheckoutDoi",
-            "templateId": "1",
-            "triggerEvent": "GENERATE_LEAD",
-            "endpoint": "/contacts/doubleOptinConfirmation",
-            "includeListId": "7",
-            "redirectionUrl": "https://decolesuacarreiraesg.com.br/confirmacao.html",
-            "templatePlaceholder": "{{ params.DOIurl }}",
-            "description": "Confirmação Double Opt-In nativa da Brevo para lead de precheckout.",
-            "managedVia": "api",
-            "localTemplateFile": "backend/cloudflare/config/email-templates/decole-esg/doi-v1.html"
-          }
-        ],
-        "transactionalEmails": [
-          {
-            "key": "cartAbandonment",
-            "templateId": "8",
-            "triggerEvent": "PURCHASE_OUT_OF_SHOPPING_CART",
-            "description": "Recuperação de carrinho abandonado.",
-            "managedVia": "manual_dashboard",
-            "localTemplateFile": "backend/cloudflare/config/email-templates/decole-esg/cart-abandonment-v1.html"
-          }
-        ],
-        "segments": [
-          {
-            "key": "esg_precheckout_leads",
-            "id": "",
-            "name": "Leads Precheckout DECOLE ESG",
-            "description": "Contatos de precheckout sem compra aprovada.",
-            "managedVia": "manual_dashboard"
-          }
-        ],
-        "automations": [
-          {
-            "key": "esg_precheckout_nurture",
-            "id": "",
-            "name": "Nurture Precheckout DECOLE ESG",
-            "description": "Fluxo de nutrição pós lead com avanço por estágio de funil.",
-            "entryCondition": "Contato entra em lista precheckout e confirma DOI.",
-            "expectedActions": [
-              "Enviar sequencia de emails de nutricao",
-              "Atualizar score/atributos de funil",
-              "Encerrar ao detectar compra aprovada"
-            ],
-            "managedVia": "manual_dashboard"
-          }
-        ]
-      },
-      "funnelEventArchitecture": {
-        "managedBy": "catalog",
-        "systems": {
-          "ingresses": [
-            "api-funnel-ingress",
-            "api-hotmart-ingress"
+      "products": {
+        "DECOLE_ESG_MENTORIA": {
+          "name": "DECOLE sua Carreira ESG",
+          "aliases": [
+            "DECOLE_ESG",
+            "MENTORIA",
+            "ESG"
           ],
-          "dispatcher": "funnel-dispatcher",
-          "queue": {
-            "name": "decole-q-funnel-events",
-            "dlq": "decole-q-funnel-events-dlq"
+          "hotmart": {
+            "productId": "5083704",
+            "productName": "DECOLE sua Carreira ESG",
+            "checkoutCode": "K98068530F",
+            "defaultOfferCode": "3j6lto4t"
           },
-          "state": {
-            "identityD1Binding": "IDENTITY_DB",
-            "identityKvBinding": "IDENTITY_KV",
-            "eventStoreD1Binding": "EVENT_STORE_DB",
-            "dedupeKvBinding": "DEDUPE_KV"
-          },
-          "observability": {
-            "workersLogs": true,
-            "logpushR2": true
-          }
-        },
-        "events": [
-          {
-            "funnelStage": "AWARENESS",
-            "eventType": "PAGE_VIEW",
-            "delivery": "gtm_web_only",
-            "source": "site",
-            "destinations": [
-              "GA4",
-              "Meta Pixel"
-            ],
-            "trackingConfigRef": "products.DECOLE_ESG_MENTORIA.tracking"
-          },
-          {
-            "funnelStage": "CONSIDERATION",
-            "eventType": "CTA_CLICK",
-            "delivery": "gtm_web_only",
-            "source": "site",
-            "destinations": [
-              "GA4",
-              "Meta Pixel"
-            ],
-            "trackingConfigRef": "products.DECOLE_ESG_MENTORIA.tracking"
-          },
-          {
-            "funnelStage": "CONSIDERATION",
-            "eventType": "GENERATE_LEAD",
-            "delivery": "both",
-            "trackingDelivery": "gtm_web_to_sgtm",
-            "serverTracking": false,
-            "deliveryNotes": "Tracking de lead segue pelo browser: dataLayer/GTM Web -> sGTM -> GA4 + Meta CAPI. A chain server_queue não executa emit_tracking para evitar dupla contagem.",
-            "source": "site",
-            "ingress": "api-funnel-ingress",
-            "queue": "decole-q-funnel-events",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "send_brevo_doi",
-              "update_brevo_funnel",
-              "sync_brevo_segments"
-            ],
-            "destinations": [
-              "Brevo",
-              "Event Store"
-            ],
-            "brevoConfig": {
-              "listId": "7",
-              "doiTemplateId": "1",
-              "doiRedirectUrl": "https://decolesuacarreiraesg.com.br/confirmacao.html",
-              "funnelPrefix": "DECOLE_ESG"
+          "brevo": {
+            "opsModel": {
+              "managedVia": "manual_dashboard",
+              "apiManaged": false,
+              "owner": "marketing_ops",
+              "lastReviewedAt": "2026-04-22"
             },
-            "trackingConfigRef": "products.DECOLE_ESG_MENTORIA.tracking"
-          },
-          {
-            "funnelStage": "CONVERSION",
-            "eventType": "BEGIN_CHECKOUT",
-            "delivery": "server_queue",
-            "source": "site",
-            "ingress": "links-redirect",
-            "queue": "decole-q-funnel-events",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "enrich_attribution",
-              "update_brevo_funnel",
-              "emit_tracking"
+            "funnelPrefix": "DECOLE_ESG",
+            "funnelFields": {
+              "steps": "DECOLE_ESG_FUNIL_STEPS",
+              "lastStep": "DECOLE_ESG_FUNIL_LAST_STEP",
+              "lastStepTimestamp": "DECOLE_ESG_FUNIL_LAST_STEP_TIMESTAMP"
+            },
+            "lists": {
+              "precheckout": {
+                "id": "7",
+                "name": "Leads Precheckout"
+              }
+            },
+            "templates": {
+              "doi": {
+                "id": "1",
+                "description": "Double Opt-In confirmation via Brevo native DOI",
+                "localFile": "backend/cloudflare/config/email-templates/decole-esg/doi-v1.html",
+                "version": "v1"
+              },
+              "cartAbandonment": {
+                "id": "8",
+                "description": "Email carrinho abandonado",
+                "localFile": "backend/cloudflare/config/email-templates/decole-esg/cart-abandonment-v1.html",
+                "version": "v1"
+              }
+            },
+            "doiFlows": [
+              {
+                "key": "precheckoutDoi",
+                "templateId": "1",
+                "triggerEvent": "GENERATE_LEAD",
+                "endpoint": "/contacts/doubleOptinConfirmation",
+                "includeListId": "7",
+                "redirectionUrl": "https://decolesuacarreiraesg.com.br/confirmacao.html",
+                "templatePlaceholder": "{{ params.DOIurl }}",
+                "description": "Confirmação Double Opt-In nativa da Brevo para lead de precheckout.",
+                "managedVia": "api",
+                "localTemplateFile": "backend/cloudflare/config/email-templates/decole-esg/doi-v1.html"
+              }
             ],
-            "destinations": [
-              "Brevo",
-              "Event Store",
-              "sGTM"
+            "transactionalEmails": [
+              {
+                "key": "cartAbandonment",
+                "templateId": "8",
+                "triggerEvent": "PURCHASE_OUT_OF_SHOPPING_CART",
+                "description": "Recuperação de carrinho abandonado.",
+                "managedVia": "manual_dashboard",
+                "localTemplateFile": "backend/cloudflare/config/email-templates/decole-esg/cart-abandonment-v1.html"
+              }
             ],
-            "brevoConfig": {
-              "funnelPrefix": "DECOLE_ESG"
-            }
-          },
-          {
-            "funnelStage": "CONVERSION",
-            "eventType": "PURCHASE_OUT_OF_SHOPPING_CART",
-            "delivery": "server_queue",
-            "source": "hotmart",
-            "ingress": "api-hotmart-ingress",
-            "queue": "decole-q-funnel-events",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "update_brevo_funnel",
-              "send_cart_abandonment_email"
+            "segments": [
+              {
+                "key": "esg_precheckout_leads",
+                "id": "",
+                "name": "Leads Precheckout DECOLE ESG",
+                "description": "Contatos de precheckout sem compra aprovada.",
+                "managedVia": "manual_dashboard"
+              }
             ],
-            "destinations": [
-              "Brevo",
-              "Event Store"
-            ],
-            "brevoConfig": {
-              "cartAbandonmentTemplateId": "8",
-              "funnelPrefix": "DECOLE_ESG"
-            }
-          },
-          {
-            "funnelStage": "CONVERSION",
-            "eventType": "PURCHASE_BILLET_PRINTED",
-            "delivery": "server_queue",
-            "source": "hotmart",
-            "ingress": "api-hotmart-ingress",
-            "queue": "decole-q-funnel-events",
-            "description": "Boleto/PIX gerado ou pagamento iniciado ainda pendente. Capturado para acompanhamento de funil; nao invalida token porque a compra ainda pode ser concluida.",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "update_brevo_funnel"
-            ],
-            "destinations": [
-              "Brevo",
-              "Event Store"
-            ],
-            "brevoConfig": {
-              "funnelPrefix": "DECOLE_ESG"
-            }
-          },
-          {
-            "funnelStage": "CONVERSION",
-            "eventType": "PURCHASE_DELAYED",
-            "delivery": "server_queue",
-            "source": "hotmart",
-            "ingress": "api-hotmart-ingress",
-            "queue": "decole-q-funnel-events",
-            "description": "Pagamento atrasado/pendente. Capturado para suporte de decisao na jornada; nao invalida token porque ainda existe tentativa ativa de pagamento.",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "update_brevo_funnel"
-            ],
-            "destinations": [
-              "Brevo",
-              "Event Store"
-            ],
-            "brevoConfig": {
-              "funnelPrefix": "DECOLE_ESG"
-            }
-          },
-          {
-            "funnelStage": "CONVERSION",
-            "eventType": "SIGN_UP",
-            "delivery": "both",
-            "source": "site",
-            "ingress": "api-funnel-ingress",
-            "queue": "decole-q-funnel-events",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "update_brevo_funnel"
-            ],
-            "destinations": [
-              "Brevo",
-              "Event Store"
+            "automations": [
+              {
+                "key": "esg_precheckout_nurture",
+                "id": "",
+                "name": "Nurture Precheckout DECOLE ESG",
+                "description": "Fluxo de nutrição pós lead com avanço por estágio de funil.",
+                "entryCondition": "Contato entra em lista precheckout e confirma DOI.",
+                "expectedActions": [
+                  "Enviar sequencia de emails de nutricao",
+                  "Atualizar score/atributos de funil",
+                  "Encerrar ao detectar compra aprovada"
+                ],
+                "managedVia": "manual_dashboard"
+              }
             ]
           },
-          {
-            "funnelStage": "PURCHASE",
-            "eventType": "PURCHASE_APPROVED",
-            "delivery": "server_queue",
-            "source": "hotmart",
-            "ingress": "api-hotmart-ingress",
-            "queue": "decole-q-funnel-events",
-            "description": "Compra aprovada. Acesso ao curso é entregue pela própria Hotmart via https://hotmart.com/pt-br/club/carreira-em-esg/products/5083704",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "enrich_attribution",
-              "update_brevo_funnel",
-              "emit_tracking"
-            ],
-            "destinations": [
-              "Brevo",
-              "Event Store",
-              "sGTM"
+          "funnelEventArchitecture": {
+            "managedBy": "catalog",
+            "systems": {
+              "ingresses": [
+                "api-funnel-ingress",
+                "api-hotmart-ingress"
+              ],
+              "dispatcher": "funnel-dispatcher",
+              "queue": {
+                "name": "decole-q-funnel-events",
+                "dlq": "decole-q-funnel-events-dlq"
+              },
+              "state": {
+                "identityD1Binding": "IDENTITY_DB",
+                "identityKvBinding": "IDENTITY_KV",
+                "eventStoreD1Binding": "EVENT_STORE_DB",
+                "dedupeKvBinding": "DEDUPE_KV"
+              },
+              "observability": {
+                "workersLogs": true,
+                "logpushR2": true
+              }
+            },
+            "events": [
+              {
+                "funnelStage": "AWARENESS",
+                "eventType": "PAGE_VIEW",
+                "delivery": "gtm_web_only",
+                "source": "site",
+                "destinations": [
+                  "GA4",
+                  "Meta Pixel"
+                ],
+                "trackingConfigRef": "products.DECOLE_ESG_MENTORIA.tracking"
+              },
+              {
+                "funnelStage": "CONSIDERATION",
+                "eventType": "CTA_CLICK",
+                "delivery": "gtm_web_only",
+                "source": "site",
+                "destinations": [
+                  "GA4",
+                  "Meta Pixel"
+                ],
+                "trackingConfigRef": "products.DECOLE_ESG_MENTORIA.tracking"
+              },
+              {
+                "funnelStage": "CONSIDERATION",
+                "eventType": "GENERATE_LEAD",
+                "delivery": "both",
+                "trackingDelivery": "gtm_web_to_sgtm",
+                "serverTracking": false,
+                "deliveryNotes": "Tracking de lead segue pelo browser: dataLayer/GTM Web -> sGTM -> GA4 + Meta CAPI. A chain server_queue não executa emit_tracking para evitar dupla contagem.",
+                "source": "site",
+                "ingress": "api-funnel-ingress",
+                "queue": "decole-q-funnel-events",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "send_brevo_doi",
+                  "update_brevo_funnel",
+                  "sync_brevo_segments"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store"
+                ],
+                "brevoConfig": {
+                  "listId": "7",
+                  "doiTemplateId": "1",
+                  "doiRedirectUrl": "https://decolesuacarreiraesg.com.br/confirmacao.html",
+                  "funnelPrefix": "DECOLE_ESG"
+                },
+                "trackingConfigRef": "products.DECOLE_ESG_MENTORIA.tracking"
+              },
+              {
+                "funnelStage": "CONVERSION",
+                "eventType": "BEGIN_CHECKOUT",
+                "delivery": "server_queue",
+                "source": "site",
+                "ingress": "links-redirect",
+                "queue": "decole-q-funnel-events",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "enrich_attribution",
+                  "update_brevo_funnel",
+                  "emit_tracking"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store",
+                  "sGTM"
+                ],
+                "brevoConfig": {
+                  "funnelPrefix": "DECOLE_ESG"
+                }
+              },
+              {
+                "funnelStage": "CONVERSION",
+                "eventType": "PURCHASE_OUT_OF_SHOPPING_CART",
+                "delivery": "server_queue",
+                "source": "hotmart",
+                "ingress": "api-hotmart-ingress",
+                "queue": "decole-q-funnel-events",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "update_brevo_funnel",
+                  "send_cart_abandonment_email"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store"
+                ],
+                "brevoConfig": {
+                  "cartAbandonmentTemplateId": "8",
+                  "funnelPrefix": "DECOLE_ESG"
+                }
+              },
+              {
+                "funnelStage": "CONVERSION",
+                "eventType": "PURCHASE_BILLET_PRINTED",
+                "delivery": "server_queue",
+                "source": "hotmart",
+                "ingress": "api-hotmart-ingress",
+                "queue": "decole-q-funnel-events",
+                "description": "Boleto/PIX gerado ou pagamento iniciado ainda pendente. Capturado para acompanhamento de funil; nao invalida token porque a compra ainda pode ser concluida.",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "update_brevo_funnel"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store"
+                ],
+                "brevoConfig": {
+                  "funnelPrefix": "DECOLE_ESG"
+                }
+              },
+              {
+                "funnelStage": "CONVERSION",
+                "eventType": "PURCHASE_DELAYED",
+                "delivery": "server_queue",
+                "source": "hotmart",
+                "ingress": "api-hotmart-ingress",
+                "queue": "decole-q-funnel-events",
+                "description": "Pagamento atrasado/pendente. Capturado para suporte de decisao na jornada; nao invalida token porque ainda existe tentativa ativa de pagamento.",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "update_brevo_funnel"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store"
+                ],
+                "brevoConfig": {
+                  "funnelPrefix": "DECOLE_ESG"
+                }
+              },
+              {
+                "funnelStage": "CONVERSION",
+                "eventType": "SIGN_UP",
+                "delivery": "both",
+                "source": "site",
+                "ingress": "api-funnel-ingress",
+                "queue": "decole-q-funnel-events",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "update_brevo_funnel"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store"
+                ]
+              },
+              {
+                "funnelStage": "PURCHASE",
+                "eventType": "PURCHASE_APPROVED",
+                "delivery": "server_queue",
+                "source": "hotmart",
+                "ingress": "api-hotmart-ingress",
+                "queue": "decole-q-funnel-events",
+                "description": "Compra aprovada. Acesso ao curso é entregue pela própria Hotmart via https://hotmart.com/pt-br/club/carreira-em-esg/products/5083704",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "enrich_attribution",
+                  "update_brevo_funnel",
+                  "emit_tracking"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store",
+                  "sGTM"
+                ]
+              },
+              {
+                "funnelStage": "RETENTION",
+                "eventType": "PURCHASE_COMPLETE",
+                "delivery": "server_queue",
+                "source": "hotmart",
+                "ingress": "api-hotmart-ingress",
+                "queue": "decole-q-funnel-events",
+                "description": "Fim do ciclo de garantia/reembolso na Hotmart. Evento mantido separado de PURCHASE_APPROVED para permitir fluxos pós-garantia da mentoria sem duplicar compra aprovada.",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "update_brevo_funnel"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store"
+                ],
+                "brevoConfig": {
+                  "funnelPrefix": "DECOLE_ESG"
+                }
+              },
+              {
+                "funnelStage": "CONVERSION",
+                "eventType": "PURCHASE_CANCELED",
+                "delivery": "server_queue",
+                "source": "hotmart",
+                "ingress": "api-hotmart-ingress",
+                "queue": "decole-q-funnel-events",
+                "description": "Compra cancelada antes de permanecer ativa. Invalida token de recuperacao associado para nao reidratar checkout de uma tentativa encerrada.",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "invalidate_purchase_token",
+                  "update_brevo_funnel"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store",
+                  "Identity KV"
+                ],
+                "brevoConfig": {
+                  "funnelPrefix": "DECOLE_ESG"
+                }
+              },
+              {
+                "funnelStage": "RETENTION",
+                "eventType": "PURCHASE_REFUNDED",
+                "delivery": "server_queue",
+                "source": "hotmart",
+                "ingress": "api-hotmart-ingress",
+                "queue": "decole-q-funnel-events",
+                "description": "Reembolso processado, normalmente por desistencia dentro do periodo de garantia. Invalida token associado a compra.",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "invalidate_purchase_token",
+                  "update_brevo_funnel"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store",
+                  "Identity KV"
+                ],
+                "brevoConfig": {
+                  "funnelPrefix": "DECOLE_ESG"
+                }
+              },
+              {
+                "funnelStage": "RETENTION",
+                "eventType": "PURCHASE_CHARGEBACK",
+                "delivery": "server_queue",
+                "source": "hotmart",
+                "ingress": "api-hotmart-ingress",
+                "queue": "decole-q-funnel-events",
+                "description": "Contestacao/reversao de pagamento junto ao emissor do cartao. Invalida token associado a compra.",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "invalidate_purchase_token",
+                  "update_brevo_funnel"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store",
+                  "Identity KV"
+                ],
+                "brevoConfig": {
+                  "funnelPrefix": "DECOLE_ESG"
+                }
+              },
+              {
+                "funnelStage": "RETENTION",
+                "eventType": "PURCHASE_PROTEST",
+                "delivery": "server_queue",
+                "source": "hotmart",
+                "ingress": "api-hotmart-ingress",
+                "queue": "decole-q-funnel-events",
+                "description": "Disputa/protesto da compra. Invalida token preventivamente enquanto a compra esta sob contestacao.",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "invalidate_purchase_token",
+                  "update_brevo_funnel"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store",
+                  "Identity KV"
+                ],
+                "brevoConfig": {
+                  "funnelPrefix": "DECOLE_ESG"
+                }
+              },
+              {
+                "funnelStage": "CONVERSION",
+                "eventType": "PURCHASE_EXPIRED",
+                "delivery": "server_queue",
+                "source": "hotmart",
+                "ingress": "api-hotmart-ingress",
+                "queue": "decole-q-funnel-events",
+                "description": "Pagamento expirado sem conclusao. Invalida token da tentativa antiga para evitar reuso de checkout expirado.",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "invalidate_purchase_token",
+                  "update_brevo_funnel"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store",
+                  "Identity KV"
+                ],
+                "brevoConfig": {
+                  "funnelPrefix": "DECOLE_ESG"
+                }
+              }
             ]
           },
-          {
-            "funnelStage": "RETENTION",
-            "eventType": "PURCHASE_COMPLETE",
-            "delivery": "server_queue",
-            "source": "hotmart",
-            "ingress": "api-hotmart-ingress",
-            "queue": "decole-q-funnel-events",
-            "description": "Fim do ciclo de garantia/reembolso na Hotmart. Evento mantido separado de PURCHASE_APPROVED para permitir fluxos pós-garantia da mentoria sem duplicar compra aprovada.",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "update_brevo_funnel"
-            ],
-            "destinations": [
-              "Brevo",
-              "Event Store"
-            ],
-            "brevoConfig": {
-              "funnelPrefix": "DECOLE_ESG"
-            }
+          "meta": {
+            "pixelIdEnvVar": "META_PIXEL_ID_DECOLE_ESG"
           },
-          {
-            "funnelStage": "CONVERSION",
-            "eventType": "PURCHASE_CANCELED",
-            "delivery": "server_queue",
-            "source": "hotmart",
-            "ingress": "api-hotmart-ingress",
-            "queue": "decole-q-funnel-events",
-            "description": "Compra cancelada antes de permanecer ativa. Invalida token de recuperacao associado para nao reidratar checkout de uma tentativa encerrada.",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "invalidate_purchase_token",
-              "update_brevo_funnel"
-            ],
-            "destinations": [
-              "Brevo",
-              "Event Store",
-              "Identity KV"
-            ],
-            "brevoConfig": {
-              "funnelPrefix": "DECOLE_ESG"
-            }
-          },
-          {
-            "funnelStage": "RETENTION",
-            "eventType": "PURCHASE_REFUNDED",
-            "delivery": "server_queue",
-            "source": "hotmart",
-            "ingress": "api-hotmart-ingress",
-            "queue": "decole-q-funnel-events",
-            "description": "Reembolso processado, normalmente por desistencia dentro do periodo de garantia. Invalida token associado a compra.",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "invalidate_purchase_token",
-              "update_brevo_funnel"
-            ],
-            "destinations": [
-              "Brevo",
-              "Event Store",
-              "Identity KV"
-            ],
-            "brevoConfig": {
-              "funnelPrefix": "DECOLE_ESG"
-            }
-          },
-          {
-            "funnelStage": "RETENTION",
-            "eventType": "PURCHASE_CHARGEBACK",
-            "delivery": "server_queue",
-            "source": "hotmart",
-            "ingress": "api-hotmart-ingress",
-            "queue": "decole-q-funnel-events",
-            "description": "Contestacao/reversao de pagamento junto ao emissor do cartao. Invalida token associado a compra.",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "invalidate_purchase_token",
-              "update_brevo_funnel"
-            ],
-            "destinations": [
-              "Brevo",
-              "Event Store",
-              "Identity KV"
-            ],
-            "brevoConfig": {
-              "funnelPrefix": "DECOLE_ESG"
-            }
-          },
-          {
-            "funnelStage": "RETENTION",
-            "eventType": "PURCHASE_PROTEST",
-            "delivery": "server_queue",
-            "source": "hotmart",
-            "ingress": "api-hotmart-ingress",
-            "queue": "decole-q-funnel-events",
-            "description": "Disputa/protesto da compra. Invalida token preventivamente enquanto a compra esta sob contestacao.",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "invalidate_purchase_token",
-              "update_brevo_funnel"
-            ],
-            "destinations": [
-              "Brevo",
-              "Event Store",
-              "Identity KV"
-            ],
-            "brevoConfig": {
-              "funnelPrefix": "DECOLE_ESG"
-            }
-          },
-          {
-            "funnelStage": "CONVERSION",
-            "eventType": "PURCHASE_EXPIRED",
-            "delivery": "server_queue",
-            "source": "hotmart",
-            "ingress": "api-hotmart-ingress",
-            "queue": "decole-q-funnel-events",
-            "description": "Pagamento expirado sem conclusao. Invalida token da tentativa antiga para evitar reuso de checkout expirado.",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "invalidate_purchase_token",
-              "update_brevo_funnel"
-            ],
-            "destinations": [
-              "Brevo",
-              "Event Store",
-              "Identity KV"
-            ],
-            "brevoConfig": {
-              "funnelPrefix": "DECOLE_ESG"
-            }
-          }
-        ]
-      },
-      "meta": {
-        "pixelIdEnvVar": "META_PIXEL_ID_DECOLE_ESG"
-      },
-      "tracking": {
-        "productCode": "DECOLE_ESG_MENTORIA",
-        "sgtm": {
-          "endpointEnvVar": "SGTM_ENDPOINT_URL_DECOLE_ESG"
-        },
-        "gtm": {
-          "containerPublicId": "GTM-58CQ9K7X",
-          "differentiationKey": "produto",
-          "differentiationValue": "DECOLE_ESG_MENTORIA"
-        },
-        "ga4": {
-          "measurementId": "G-BQQB6X5XN1",
-          "measurementIdEnvVar": "GA4_MEASUREMENT_ID",
-          "apiSecretEnvVar": "GA4_API_SECRET",
-          "differentiationKeys": {
-            "produto": "DECOLE_ESG_MENTORIA",
-            "product_code": "DECOLE_ESG_MENTORIA"
-          }
-        },
-        "metaPixel": {
-          "pixelIdEnvVar": "META_PIXEL_ID_DECOLE_ESG",
-          "pixelId": "1329973348435032",
-          "differentiationKey": "pixel_id",
-          "differentiationValue": "1329973348435032"
-        }
-      },
-      "links": {
-        "checkoutPath": "/decole-esg/checkout",
-        "checkoutOfferPathTemplate": "/decole-esg/checkout/offer/{offerCode}",
-        "checkoutBaseUrl": "https://pay.hotmart.com/K98068530F?off=3j6lto4t"
-      },
-      "landingPages": [
-        {
-          "name": "Bio Instagram",
-          "url": "https://decolesuacarreiraesg.com.br/bio-insta.html",
-          "repo": "decolesuacarreiraesg",
-          "folder": "site/",
-          "indexFile": "site/bio-insta.html",
-          "gtm": "GTM-58CQ9K7X",
-          "ga4": "G-BQQB6X5XN1",
-          "metaPixel": "",
-          "events": [
-            {
-              "name": "page_view",
-              "produto": "DECOLE_ESG_MENTORIA",
-              "google": {
-                "channel": "ga4_via_gtm",
-                "eventName": "page_view"
-              },
-              "meta": {
-                "channel": "pixel_via_gtm",
-                "eventName": "PageView"
+          "tracking": {
+            "productCode": "DECOLE_ESG_MENTORIA",
+            "sgtm": {
+              "endpointEnvVar": "SGTM_ENDPOINT_URL_DECOLE_ESG"
+            },
+            "gtm": {
+              "containerPublicId": "GTM-58CQ9K7X",
+              "differentiationKey": "produto",
+              "differentiationValue": "DECOLE_ESG_MENTORIA"
+            },
+            "ga4": {
+              "measurementId": "G-BQQB6X5XN1",
+              "measurementIdEnvVar": "GA4_MEASUREMENT_ID",
+              "apiSecretEnvVar": "GA4_API_SECRET",
+              "differentiationKeys": {
+                "produto": "DECOLE_ESG_MENTORIA",
+                "product_code": "DECOLE_ESG_MENTORIA"
               }
             },
-            {
-              "name": "cta_click",
-              "produto": "DECOLE_ESG_MENTORIA",
-              "google": {
-                "channel": "ga4_via_gtm",
-                "eventName": "cta_click"
-              },
-              "meta": {
-                "channel": "pixel_via_gtm",
-                "eventName": "cta_click"
-              }
+            "metaPixel": {
+              "pixelIdEnvVar": "META_PIXEL_ID_DECOLE_ESG",
+              "pixelId": "1329973348435032",
+              "differentiationKey": "pixel_id",
+              "differentiationValue": "1329973348435032"
             }
-          ]
-        },
-        {
-          "name": "Página de confirmação DOI",
-          "url": "https://decolesuacarreiraesg.com.br/confirmacao.html",
-          "repo": "decolesuacarreiraesg",
-          "folder": "site/",
-          "indexFile": "site/confirmacao.html",
-          "gtm": "GTM-58CQ9K7X",
-          "ga4": "G-BQQB6X5XN1",
-          "metaPixel": "",
-          "events": [
+          },
+          "links": {
+            "checkoutPath": "/decole-esg/checkout",
+            "checkoutOfferPathTemplate": "/decole-esg/checkout/offer/{offerCode}",
+            "checkoutBaseUrl": "https://pay.hotmart.com/K98068530F?off=3j6lto4t"
+          },
+          "landingPages": [
             {
-              "name": "sign_up",
-              "produto": "DECOLE_ESG_MENTORIA",
-              "google": {
-                "channel": "ga4_via_gtm",
-                "eventName": "sign_up"
-              },
-              "meta": {
-                "channel": "pixel_via_gtm",
-                "eventName": "CompleteRegistration"
-              }
-            }
-          ]
-        },
-        {
-          "name": "Landing page principal",
-          "url": "https://decolesuacarreiraesg.com.br",
-          "repo": "decolesuacarreiraesg",
-          "folder": "site/",
-          "indexFile": "site/index.html",
-          "gtm": "GTM-58CQ9K7X",
-          "ga4": "G-BQQB6X5XN1",
-          "metaPixel": "",
-          "events": [
-            {
-              "name": "page_view",
-              "produto": "DECOLE_ESG_MENTORIA",
-              "google": {
-                "channel": "ga4_via_gtm",
-                "eventName": "page_view"
-              },
-              "meta": {
-                "channel": "pixel_via_gtm",
-                "eventName": "PageView"
-              }
+              "name": "Bio Instagram",
+              "url": "https://decolesuacarreiraesg.com.br/bio-insta.html",
+              "repo": "decolesuacarreiraesg",
+              "folder": "site/",
+              "indexFile": "site/bio-insta.html",
+              "gtm": "GTM-58CQ9K7X",
+              "ga4": "G-BQQB6X5XN1",
+              "metaPixel": "",
+              "events": [
+                {
+                  "name": "page_view",
+                  "produto": "DECOLE_ESG_MENTORIA",
+                  "google": {
+                    "channel": "ga4_via_gtm",
+                    "eventName": "page_view"
+                  },
+                  "meta": {
+                    "channel": "pixel_via_gtm",
+                    "eventName": "PageView"
+                  }
+                },
+                {
+                  "name": "cta_click",
+                  "produto": "DECOLE_ESG_MENTORIA",
+                  "google": {
+                    "channel": "ga4_via_gtm",
+                    "eventName": "cta_click"
+                  },
+                  "meta": {
+                    "channel": "pixel_via_gtm",
+                    "eventName": "cta_click"
+                  }
+                }
+              ]
             },
             {
-              "name": "generate_lead",
-              "produto": "DECOLE_ESG_MENTORIA",
-              "google": {
-                "channel": "ga4_via_gtm",
-                "eventName": "generate_lead"
-              },
-              "meta": {
-                "channel": "pixel_via_gtm",
-                "eventName": "Lead"
-              }
+              "name": "Página de confirmação DOI",
+              "url": "https://decolesuacarreiraesg.com.br/confirmacao.html",
+              "repo": "decolesuacarreiraesg",
+              "folder": "site/",
+              "indexFile": "site/confirmacao.html",
+              "gtm": "GTM-58CQ9K7X",
+              "ga4": "G-BQQB6X5XN1",
+              "metaPixel": "",
+              "events": [
+                {
+                  "name": "sign_up",
+                  "produto": "DECOLE_ESG_MENTORIA",
+                  "google": {
+                    "channel": "ga4_via_gtm",
+                    "eventName": "sign_up"
+                  },
+                  "meta": {
+                    "channel": "pixel_via_gtm",
+                    "eventName": "CompleteRegistration"
+                  }
+                }
+              ]
             },
             {
-              "name": "cta_click",
-              "produto": "DECOLE_ESG_MENTORIA",
-              "google": {
-                "channel": "ga4_via_gtm",
-                "eventName": "cta_click"
-              },
-              "meta": {
-                "channel": "pixel_via_gtm",
-                "eventName": "cta_click"
-              }
+              "name": "Landing page principal",
+              "url": "https://decolesuacarreiraesg.com.br",
+              "repo": "decolesuacarreiraesg",
+              "folder": "site/",
+              "indexFile": "site/index.html",
+              "gtm": "GTM-58CQ9K7X",
+              "ga4": "G-BQQB6X5XN1",
+              "metaPixel": "",
+              "events": [
+                {
+                  "name": "page_view",
+                  "produto": "DECOLE_ESG_MENTORIA",
+                  "google": {
+                    "channel": "ga4_via_gtm",
+                    "eventName": "page_view"
+                  },
+                  "meta": {
+                    "channel": "pixel_via_gtm",
+                    "eventName": "PageView"
+                  }
+                },
+                {
+                  "name": "generate_lead",
+                  "produto": "DECOLE_ESG_MENTORIA",
+                  "google": {
+                    "channel": "ga4_via_gtm",
+                    "eventName": "generate_lead"
+                  },
+                  "meta": {
+                    "channel": "pixel_via_gtm",
+                    "eventName": "Lead"
+                  }
+                },
+                {
+                  "name": "cta_click",
+                  "produto": "DECOLE_ESG_MENTORIA",
+                  "google": {
+                    "channel": "ga4_via_gtm",
+                    "eventName": "cta_click"
+                  },
+                  "meta": {
+                    "channel": "pixel_via_gtm",
+                    "eventName": "cta_click"
+                  }
+                }
+              ]
             }
-          ]
-        }
-      ],
-      "backend": {
-        "workers": [
-          "api-hotmart-ingress",
-          "api-funnel-ingress",
-          "funnel-dispatcher",
-          "api-precheckout",
-          "links-redirect"
-        ],
-        "queue": {
-          "name": "decole-q-funnel-events",
-          "dlq": "decole-q-funnel-events-dlq"
-        },
-        "kv": {
-          "dedupeBinding": "DEDUPE_KV",
-          "identityBinding": "IDENTITY_KV"
-        },
-        "d1": {
-          "identityBinding": "IDENTITY_DB",
-          "eventStoreBinding": "EVENT_STORE_DB"
-        }
-      }
-    },
-    "DECOLE_PLANOVOO": {
-      "name": "Plano de Voo",
-      "aliases": [
-        "PLANOVOO",
-        "PLANO_VOO",
-        "PLANO VOO"
-      ],
-      "hotmart": {
-        "productId": "7592718",
-        "productName": "DECOLE - Plano de Voo",
-        "checkoutCode": "R105463680A",
-        "defaultOfferCode": "f3yweqek"
-      },
-      "brevo": {
-        "opsModel": {
-          "managedVia": "manual_dashboard",
-          "apiManaged": false,
-          "owner": "marketing_ops",
-          "lastReviewedAt": "2026-04-22"
-        },
-        "funnelPrefix": "DECOLE_PLANOVOO",
-        "funnelFields": {
-          "steps": "DECOLE_PLANOVOO_FUNIL_STEPS",
-          "lastStep": "DECOLE_PLANOVOO_FUNIL_LAST_STEP",
-          "lastStepTimestamp": "DECOLE_PLANOVOO_FUNIL_LAST_STEP_TIMESTAMP"
-        },
-        "lists": {
-          "precheckout": {
-            "id": "8",
-            "name": "precheckout_planovoo"
-          }
-        },
-        "templates": {
-          "doi": {
-            "id": "10",
-            "tag": "optin",
-            "description": "Double Opt-In confirmation via Brevo native DOI - Plano de Voo",
-            "localFile": "backend/cloudflare/config/email-templates/planovoo/doi-v1.html",
-            "version": "v1"
-          },
-          "cartAbandonment": {
-            "id": "11",
-            "description": "Email carrinho abandonado - Plano de Voo",
-            "localFile": "backend/cloudflare/config/email-templates/planovoo/cart-abandonment-v1.html",
-            "version": "v1"
-          },
-          "purchaseLink": {
-            "id": "12",
-            "description": "Email transacional com link do formulario Plano de Voo",
-            "localFile": "backend/cloudflare/config/email-templates/planovoo/purchase-link-v1.html",
-            "version": "v1"
-          },
-          "refunded": {
-            "id": "13",
-            "description": "Email transacional de reembolso confirmado Plano de Voo",
-            "localFile": "backend/cloudflare/config/email-templates/planovoo/purchase-refunded-v1.html",
-            "version": "v1"
-          },
-          "protest": {
-            "id": "14",
-            "description": "Email transacional de contestacao recebida Plano de Voo",
-            "localFile": "backend/cloudflare/config/email-templates/planovoo/purchase-protest-v1.html",
-            "version": "v1"
-          }
-        },
-        "doiFlows": [
-          {
-            "key": "precheckoutDoi",
-            "templateId": "10",
-            "triggerEvent": "GENERATE_LEAD",
-            "endpoint": "/contacts/doubleOptinConfirmation",
-            "includeListId": "8",
-            "redirectionUrl": "https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html",
-            "templatePlaceholder": "{{ params.DOIurl }}",
-            "description": "Confirmação Double Opt-In nativa da Brevo para lead de precheckout Plano de Voo.",
-            "managedVia": "api",
-            "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/doi-v1.html"
-          }
-        ],
-        "transactionalEmails": [
-          {
-            "key": "cartAbandonment",
-            "templateId": "11",
-            "triggerEvent": "PURCHASE_OUT_OF_SHOPPING_CART",
-            "description": "Recuperação de carrinho abandonado do Plano de Voo.",
-            "managedVia": "api",
-            "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/cart-abandonment-v1.html"
-          },
-          {
-            "key": "purchaseLink",
-            "templateId": "12",
-            "triggerEvent": "PURCHASE_APPROVED",
-            "description": "Entrega do link do formulario Plano de Voo apos compra aprovada.",
-            "managedVia": "api",
-            "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/purchase-link-v1.html"
-          },
-          {
-            "key": "refunded",
-            "templateId": "13",
-            "triggerEvent": "PURCHASE_REFUNDED",
-            "description": "Notificacao de reembolso/cancelamento do Plano de Voo.",
-            "managedVia": "api",
-            "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/purchase-refunded-v1.html"
-          },
-          {
-            "key": "protest",
-            "templateId": "14",
-            "triggerEvent": "PURCHASE_PROTEST",
-            "description": "Notificacao de contestacao/disputa do Plano de Voo.",
-            "managedVia": "api",
-            "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/purchase-protest-v1.html"
-          }
-        ],
-        "segments": [
-          {
-            "key": "planovoo_precheckout_leads",
-            "id": "",
-            "name": "Leads Precheckout Plano de Voo",
-            "description": "Contatos de precheckout sem compra aprovada.",
-            "managedVia": "manual_dashboard"
-          }
-        ],
-        "automations": [
-          {
-            "key": "planovoo_precheckout_nurture",
-            "id": "",
-            "name": "Nurture Precheckout Plano de Voo",
-            "description": "Fluxo de nutrição e retomada de checkout para Plano de Voo.",
-            "entryCondition": "Contato entra em lista precheckout e confirma DOI.",
-            "expectedActions": [
-              "Enviar sequencia de emails de nutricao",
-              "Atualizar atributos de funil",
-              "Encerrar ao detectar compra aprovada"
-            ],
-            "managedVia": "manual_dashboard"
-          }
-        ]
-      },
-      "funnelEventArchitecture": {
-        "managedBy": "catalog",
-        "systems": {
-          "ingresses": [
-            "api-funnel-ingress",
-            "api-hotmart-ingress"
           ],
-          "dispatcher": "funnel-dispatcher",
-          "queue": {
-            "name": "decole-q-funnel-events",
-            "dlq": "decole-q-funnel-events-dlq"
-          },
-          "state": {
-            "identityD1Binding": "IDENTITY_DB",
-            "identityKvBinding": "IDENTITY_KV",
-            "eventStoreD1Binding": "EVENT_STORE_DB",
-            "dedupeKvBinding": "DEDUPE_KV"
-          },
-          "observability": {
-            "workersLogs": true,
-            "logpushR2": true
+          "backend": {
+            "workers": [
+              "api-hotmart-ingress",
+              "api-funnel-ingress",
+              "funnel-dispatcher",
+              "api-precheckout",
+              "links-redirect"
+            ],
+            "queue": {
+              "name": "decole-q-funnel-events",
+              "dlq": "decole-q-funnel-events-dlq"
+            },
+            "kv": {
+              "dedupeBinding": "DEDUPE_KV",
+              "identityBinding": "IDENTITY_KV"
+            },
+            "d1": {
+              "identityBinding": "IDENTITY_DB",
+              "eventStoreBinding": "EVENT_STORE_DB"
+            }
           }
         },
-        "events": [
-          {
-            "funnelStage": "AWARENESS",
-            "eventType": "PAGE_VIEW",
-            "delivery": "gtm_web_only",
-            "source": "site",
-            "destinations": [
-              "GA4",
-              "Meta Pixel"
-            ],
-            "trackingConfigRef": "products.DECOLE_PLANOVOO.tracking"
+        "DECOLE_PLANOVOO": {
+          "name": "Plano de Voo",
+          "aliases": [
+            "PLANOVOO",
+            "PLANO_VOO",
+            "PLANO VOO"
+          ],
+          "hotmart": {
+            "productId": "7592718",
+            "productName": "DECOLE - Plano de Voo",
+            "checkoutCode": "R105463680A",
+            "defaultOfferCode": "f3yweqek"
           },
-          {
-            "funnelStage": "CONSIDERATION",
-            "eventType": "CTA_CLICK",
-            "delivery": "gtm_web_only",
-            "source": "site",
-            "destinations": [
-              "GA4",
-              "Meta Pixel"
-            ],
-            "trackingConfigRef": "products.DECOLE_PLANOVOO.tracking"
-          },
-          {
-            "funnelStage": "CONSIDERATION",
-            "eventType": "GENERATE_LEAD",
-            "delivery": "both",
-            "trackingDelivery": "gtm_web_to_sgtm",
-            "serverTracking": false,
-            "deliveryNotes": "Tracking de lead segue pelo browser: dataLayer/GTM Web -> sGTM -> GA4 + Meta CAPI. A chain server_queue não executa emit_tracking para evitar dupla contagem.",
-            "source": "site",
-            "ingress": "api-funnel-ingress",
-            "queue": "decole-q-funnel-events",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "send_brevo_doi",
-              "update_brevo_funnel",
-              "sync_brevo_segments"
-            ],
-            "destinations": [
-              "Brevo",
-              "Event Store"
-            ],
-            "brevoConfig": {
-              "listId": "8",
-              "doiTemplateId": "10",
-              "doiRedirectUrl": "https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html",
-              "funnelPrefix": "DECOLE_PLANOVOO"
+          "brevo": {
+            "opsModel": {
+              "managedVia": "manual_dashboard",
+              "apiManaged": false,
+              "owner": "marketing_ops",
+              "lastReviewedAt": "2026-04-22"
             },
-            "trackingConfigRef": "products.DECOLE_PLANOVOO.tracking"
-          },
-          {
-            "funnelStage": "CONVERSION",
-            "eventType": "BEGIN_CHECKOUT",
-            "delivery": "server_queue",
-            "source": "site",
-            "ingress": "links-redirect",
-            "queue": "decole-q-funnel-events",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "enrich_attribution",
-              "update_brevo_funnel",
-              "emit_tracking"
+            "funnelPrefix": "DECOLE_PLANOVOO",
+            "funnelFields": {
+              "steps": "DECOLE_PLANOVOO_FUNIL_STEPS",
+              "lastStep": "DECOLE_PLANOVOO_FUNIL_LAST_STEP",
+              "lastStepTimestamp": "DECOLE_PLANOVOO_FUNIL_LAST_STEP_TIMESTAMP"
+            },
+            "lists": {
+              "precheckout": {
+                "id": "8",
+                "name": "precheckout_planovoo"
+              }
+            },
+            "templates": {
+              "doi": {
+                "id": "10",
+                "tag": "optin",
+                "description": "Double Opt-In confirmation via Brevo native DOI - Plano de Voo",
+                "localFile": "backend/cloudflare/config/email-templates/planovoo/doi-v1.html",
+                "version": "v1"
+              },
+              "cartAbandonment": {
+                "id": "11",
+                "description": "Email carrinho abandonado - Plano de Voo",
+                "localFile": "backend/cloudflare/config/email-templates/planovoo/cart-abandonment-v1.html",
+                "version": "v1"
+              },
+              "purchaseLink": {
+                "id": "12",
+                "description": "Email transacional com link do formulario Plano de Voo",
+                "localFile": "backend/cloudflare/config/email-templates/planovoo/purchase-link-v1.html",
+                "version": "v1"
+              },
+              "refunded": {
+                "id": "13",
+                "description": "Email transacional de reembolso confirmado Plano de Voo",
+                "localFile": "backend/cloudflare/config/email-templates/planovoo/purchase-refunded-v1.html",
+                "version": "v1"
+              },
+              "protest": {
+                "id": "14",
+                "description": "Email transacional de contestacao recebida Plano de Voo",
+                "localFile": "backend/cloudflare/config/email-templates/planovoo/purchase-protest-v1.html",
+                "version": "v1"
+              }
+            },
+            "doiFlows": [
+              {
+                "key": "precheckoutDoi",
+                "templateId": "10",
+                "triggerEvent": "GENERATE_LEAD",
+                "endpoint": "/contacts/doubleOptinConfirmation",
+                "includeListId": "8",
+                "redirectionUrl": "https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html",
+                "templatePlaceholder": "{{ params.DOIurl }}",
+                "description": "Confirmação Double Opt-In nativa da Brevo para lead de precheckout Plano de Voo.",
+                "managedVia": "api",
+                "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/doi-v1.html"
+              }
             ],
-            "destinations": [
-              "Brevo",
-              "Event Store",
-              "sGTM"
+            "transactionalEmails": [
+              {
+                "key": "cartAbandonment",
+                "templateId": "11",
+                "triggerEvent": "PURCHASE_OUT_OF_SHOPPING_CART",
+                "description": "Recuperação de carrinho abandonado do Plano de Voo.",
+                "managedVia": "api",
+                "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/cart-abandonment-v1.html"
+              },
+              {
+                "key": "purchaseLink",
+                "templateId": "12",
+                "triggerEvent": "PURCHASE_APPROVED",
+                "description": "Entrega do link do formulario Plano de Voo apos compra aprovada.",
+                "managedVia": "api",
+                "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/purchase-link-v1.html"
+              },
+              {
+                "key": "refunded",
+                "templateId": "13",
+                "triggerEvent": "PURCHASE_REFUNDED",
+                "description": "Notificacao de reembolso/cancelamento do Plano de Voo.",
+                "managedVia": "api",
+                "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/purchase-refunded-v1.html"
+              },
+              {
+                "key": "protest",
+                "templateId": "14",
+                "triggerEvent": "PURCHASE_PROTEST",
+                "description": "Notificacao de contestacao/disputa do Plano de Voo.",
+                "managedVia": "api",
+                "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/purchase-protest-v1.html"
+              }
             ],
-            "brevoConfig": {
-              "funnelPrefix": "DECOLE_PLANOVOO"
-            }
-          },
-          {
-            "funnelStage": "CONVERSION",
-            "eventType": "PURCHASE_OUT_OF_SHOPPING_CART",
-            "delivery": "server_queue",
-            "source": "hotmart",
-            "ingress": "api-hotmart-ingress",
-            "queue": "decole-q-funnel-events",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "update_brevo_funnel",
-              "send_cart_abandonment_email"
+            "segments": [
+              {
+                "key": "planovoo_precheckout_leads",
+                "id": "",
+                "name": "Leads Precheckout Plano de Voo",
+                "description": "Contatos de precheckout sem compra aprovada.",
+                "managedVia": "manual_dashboard"
+              }
             ],
-            "destinations": [
-              "Brevo",
-              "Event Store"
-            ],
-            "brevoConfig": {
-              "cartAbandonmentTemplateId": "11",
-              "funnelPrefix": "DECOLE_PLANOVOO"
-            }
-          },
-          {
-            "funnelStage": "CONVERSION",
-            "eventType": "PURCHASE_BILLET_PRINTED",
-            "delivery": "server_queue",
-            "source": "hotmart",
-            "ingress": "api-hotmart-ingress",
-            "queue": "decole-q-funnel-events",
-            "description": "Boleto/PIX gerado ou pagamento iniciado ainda pendente. Capturado para acompanhamento de funil; nao invalida token porque a compra ainda pode ser concluida.",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "update_brevo_funnel"
-            ],
-            "destinations": [
-              "Brevo",
-              "Event Store"
-            ],
-            "brevoConfig": {
-              "funnelPrefix": "DECOLE_PLANOVOO"
-            }
-          },
-          {
-            "funnelStage": "CONVERSION",
-            "eventType": "PURCHASE_DELAYED",
-            "delivery": "server_queue",
-            "source": "hotmart",
-            "ingress": "api-hotmart-ingress",
-            "queue": "decole-q-funnel-events",
-            "description": "Pagamento atrasado/pendente. Capturado para suporte de decisao na jornada; nao invalida token porque ainda existe tentativa ativa de pagamento.",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "update_brevo_funnel"
-            ],
-            "destinations": [
-              "Brevo",
-              "Event Store"
-            ],
-            "brevoConfig": {
-              "funnelPrefix": "DECOLE_PLANOVOO"
-            }
-          },
-          {
-            "funnelStage": "CONVERSION",
-            "eventType": "SIGN_UP",
-            "delivery": "both",
-            "source": "site",
-            "ingress": "api-funnel-ingress",
-            "queue": "decole-q-funnel-events",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "update_brevo_funnel"
-            ],
-            "destinations": [
-              "Brevo",
-              "Event Store"
+            "automations": [
+              {
+                "key": "planovoo_precheckout_nurture",
+                "id": "",
+                "name": "Nurture Precheckout Plano de Voo",
+                "description": "Fluxo de nutrição e retomada de checkout para Plano de Voo.",
+                "entryCondition": "Contato entra em lista precheckout e confirma DOI.",
+                "expectedActions": [
+                  "Enviar sequencia de emails de nutricao",
+                  "Atualizar atributos de funil",
+                  "Encerrar ao detectar compra aprovada"
+                ],
+                "managedVia": "manual_dashboard"
+              }
             ]
           },
-          {
-            "funnelStage": "PURCHASE",
-            "eventType": "PURCHASE_APPROVED",
-            "delivery": "server_queue",
-            "source": "hotmart",
-            "ingress": "api-hotmart-ingress",
-            "queue": "decole-q-funnel-events",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "enrich_attribution",
-              "update_brevo_funnel",
-              "emit_tracking",
-              "call_product_api",
-              "send_template_email"
-            ],
-            "destinations": [
-              "Brevo",
-              "Event Store",
-              "sGTM",
-              "Plano de Voo API"
-            ],
-            "product_api": {
-              "url_env": "PLANOVOO_API_BASE_URL",
-              "path": "/api/hooks/purchase",
-              "method": "POST",
-              "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
-              "request_mapping": {
-                "email": "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
-                "nome": "$.data.buyer.name ?? $.buyer.name",
-                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction",
-                "produto": "$.data.product.name ?? $.product.name ?? $.product_code",
-                "oferta": "$.data.purchase.offer_code ?? $.purchase.offer_code",
-                "valor": "$.data.purchase.price.value ?? $.purchase.price.value",
-                "pagamento": "$.data.purchase.payment.type ?? $.purchase.payment.type"
+          "funnelEventArchitecture": {
+            "managedBy": "catalog",
+            "systems": {
+              "ingresses": [
+                "api-funnel-ingress",
+                "api-hotmart-ingress"
+              ],
+              "dispatcher": "funnel-dispatcher",
+              "queue": {
+                "name": "decole-q-funnel-events",
+                "dlq": "decole-q-funnel-events-dlq"
               },
-              "skip_if_missing": ["email"],
-              "response_key": "token"
-            },
-            "template_email": {
-              "templateId": 12,
-              "to_email": "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
-              "params_mapping": {
-                "primeiroNome": "$.data.buyer.name | first_name ?? $.buyer.name | first_name",
-                "produto": "$.data.product.name ?? $.product.name ?? $.product_code",
-                "formUrl": "https://plano.decolesuacarreiraesg.com.br/formulario/{{response.token}}",
-                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
-              }
-            }
-          },
-          {
-            "funnelStage": "RETENTION",
-            "eventType": "PURCHASE_COMPLETE",
-            "delivery": "server_queue",
-            "source": "hotmart",
-            "ingress": "api-hotmart-ingress",
-            "queue": "decole-q-funnel-events",
-            "description": "Fim do ciclo de garantia/reembolso na Hotmart. Evento mantido separado de PURCHASE_APPROVED para permitir fluxos pós-garantia do Plano de Voo sem duplicar compra aprovada.",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "update_brevo_funnel"
-            ],
-            "destinations": [
-              "Brevo",
-              "Event Store"
-            ],
-            "brevoConfig": {
-              "funnelPrefix": "DECOLE_PLANOVOO"
-            }
-          },
-          {
-            "funnelStage": "CONVERSION",
-            "eventType": "PURCHASE_CANCELED",
-            "delivery": "server_queue",
-            "source": "hotmart",
-            "ingress": "api-hotmart-ingress",
-            "queue": "decole-q-funnel-events",
-            "description": "Compra cancelada. Invalida token de recuperacao em KV e chama API do Plano de Voo para marcar tokens como CANCELADO.",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "invalidate_purchase_token",
-              "update_brevo_funnel",
-              "call_product_api",
-              "send_template_email"
-            ],
-            "product_api": {
-              "url_env": "PLANOVOO_API_BASE_URL",
-              "path": "/api/hooks/refund",
-              "method": "POST",
-              "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
-              "request_mapping": {
-                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+              "state": {
+                "identityD1Binding": "IDENTITY_DB",
+                "identityKvBinding": "IDENTITY_KV",
+                "eventStoreD1Binding": "EVENT_STORE_DB",
+                "dedupeKvBinding": "DEDUPE_KV"
               },
-              "skip_if_missing": ["transacao"]
-            },
-            "template_email": {
-              "templateId": 13,
-              "to_email": "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
-              "params_mapping": {
-                "primeiroNome": "$.data.buyer.name | first_name ?? $.buyer.name | first_name",
-                "produto": "$.data.product.name ?? $.product.name ?? $.product_code",
-                "valor": "$.data.purchase.price.value | format_brl ?? $.purchase.price.value | format_brl",
-                "data": "$.occurred_at | date_br",
-                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+              "observability": {
+                "workersLogs": true,
+                "logpushR2": true
               }
             },
-            "destinations": [
-              "Brevo",
-              "Event Store",
-              "Identity KV",
-              "Plano de Voo API"
-            ],
-            "brevoConfig": {
-              "funnelPrefix": "DECOLE_PLANOVOO"
-            }
-          },
-          {
-            "funnelStage": "RETENTION",
-            "eventType": "PURCHASE_REFUNDED",
-            "delivery": "server_queue",
-            "source": "hotmart",
-            "ingress": "api-hotmart-ingress",
-            "queue": "decole-q-funnel-events",
-            "description": "Reembolso processado. Invalida token de recuperacao em KV e chama API do Plano de Voo para marcar tokens como CANCELADO.",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "invalidate_purchase_token",
-              "update_brevo_funnel",
-              "call_product_api",
-              "send_template_email"
-            ],
-            "product_api": {
-              "url_env": "PLANOVOO_API_BASE_URL",
-              "path": "/api/hooks/refund",
-              "method": "POST",
-              "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
-              "request_mapping": {
-                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+            "events": [
+              {
+                "funnelStage": "AWARENESS",
+                "eventType": "PAGE_VIEW",
+                "delivery": "gtm_web_only",
+                "source": "site",
+                "destinations": [
+                  "GA4",
+                  "Meta Pixel"
+                ],
+                "trackingConfigRef": "products.DECOLE_PLANOVOO.tracking"
               },
-              "skip_if_missing": ["transacao"]
+              {
+                "funnelStage": "CONSIDERATION",
+                "eventType": "CTA_CLICK",
+                "delivery": "gtm_web_only",
+                "source": "site",
+                "destinations": [
+                  "GA4",
+                  "Meta Pixel"
+                ],
+                "trackingConfigRef": "products.DECOLE_PLANOVOO.tracking"
+              },
+              {
+                "funnelStage": "CONSIDERATION",
+                "eventType": "GENERATE_LEAD",
+                "delivery": "both",
+                "trackingDelivery": "gtm_web_to_sgtm",
+                "serverTracking": false,
+                "deliveryNotes": "Tracking de lead segue pelo browser: dataLayer/GTM Web -> sGTM -> GA4 + Meta CAPI. A chain server_queue não executa emit_tracking para evitar dupla contagem.",
+                "source": "site",
+                "ingress": "api-funnel-ingress",
+                "queue": "decole-q-funnel-events",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "send_brevo_doi",
+                  "update_brevo_funnel",
+                  "sync_brevo_segments"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store"
+                ],
+                "brevoConfig": {
+                  "listId": "8",
+                  "doiTemplateId": "10",
+                  "doiRedirectUrl": "https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html",
+                  "funnelPrefix": "DECOLE_PLANOVOO"
+                },
+                "trackingConfigRef": "products.DECOLE_PLANOVOO.tracking"
+              },
+              {
+                "funnelStage": "CONVERSION",
+                "eventType": "BEGIN_CHECKOUT",
+                "delivery": "server_queue",
+                "source": "site",
+                "ingress": "links-redirect",
+                "queue": "decole-q-funnel-events",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "enrich_attribution",
+                  "update_brevo_funnel",
+                  "emit_tracking"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store",
+                  "sGTM"
+                ],
+                "brevoConfig": {
+                  "funnelPrefix": "DECOLE_PLANOVOO"
+                }
+              },
+              {
+                "funnelStage": "CONVERSION",
+                "eventType": "PURCHASE_OUT_OF_SHOPPING_CART",
+                "delivery": "server_queue",
+                "source": "hotmart",
+                "ingress": "api-hotmart-ingress",
+                "queue": "decole-q-funnel-events",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "update_brevo_funnel",
+                  "send_cart_abandonment_email"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store"
+                ],
+                "brevoConfig": {
+                  "cartAbandonmentTemplateId": "11",
+                  "funnelPrefix": "DECOLE_PLANOVOO"
+                }
+              },
+              {
+                "funnelStage": "CONVERSION",
+                "eventType": "PURCHASE_BILLET_PRINTED",
+                "delivery": "server_queue",
+                "source": "hotmart",
+                "ingress": "api-hotmart-ingress",
+                "queue": "decole-q-funnel-events",
+                "description": "Boleto/PIX gerado ou pagamento iniciado ainda pendente. Capturado para acompanhamento de funil; nao invalida token porque a compra ainda pode ser concluida.",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "update_brevo_funnel"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store"
+                ],
+                "brevoConfig": {
+                  "funnelPrefix": "DECOLE_PLANOVOO"
+                }
+              },
+              {
+                "funnelStage": "CONVERSION",
+                "eventType": "PURCHASE_DELAYED",
+                "delivery": "server_queue",
+                "source": "hotmart",
+                "ingress": "api-hotmart-ingress",
+                "queue": "decole-q-funnel-events",
+                "description": "Pagamento atrasado/pendente. Capturado para suporte de decisao na jornada; nao invalida token porque ainda existe tentativa ativa de pagamento.",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "update_brevo_funnel"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store"
+                ],
+                "brevoConfig": {
+                  "funnelPrefix": "DECOLE_PLANOVOO"
+                }
+              },
+              {
+                "funnelStage": "CONVERSION",
+                "eventType": "SIGN_UP",
+                "delivery": "both",
+                "source": "site",
+                "ingress": "api-funnel-ingress",
+                "queue": "decole-q-funnel-events",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "update_brevo_funnel"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store"
+                ]
+              },
+              {
+                "funnelStage": "PURCHASE",
+                "eventType": "PURCHASE_APPROVED",
+                "delivery": "server_queue",
+                "source": "hotmart",
+                "ingress": "api-hotmart-ingress",
+                "queue": "decole-q-funnel-events",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "enrich_attribution",
+                  "update_brevo_funnel",
+                  "emit_tracking",
+                  "call_product_api",
+                  "send_template_email"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store",
+                  "sGTM",
+                  "Plano de Voo API"
+                ],
+                "product_api": {
+                  "url_env": "PLANOVOO_API_BASE_URL",
+                  "path": "/api/hooks/purchase",
+                  "method": "POST",
+                  "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
+                  "request_mapping": {
+                    "email": "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
+                    "nome": "$.data.buyer.name ?? $.buyer.name",
+                    "transacao": "$.data.purchase.transaction ?? $.purchase.transaction",
+                    "produto": "$.data.product.name ?? $.product.name ?? $.product_code",
+                    "oferta": "$.data.purchase.offer_code ?? $.purchase.offer_code",
+                    "valor": "$.data.purchase.price.value ?? $.purchase.price.value",
+                    "pagamento": "$.data.purchase.payment.type ?? $.purchase.payment.type"
+                  },
+                  "skip_if_missing": [
+                    "email"
+                  ],
+                  "response_key": "token"
+                },
+                "template_email": {
+                  "templateId": 12,
+                  "to_email": "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
+                  "params_mapping": {
+                    "primeiroNome": "$.data.buyer.name | first_name ?? $.buyer.name | first_name",
+                    "produto": "$.data.product.name ?? $.product.name ?? $.product_code",
+                    "formUrl": "https://plano.decolesuacarreiraesg.com.br/formulario/{{response.token}}",
+                    "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+                  }
+                }
+              },
+              {
+                "funnelStage": "RETENTION",
+                "eventType": "PURCHASE_COMPLETE",
+                "delivery": "server_queue",
+                "source": "hotmart",
+                "ingress": "api-hotmart-ingress",
+                "queue": "decole-q-funnel-events",
+                "description": "Fim do ciclo de garantia/reembolso na Hotmart. Evento mantido separado de PURCHASE_APPROVED para permitir fluxos pós-garantia do Plano de Voo sem duplicar compra aprovada.",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "update_brevo_funnel"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store"
+                ],
+                "brevoConfig": {
+                  "funnelPrefix": "DECOLE_PLANOVOO"
+                }
+              },
+              {
+                "funnelStage": "CONVERSION",
+                "eventType": "PURCHASE_CANCELED",
+                "delivery": "server_queue",
+                "source": "hotmart",
+                "ingress": "api-hotmart-ingress",
+                "queue": "decole-q-funnel-events",
+                "description": "Compra cancelada. Invalida token de recuperacao em KV e chama API do Plano de Voo para marcar tokens como CANCELADO.",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "invalidate_purchase_token",
+                  "update_brevo_funnel",
+                  "call_product_api",
+                  "send_template_email"
+                ],
+                "product_api": {
+                  "url_env": "PLANOVOO_API_BASE_URL",
+                  "path": "/api/hooks/refund",
+                  "method": "POST",
+                  "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
+                  "request_mapping": {
+                    "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+                  },
+                  "skip_if_missing": [
+                    "transacao"
+                  ]
+                },
+                "template_email": {
+                  "templateId": 13,
+                  "to_email": "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
+                  "params_mapping": {
+                    "primeiroNome": "$.data.buyer.name | first_name ?? $.buyer.name | first_name",
+                    "produto": "$.data.product.name ?? $.product.name ?? $.product_code",
+                    "valor": "$.data.purchase.price.value | format_brl ?? $.purchase.price.value | format_brl",
+                    "data": "$.occurred_at | date_br",
+                    "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+                  }
+                },
+                "destinations": [
+                  "Brevo",
+                  "Event Store",
+                  "Identity KV",
+                  "Plano de Voo API"
+                ],
+                "brevoConfig": {
+                  "funnelPrefix": "DECOLE_PLANOVOO"
+                }
+              },
+              {
+                "funnelStage": "RETENTION",
+                "eventType": "PURCHASE_REFUNDED",
+                "delivery": "server_queue",
+                "source": "hotmart",
+                "ingress": "api-hotmart-ingress",
+                "queue": "decole-q-funnel-events",
+                "description": "Reembolso processado. Invalida token de recuperacao em KV e chama API do Plano de Voo para marcar tokens como CANCELADO.",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "invalidate_purchase_token",
+                  "update_brevo_funnel",
+                  "call_product_api",
+                  "send_template_email"
+                ],
+                "product_api": {
+                  "url_env": "PLANOVOO_API_BASE_URL",
+                  "path": "/api/hooks/refund",
+                  "method": "POST",
+                  "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
+                  "request_mapping": {
+                    "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+                  },
+                  "skip_if_missing": [
+                    "transacao"
+                  ]
+                },
+                "template_email": {
+                  "templateId": 13,
+                  "to_email": "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
+                  "params_mapping": {
+                    "primeiroNome": "$.data.buyer.name | first_name ?? $.buyer.name | first_name",
+                    "produto": "$.data.product.name ?? $.product.name ?? $.product_code",
+                    "valor": "$.data.purchase.price.value | format_brl ?? $.purchase.price.value | format_brl",
+                    "data": "$.occurred_at | date_br",
+                    "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+                  }
+                },
+                "destinations": [
+                  "Brevo",
+                  "Event Store",
+                  "Identity KV",
+                  "Plano de Voo API"
+                ],
+                "brevoConfig": {
+                  "funnelPrefix": "DECOLE_PLANOVOO"
+                }
+              },
+              {
+                "funnelStage": "RETENTION",
+                "eventType": "PURCHASE_CHARGEBACK",
+                "delivery": "server_queue",
+                "source": "hotmart",
+                "ingress": "api-hotmart-ingress",
+                "queue": "decole-q-funnel-events",
+                "description": "Contestacao/reversao de pagamento. Invalida token de recuperacao em KV e chama API do Plano de Voo para marcar tokens como CANCELADO.",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "invalidate_purchase_token",
+                  "update_brevo_funnel",
+                  "call_product_api",
+                  "send_template_email"
+                ],
+                "product_api": {
+                  "url_env": "PLANOVOO_API_BASE_URL",
+                  "path": "/api/hooks/refund",
+                  "method": "POST",
+                  "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
+                  "request_mapping": {
+                    "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+                  },
+                  "skip_if_missing": [
+                    "transacao"
+                  ]
+                },
+                "template_email": {
+                  "templateId": 13,
+                  "to_email": "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
+                  "params_mapping": {
+                    "primeiroNome": "$.data.buyer.name | first_name ?? $.buyer.name | first_name",
+                    "produto": "$.data.product.name ?? $.product.name ?? $.product_code",
+                    "valor": "$.data.purchase.price.value | format_brl ?? $.purchase.price.value | format_brl",
+                    "data": "$.occurred_at | date_br",
+                    "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+                  }
+                },
+                "destinations": [
+                  "Brevo",
+                  "Event Store",
+                  "Identity KV",
+                  "Plano de Voo API"
+                ],
+                "brevoConfig": {
+                  "funnelPrefix": "DECOLE_PLANOVOO"
+                }
+              },
+              {
+                "funnelStage": "RETENTION",
+                "eventType": "PURCHASE_PROTEST",
+                "delivery": "server_queue",
+                "source": "hotmart",
+                "ingress": "api-hotmart-ingress",
+                "queue": "decole-q-funnel-events",
+                "description": "Disputa/protesto da compra. Invalida token de recuperacao em KV e chama API do Plano de Voo para marcar tokens como SUSPENSO.",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "invalidate_purchase_token",
+                  "update_brevo_funnel",
+                  "call_product_api",
+                  "send_template_email"
+                ],
+                "product_api": {
+                  "url_env": "PLANOVOO_API_BASE_URL",
+                  "path": "/api/hooks/protest",
+                  "method": "POST",
+                  "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
+                  "request_mapping": {
+                    "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+                  },
+                  "skip_if_missing": [
+                    "transacao"
+                  ]
+                },
+                "template_email": {
+                  "templateId": 14,
+                  "to_email": "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
+                  "params_mapping": {
+                    "primeiroNome": "$.data.buyer.name | first_name ?? $.buyer.name | first_name",
+                    "produto": "$.data.product.name ?? $.product.name ?? $.product_code",
+                    "valor": "$.data.purchase.price.value | format_brl ?? $.purchase.price.value | format_brl",
+                    "data": "$.occurred_at | date_br",
+                    "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+                  }
+                },
+                "destinations": [
+                  "Brevo",
+                  "Event Store",
+                  "Identity KV",
+                  "Plano de Voo API"
+                ],
+                "brevoConfig": {
+                  "funnelPrefix": "DECOLE_PLANOVOO"
+                }
+              },
+              {
+                "funnelStage": "CONVERSION",
+                "eventType": "PURCHASE_EXPIRED",
+                "delivery": "server_queue",
+                "source": "hotmart",
+                "ingress": "api-hotmart-ingress",
+                "queue": "decole-q-funnel-events",
+                "description": "Pagamento expirado sem conclusao. Invalida token de recuperacao em KV e chama API do Plano de Voo para marcar tokens como CANCELADO.",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "invalidate_purchase_token",
+                  "update_brevo_funnel",
+                  "call_product_api",
+                  "send_template_email"
+                ],
+                "product_api": {
+                  "url_env": "PLANOVOO_API_BASE_URL",
+                  "path": "/api/hooks/refund",
+                  "method": "POST",
+                  "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
+                  "request_mapping": {
+                    "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+                  },
+                  "skip_if_missing": [
+                    "transacao"
+                  ]
+                },
+                "template_email": {
+                  "templateId": 13,
+                  "to_email": "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
+                  "params_mapping": {
+                    "primeiroNome": "$.data.buyer.name | first_name ?? $.buyer.name | first_name",
+                    "produto": "$.data.product.name ?? $.product.name ?? $.product_code",
+                    "valor": "$.data.purchase.price.value | format_brl ?? $.purchase.price.value | format_brl",
+                    "data": "$.occurred_at | date_br",
+                    "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+                  }
+                },
+                "destinations": [
+                  "Brevo",
+                  "Event Store",
+                  "Identity KV",
+                  "Plano de Voo API"
+                ],
+                "brevoConfig": {
+                  "funnelPrefix": "DECOLE_PLANOVOO"
+                }
+              }
+            ]
+          },
+          "meta": {
+            "pixelIdEnvVar": "META_PIXEL_ID_PLANOVOO"
+          },
+          "tracking": {
+            "productCode": "DECOLE_PLANOVOO",
+            "sgtm": {
+              "endpointEnvVar": "SGTM_ENDPOINT_URL_PLANOVOO"
             },
-            "template_email": {
-              "templateId": 13,
-              "to_email": "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
-              "params_mapping": {
-                "primeiroNome": "$.data.buyer.name | first_name ?? $.buyer.name | first_name",
-                "produto": "$.data.product.name ?? $.product.name ?? $.product_code",
-                "valor": "$.data.purchase.price.value | format_brl ?? $.purchase.price.value | format_brl",
-                "data": "$.occurred_at | date_br",
-                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+            "gtm": {
+              "containerPublicId": "GTM-58CQ9K7X",
+              "differentiationKey": "produto",
+              "differentiationValue": "DECOLE_PLANOVOO"
+            },
+            "ga4": {
+              "measurementId": "G-BQQB6X5XN1",
+              "measurementIdEnvVar": "GA4_MEASUREMENT_ID",
+              "apiSecretEnvVar": "GA4_API_SECRET",
+              "differentiationKeys": {
+                "produto": "DECOLE_PLANOVOO",
+                "product_code": "DECOLE_PLANOVOO"
               }
             },
-            "destinations": [
-              "Brevo",
-              "Event Store",
-              "Identity KV",
-              "Plano de Voo API"
-            ],
-            "brevoConfig": {
-              "funnelPrefix": "DECOLE_PLANOVOO"
+            "metaPixel": {
+              "pixelIdEnvVar": "META_PIXEL_ID_PLANOVOO",
+              "pixelId": "2220600768748665",
+              "differentiationKey": "pixel_id",
+              "differentiationValue": "2220600768748665"
             }
           },
-          {
-            "funnelStage": "RETENTION",
-            "eventType": "PURCHASE_CHARGEBACK",
-            "delivery": "server_queue",
-            "source": "hotmart",
-            "ingress": "api-hotmart-ingress",
-            "queue": "decole-q-funnel-events",
-            "description": "Contestacao/reversao de pagamento. Invalida token de recuperacao em KV e chama API do Plano de Voo para marcar tokens como CANCELADO.",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "invalidate_purchase_token",
-              "update_brevo_funnel",
-              "call_product_api",
-              "send_template_email"
-            ],
-            "product_api": {
-              "url_env": "PLANOVOO_API_BASE_URL",
-              "path": "/api/hooks/refund",
-              "method": "POST",
-              "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
-              "request_mapping": {
-                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
-              },
-              "skip_if_missing": ["transacao"]
+          "links": {
+            "checkoutPath": "/plano-de-voo/checkout",
+            "checkoutOfferPathTemplate": "/plano-de-voo/checkout/offer/{offerCode}",
+            "checkoutBaseUrl": "https://pay.hotmart.com/R105463680A?off=f3yweqek"
+          },
+          "landingPages": [
+            {
+              "name": "Landing page Plano de Voo",
+              "url": "https://decolesuacarreiraesg.com.br/planodevoo",
+              "repo": "decolesuacarreiraesg",
+              "folder": "site/planodevoo/",
+              "indexFile": "site/planodevoo/index.html",
+              "gtm": "GTM-58CQ9K7X",
+              "ga4": "G-BQQB6X5XN1",
+              "metaPixel": "",
+              "events": [
+                {
+                  "name": "page_view",
+                  "produto": "DECOLE_PLANOVOO",
+                  "google": {
+                    "channel": "ga4_via_gtm",
+                    "eventName": "page_view"
+                  },
+                  "meta": {
+                    "channel": "pixel_via_gtm",
+                    "eventName": "PageView"
+                  }
+                },
+                {
+                  "name": "generate_lead",
+                  "produto": "DECOLE_PLANOVOO",
+                  "google": {
+                    "channel": "ga4_via_gtm",
+                    "eventName": "generate_lead"
+                  },
+                  "meta": {
+                    "channel": "pixel_via_gtm",
+                    "eventName": "Lead"
+                  }
+                },
+                {
+                  "name": "cta_click",
+                  "produto": "DECOLE_PLANOVOO",
+                  "google": {
+                    "channel": "ga4_via_gtm",
+                    "eventName": "cta_click"
+                  },
+                  "meta": {
+                    "channel": "pixel_via_gtm",
+                    "eventName": "cta_click"
+                  }
+                }
+              ]
             },
-            "template_email": {
-              "templateId": 13,
-              "to_email": "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
-              "params_mapping": {
-                "primeiroNome": "$.data.buyer.name | first_name ?? $.buyer.name | first_name",
-                "produto": "$.data.product.name ?? $.product.name ?? $.product_code",
-                "valor": "$.data.purchase.price.value | format_brl ?? $.purchase.price.value | format_brl",
-                "data": "$.occurred_at | date_br",
-                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
-              }
-            },
-            "destinations": [
-              "Brevo",
-              "Event Store",
-              "Identity KV",
-              "Plano de Voo API"
-            ],
-            "brevoConfig": {
-              "funnelPrefix": "DECOLE_PLANOVOO"
+            {
+              "name": "Página de confirmação DOI — Plano de Voo",
+              "url": "https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html",
+              "repo": "decolesuacarreiraesg",
+              "folder": "site/planodevoo/",
+              "indexFile": "site/planodevoo/confirmacao.html",
+              "gtm": "GTM-58CQ9K7X",
+              "ga4": "G-BQQB6X5XN1",
+              "metaPixel": "",
+              "events": [
+                {
+                  "name": "sign_up",
+                  "produto": "DECOLE_PLANOVOO",
+                  "google": {
+                    "channel": "ga4_via_gtm",
+                    "eventName": "sign_up"
+                  },
+                  "meta": {
+                    "channel": "pixel_via_gtm",
+                    "eventName": "CompleteRegistration"
+                  }
+                }
+              ]
+            }
+          ],
+          "app": {
+            "name": "Plano de Voo App",
+            "url": "https://plano.decolesuacarreiraesg.com.br",
+            "repo": "decole-plano-de-voo-app",
+            "repoUrl": "https://github.com/chicoria/decole-plano-de-voo-app.git",
+            "folder": "/",
+            "indexFile": "app/page.tsx",
+            "stack": "Next.js 16 + TypeScript + PostgreSQL + Docker",
+            "gtm": "",
+            "ga4": "",
+            "metaPixel": ""
+          },
+          "n8nAutomation": {
+            "name": "Plano de Voo n8n Workflows",
+            "repo": "decole-plano-de-voo",
+            "repoUrl": "https://github.com/chicoria/decole-plano-de-voo-app.git",
+            "folder": "/workflows",
+            "workflows": {
+              "principal": "BJiMJbSj7XcRa43B",
+              "subfluxoGerador": "Tl5MxuawrvhW9sYX",
+              "subfluxoParserUpload": "kFZdrwLM6jdtwJ8G"
             }
           },
-          {
-            "funnelStage": "RETENTION",
-            "eventType": "PURCHASE_PROTEST",
-            "delivery": "server_queue",
-            "source": "hotmart",
-            "ingress": "api-hotmart-ingress",
-            "queue": "decole-q-funnel-events",
-            "description": "Disputa/protesto da compra. Invalida token de recuperacao em KV e chama API do Plano de Voo para marcar tokens como SUSPENSO.",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "invalidate_purchase_token",
-              "update_brevo_funnel",
-              "call_product_api",
-              "send_template_email"
+          "backend": {
+            "workers": [
+              "api-hotmart-ingress",
+              "api-funnel-ingress",
+              "funnel-dispatcher",
+              "api-precheckout",
+              "links-redirect"
             ],
-            "product_api": {
-              "url_env": "PLANOVOO_API_BASE_URL",
-              "path": "/api/hooks/protest",
-              "method": "POST",
-              "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
-              "request_mapping": {
-                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
-              },
-              "skip_if_missing": ["transacao"]
+            "queue": {
+              "name": "decole-q-funnel-events",
+              "dlq": "decole-q-funnel-events-dlq"
             },
-            "template_email": {
-              "templateId": 14,
-              "to_email": "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
-              "params_mapping": {
-                "primeiroNome": "$.data.buyer.name | first_name ?? $.buyer.name | first_name",
-                "produto": "$.data.product.name ?? $.product.name ?? $.product_code",
-                "valor": "$.data.purchase.price.value | format_brl ?? $.purchase.price.value | format_brl",
-                "data": "$.occurred_at | date_br",
-                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
-              }
+            "kv": {
+              "dedupeBinding": "DEDUPE_KV",
+              "identityBinding": "IDENTITY_KV"
             },
-            "destinations": [
-              "Brevo",
-              "Event Store",
-              "Identity KV",
-              "Plano de Voo API"
-            ],
-            "brevoConfig": {
-              "funnelPrefix": "DECOLE_PLANOVOO"
-            }
-          },
-          {
-            "funnelStage": "CONVERSION",
-            "eventType": "PURCHASE_EXPIRED",
-            "delivery": "server_queue",
-            "source": "hotmart",
-            "ingress": "api-hotmart-ingress",
-            "queue": "decole-q-funnel-events",
-            "description": "Pagamento expirado sem conclusao. Invalida token de recuperacao em KV e chama API do Plano de Voo para marcar tokens como CANCELADO.",
-            "chain": [
-              "resolve_identity",
-              "upsert_event_store",
-              "invalidate_purchase_token",
-              "update_brevo_funnel",
-              "call_product_api",
-              "send_template_email"
-            ],
-            "product_api": {
-              "url_env": "PLANOVOO_API_BASE_URL",
-              "path": "/api/hooks/refund",
-              "method": "POST",
-              "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
-              "request_mapping": {
-                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
-              },
-              "skip_if_missing": ["transacao"]
+            "d1": {
+              "identityBinding": "IDENTITY_DB",
+              "eventStoreBinding": "EVENT_STORE_DB"
             },
-            "template_email": {
-              "templateId": 13,
-              "to_email": "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
-              "params_mapping": {
-                "primeiroNome": "$.data.buyer.name | first_name ?? $.buyer.name | first_name",
-                "produto": "$.data.product.name ?? $.product.name ?? $.product_code",
-                "valor": "$.data.purchase.price.value | format_brl ?? $.purchase.price.value | format_brl",
-                "data": "$.occurred_at | date_br",
-                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
-              }
-            },
-            "destinations": [
-              "Brevo",
-              "Event Store",
-              "Identity KV",
-              "Plano de Voo API"
-            ],
-            "brevoConfig": {
-              "funnelPrefix": "DECOLE_PLANOVOO"
-            }
+            "n8nWorkflows": [
+              "plano-de-voo/hotmart",
+              "plano-de-voo/submeter",
+              "validar-token"
+            ]
           }
-        ]
-      },
-      "meta": {
-        "pixelIdEnvVar": "META_PIXEL_ID_PLANOVOO"
-      },
-      "tracking": {
-        "productCode": "DECOLE_PLANOVOO",
-        "sgtm": {
-          "endpointEnvVar": "SGTM_ENDPOINT_URL_PLANOVOO"
-        },
-        "gtm": {
-          "containerPublicId": "GTM-58CQ9K7X",
-          "differentiationKey": "produto",
-          "differentiationValue": "DECOLE_PLANOVOO"
-        },
-        "ga4": {
-          "measurementId": "G-BQQB6X5XN1",
-          "measurementIdEnvVar": "GA4_MEASUREMENT_ID",
-          "apiSecretEnvVar": "GA4_API_SECRET",
-          "differentiationKeys": {
-            "produto": "DECOLE_PLANOVOO",
-            "product_code": "DECOLE_PLANOVOO"
-          }
-        },
-        "metaPixel": {
-          "pixelIdEnvVar": "META_PIXEL_ID_PLANOVOO",
-          "pixelId": "2220600768748665",
-          "differentiationKey": "pixel_id",
-          "differentiationValue": "2220600768748665"
         }
-      },
-      "links": {
-        "checkoutPath": "/plano-de-voo/checkout",
-        "checkoutOfferPathTemplate": "/plano-de-voo/checkout/offer/{offerCode}",
-        "checkoutBaseUrl": "https://pay.hotmart.com/R105463680A?off=f3yweqek"
-      },
-      "landingPages": [
-        {
-          "name": "Landing page Plano de Voo",
-          "url": "https://decolesuacarreiraesg.com.br/planodevoo",
-          "repo": "decolesuacarreiraesg",
-          "folder": "site/planodevoo/",
-          "indexFile": "site/planodevoo/index.html",
-          "gtm": "GTM-58CQ9K7X",
-          "ga4": "G-BQQB6X5XN1",
-          "metaPixel": "",
-          "events": [
-            {
-              "name": "page_view",
-              "produto": "DECOLE_PLANOVOO",
-              "google": {
-                "channel": "ga4_via_gtm",
-                "eventName": "page_view"
-              },
-              "meta": {
-                "channel": "pixel_via_gtm",
-                "eventName": "PageView"
-              }
-            },
-            {
-              "name": "generate_lead",
-              "produto": "DECOLE_PLANOVOO",
-              "google": {
-                "channel": "ga4_via_gtm",
-                "eventName": "generate_lead"
-              },
-              "meta": {
-                "channel": "pixel_via_gtm",
-                "eventName": "Lead"
-              }
-            },
-            {
-              "name": "cta_click",
-              "produto": "DECOLE_PLANOVOO",
-              "google": {
-                "channel": "ga4_via_gtm",
-                "eventName": "cta_click"
-              },
-              "meta": {
-                "channel": "pixel_via_gtm",
-                "eventName": "cta_click"
-              }
-            }
-          ]
-        },
-        {
-          "name": "Página de confirmação DOI — Plano de Voo",
-          "url": "https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html",
-          "repo": "decolesuacarreiraesg",
-          "folder": "site/planodevoo/",
-          "indexFile": "site/planodevoo/confirmacao.html",
-          "gtm": "GTM-58CQ9K7X",
-          "ga4": "G-BQQB6X5XN1",
-          "metaPixel": "",
-          "events": [
-            {
-              "name": "sign_up",
-              "produto": "DECOLE_PLANOVOO",
-              "google": {
-                "channel": "ga4_via_gtm",
-                "eventName": "sign_up"
-              },
-              "meta": {
-                "channel": "pixel_via_gtm",
-                "eventName": "CompleteRegistration"
-              }
-            }
-          ]
-        }
-      ],
-      "app": {
-        "name": "Plano de Voo App",
-        "url": "https://plano.decolesuacarreiraesg.com.br",
-        "repo": "decole-plano-de-voo-app",
-        "repoUrl": "https://github.com/chicoria/decole-plano-de-voo-app.git",
-        "folder": "/",
-        "indexFile": "app/page.tsx",
-        "stack": "Next.js 16 + TypeScript + PostgreSQL + Docker",
-        "gtm": "",
-        "ga4": "",
-        "metaPixel": ""
-      },
-      "n8nAutomation": {
-        "name": "Plano de Voo n8n Workflows",
-        "repo": "decole-plano-de-voo",
-        "repoUrl": "https://github.com/chicoria/decole-plano-de-voo-app.git",
-        "folder": "/workflows",
-        "workflows": {
-          "principal": "BJiMJbSj7XcRa43B",
-          "subfluxoGerador": "Tl5MxuawrvhW9sYX",
-          "subfluxoParserUpload": "kFZdrwLM6jdtwJ8G"
-        }
-      },
-      "backend": {
-        "workers": [
-          "api-hotmart-ingress",
-          "api-funnel-ingress",
-          "funnel-dispatcher",
-          "api-precheckout",
-          "links-redirect"
-        ],
-        "queue": {
-          "name": "decole-q-funnel-events",
-          "dlq": "decole-q-funnel-events-dlq"
-        },
-        "kv": {
-          "dedupeBinding": "DEDUPE_KV",
-          "identityBinding": "IDENTITY_KV"
-        },
-        "d1": {
-          "identityBinding": "IDENTITY_DB",
-          "eventStoreBinding": "EVENT_STORE_DB"
-        },
-        "n8nWorkflows": [
-          "plano-de-voo/hotmart",
-          "plano-de-voo/submeter",
-          "validar-token"
-        ]
       }
     }
   },
@@ -1560,7 +1587,11 @@
     },
     "send_template_email": {
       "worker": "funnel-dispatcher",
-      "bindings": ["BREVO_API_KEY", "BREVO_BASE_URL", "BREVO_TIMEOUT_MS"],
+      "bindings": [
+        "BREVO_API_KEY",
+        "BREVO_BASE_URL",
+        "BREVO_TIMEOUT_MS"
+      ],
       "description": "Generic handler: reads template_email config from catalog event, maps params with interpolation from API response, sends via Brevo"
     }
   }

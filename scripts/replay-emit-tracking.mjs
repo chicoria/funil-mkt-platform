@@ -153,13 +153,19 @@ function loadCatalog() {
 }
 
 function getCatalogProduct(catalog, productCode) {
-  const products = catalog.products || {};
-  if (products[productCode]) return products[productCode];
-
+  const productPools = [
+    catalog.products || {},
+    ...Object.values(catalog.tenants || {}).map((tenant) => tenant?.products || {}),
+  ];
   const normalizedProductCode = String(productCode || "").toUpperCase();
-  return Object.values(products).find((product) =>
-    (product.aliases || []).some((alias) => String(alias).toUpperCase() === normalizedProductCode)
-  );
+  for (const products of productPools) {
+    if (products[productCode]) return products[productCode];
+    const byAlias = Object.values(products).find((product) =>
+      (product?.aliases || []).some((alias) => String(alias).toUpperCase() === normalizedProductCode)
+    );
+    if (byAlias) return byAlias;
+  }
+  return undefined;
 }
 
 function catalogChainHasEmitTracking(catalog, productCode, eventType) {

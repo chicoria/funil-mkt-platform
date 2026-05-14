@@ -6,6 +6,7 @@ import {
   resolveCatalogProduct,
   type ParsedCatalog,
 } from "../../src/catalog-adapter";
+import bundledCatalogJson from "../../../../config/products.catalog.json";
 
 const catalog: ParsedCatalog = {
   products: {
@@ -145,5 +146,47 @@ describe("catalog-adapter", () => {
       "PURCHASE_APPROVED"
     );
     expect(eventConfig?.chain).toEqual(["tenant_handler"]);
+  });
+});
+
+describe("bundled products.catalog.json (multi-tenant shape — Slice 2.6B)", () => {
+  const bundled = bundledCatalogJson as ParsedCatalog & {
+    tenants?: Record<string, { domains?: string[]; credentials?: Record<string, unknown>; products?: Record<string, unknown> }>;
+  };
+
+  it("uses tenants.* top-level shape, not legacy products.*", () => {
+    expect(bundled.tenants).toBeDefined();
+    expect(bundled.products).toBeUndefined();
+  });
+
+  it("declares the decole tenant with domains and credentials", () => {
+    const decole = bundled.tenants?.decole;
+    expect(decole).toBeDefined();
+    expect(decole?.domains).toContain("api.decolesuacarreiraesg.com.br");
+    expect(decole?.credentials?.brevo_api_key_env).toBe("BREVO_API_KEY");
+  });
+
+  it("keeps DECOLE_PLANOVOO and DECOLE_ESG_MENTORIA under decole tenant", () => {
+    const products = bundled.tenants?.decole?.products || {};
+    expect(Object.keys(products)).toEqual(
+      expect.arrayContaining(["DECOLE_PLANOVOO", "DECOLE_ESG_MENTORIA"])
+    );
+  });
+
+  it("resolves legacy product_code (without tenant_id) through tenant alias fallback", () => {
+    const resolved = resolveCatalogProduct(bundled, { product_code: "PLANOVOO" });
+    expect(resolved?.tenant_id).toBe("decole");
+    expect(resolved?.product_code).toBe("DECOLE_PLANOVOO");
+    expect(resolved?.source).toBe("tenants");
+  });
+
+  it("resolves PURCHASE_APPROVED event from bundled tenant catalog", () => {
+    const eventConfig = resolveCatalogEvent(
+      bundled,
+      { product_code: "DECOLE_PLANOVOO" },
+      "PURCHASE_APPROVED"
+    );
+    expect(eventConfig?.chain).toContain("call_product_api");
+    expect(eventConfig?.chain).toContain("send_template_email");
   });
 });
