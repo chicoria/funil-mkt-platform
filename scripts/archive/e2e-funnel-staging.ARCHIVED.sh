@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOTMART_INGRESS_URL="${HOTMART_INGRESS_URL:-https://api.decolesuacarreiraesg.com.br}"
 FUNNEL_INGRESS_URL="${FUNNEL_INGRESS_URL:-https://api.decolesuacarreiraesg.com.br}"
 HOTMART_WEBHOOK_TOKEN="${HOTMART_WEBHOOK_TOKEN:-}"
 IDENTITY_DB_NAME="${IDENTITY_DB_NAME:-decole-d1-identity}"
 EVENT_DB_NAME="${EVENT_DB_NAME:-decole-d1-event-store}"
-WRANGLER_CWD="${ROOT_DIR}/backend/cloudflare/workers/funnel-dispatcher"
+WRANGLER_CWD="${ROOT_DIR}/workers/funnel-dispatcher"
 
 usage() {
   cat <<USAGE

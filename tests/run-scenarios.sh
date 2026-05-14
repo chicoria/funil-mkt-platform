@@ -9,7 +9,7 @@
 #   ./run-scenarios.sh --all --verify-destinations
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCENARIOS_DIR="$(dirname "${BASH_SOURCE[0]}")/scenarios"
 DEFAULT_ENV_FILE="${ROOT_DIR}/.env.local"
 

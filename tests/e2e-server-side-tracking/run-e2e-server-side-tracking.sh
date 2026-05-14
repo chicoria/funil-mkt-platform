@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DEFAULT_ENV_FILE="${ROOT_DIR}/.env.local"
-DEFAULT_WRANGLER_CWD="${ROOT_DIR}/backend/cloudflare/workers/funnel-dispatcher"
-DEFAULT_REPLAY_SCRIPT="${ROOT_DIR}/backend/cloudflare/scripts/replay-emit-tracking.mjs"
-DEFAULT_GA4_VERIFY_SCRIPT="${ROOT_DIR}/backend/cloudflare/tests/e2e-server-side-tracking/verify-ga4-realtime.mjs"
-DEFAULT_META_VERIFY_SCRIPT="${ROOT_DIR}/backend/cloudflare/tests/e2e-server-side-tracking/verify-sgtm-meta-delivery.mjs"
-DEFAULT_META_STATS_VERIFY_SCRIPT="${ROOT_DIR}/backend/cloudflare/tests/e2e-server-side-tracking/verify-meta-stats-delta.mjs"
+DEFAULT_WRANGLER_CWD="${ROOT_DIR}/workers/funnel-dispatcher"
+DEFAULT_REPLAY_SCRIPT="${ROOT_DIR}/scripts/replay-emit-tracking.mjs"
+DEFAULT_GA4_VERIFY_SCRIPT="${ROOT_DIR}/tests/e2e-server-side-tracking/verify-ga4-realtime.mjs"
+DEFAULT_META_VERIFY_SCRIPT="${ROOT_DIR}/tests/e2e-server-side-tracking/verify-sgtm-meta-delivery.mjs"
+DEFAULT_META_STATS_VERIFY_SCRIPT="${ROOT_DIR}/tests/e2e-server-side-tracking/verify-meta-stats-delta.mjs"
 
 HOTMART_INGRESS_URL_DEFAULT="https://api.decolesuacarreiraesg.com.br"
 HOTMART_PRODUCT_PATH_DEFAULT="planovoo"
@@ -60,7 +60,7 @@ Options:
   --timeout-seconds <n>        Timeout de espera no D1 (default: ${TIMEOUT_SECONDS_DEFAULT})
   --poll-seconds <n>           Intervalo de polling no D1 (default: ${POLL_SECONDS_DEFAULT})
   --wrangler-cwd <path>        Diretorio para wrangler (default: workers/funnel-dispatcher)
-  --replay-script <path>       Script replay-emit-tracking (default: backend/cloudflare/scripts/replay-emit-tracking.mjs)
+  --replay-script <path>       Script replay-emit-tracking (default: scripts/replay-emit-tracking.mjs)
   --ga4-verify-script <path>   Script de validacao GA4 Realtime
   --meta-verify-script <path>  Script de validacao Meta via logs sGTM
   --meta-stats-script <path>   Script de validacao Meta via /stats

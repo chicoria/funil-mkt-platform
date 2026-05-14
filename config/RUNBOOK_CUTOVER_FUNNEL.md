@@ -17,29 +17,29 @@
 ### 1) Deploy incremental
 
 ```bash
-backend/cloudflare/scripts/deploy-incremental.sh --worker api-hotmart-ingress
-backend/cloudflare/scripts/deploy-incremental.sh --worker api-funnel-ingress
-backend/cloudflare/scripts/deploy-incremental.sh --worker funnel-dispatcher
+scripts/deploy-incremental.sh --worker api-hotmart-ingress
+scripts/deploy-incremental.sh --worker api-funnel-ingress
+scripts/deploy-incremental.sh --worker funnel-dispatcher
 ```
 
 ### 2) Healthcheck
 
 ```bash
-backend/cloudflare/scripts/healthcheck-worker.sh --url https://decole-api-hotmart-ingress.chicoria.workers.dev/health
-backend/cloudflare/scripts/healthcheck-worker.sh --url https://decole-api-funnel-ingress.chicoria.workers.dev/health
-backend/cloudflare/scripts/healthcheck-worker.sh --url https://decole-funnel-dispatcher.chicoria.workers.dev/health
+scripts/healthcheck-worker.sh --url https://decole-api-hotmart-ingress.chicoria.workers.dev/health
+scripts/healthcheck-worker.sh --url https://decole-api-funnel-ingress.chicoria.workers.dev/health
+scripts/healthcheck-worker.sh --url https://decole-funnel-dispatcher.chicoria.workers.dev/health
 ```
 
 ### 3) E2E de validação
 
 ```bash
-bash backend/cloudflare/tests/run-scenarios.sh --all --skip-sgtm
+bash tests/run-scenarios.sh --all --skip-sgtm
 ```
 
 ### 4) Confirmação de consumer
 
 ```bash
-cd backend/cloudflare/workers/api-hotmart-ingress
+cd workers/api-hotmart-ingress
 npx wrangler queues info decole-q-funnel-events
 ```
 

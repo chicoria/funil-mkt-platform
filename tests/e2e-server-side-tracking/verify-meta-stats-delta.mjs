@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const rootDir = resolve(new URL("../../../..", import.meta.url).pathname);
-const defaultCatalogPath = resolve(rootDir, "backend/cloudflare/config/products.catalog.json");
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const rootDir = resolve(__dirname, "../..");
+const defaultCatalogPath = resolve(rootDir, "config/products.catalog.json");
 const defaultEnvFile = resolve(rootDir, ".env.local");
 
 function usage() {
@@ -22,7 +24,7 @@ Options:
   --window-minutes <n>             Default: 180
   --timeout-seconds <n>            Default: 240 (somente verify)
   --poll-seconds <n>               Default: 12  (somente verify)
-  --catalog <path>                 Default: backend/cloudflare/config/products.catalog.json
+  --catalog <path>                 Default: config/products.catalog.json
   --env-file <path>                Default: .env.local
 `);
 }

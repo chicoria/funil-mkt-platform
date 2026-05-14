@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${ENV_FILE:-${ROOT_DIR}/.env.local}"
 HOTMART_INGRESS_URL="${HOTMART_INGRESS_URL:-https://api.decolesuacarreiraesg.com.br}"
 HOTMART_PRODUCT_SLUG="${HOTMART_PRODUCT_SLUG:-decole-esg}"

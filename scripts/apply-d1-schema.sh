@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 IDENTITY_DB_NAME="${IDENTITY_DB_NAME:-decole-d1-identity}"
 EVENT_DB_NAME="${EVENT_DB_NAME:-decole-d1-event-store}"
-IDENTITY_SQL="${ROOT_DIR}/backend/cloudflare/config/d1/identity_links.sql"
-EVENT_SQL="${ROOT_DIR}/backend/cloudflare/config/d1/funnel_events.sql"
-GA4_SQL="${ROOT_DIR}/backend/cloudflare/config/d1/ga4_daily_metrics.sql"
-META_SQL="${ROOT_DIR}/backend/cloudflare/config/d1/meta_daily_metrics.sql"
-WRANGLER_CWD="${ROOT_DIR}/backend/cloudflare/workers/funnel-dispatcher"
+IDENTITY_SQL="${ROOT_DIR}/config/d1/identity_links.sql"
+EVENT_SQL="${ROOT_DIR}/config/d1/funnel_events.sql"
+GA4_SQL="${ROOT_DIR}/config/d1/ga4_daily_metrics.sql"
+META_SQL="${ROOT_DIR}/config/d1/meta_daily_metrics.sql"
+WRANGLER_CWD="${ROOT_DIR}/workers/funnel-dispatcher"
 
 usage() {
   cat <<USAGE

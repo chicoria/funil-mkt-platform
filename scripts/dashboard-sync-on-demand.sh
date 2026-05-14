@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="${ENV_FILE:-$ROOT_DIR/.env.local}"
 
 if [[ -f "$ENV_FILE" ]]; then
@@ -15,8 +15,8 @@ SYNC_SECRET="${SYNC_SECRET:-${ADMIN_SECRET:-}}"
 usage() {
   cat <<'EOF'
 Usage:
-  bash backend/cloudflare/scripts/dashboard-sync-on-demand.sh run [--date YYYY-MM-DD] [--part all|ga4|meta]
-  bash backend/cloudflare/scripts/dashboard-sync-on-demand.sh status
+  bash scripts/dashboard-sync-on-demand.sh run [--date YYYY-MM-DD] [--part all|ga4|meta]
+  bash scripts/dashboard-sync-on-demand.sh status
 
 Env:
   SYNC_BASE_URL or DASHBOARD_SYNC_URL   Ex: https://decole-dashboard-sync.<account>.workers.dev

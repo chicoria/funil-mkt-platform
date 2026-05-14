@@ -198,7 +198,7 @@ Cada handler só executa uma vez por `event_id`, mesmo em retries da queue.
 
 ## Catálogo de produtos
 
-`backend/cloudflare/config/products.catalog.json` — fonte única de verdade para:
+`config/products.catalog.json` — fonte única de verdade para:
 - Produtos e aliases
 - Pipelines de eventos (`funnelEventArchitecture.events[].chain`)
 - Configuração de tracking (sGTM endpoint, GA4 measurement ID, Meta pixel)
@@ -260,10 +260,10 @@ Cada worker tem `test/unit/index.test.ts` com Vitest. Executar:
 
 ```bash
 # Worker específico (após mudança)
-cd backend/cloudflare/workers/funnel-dispatcher && npm test
+cd workers/funnel-dispatcher && npm test
 
 # Todos os workers
-cd backend/cloudflare && bash tests/verify.sh --unit-only
+bash tests/verify.sh --unit-only
 ```
 
 **Mapeamento mudança → worker a testar:**
@@ -280,16 +280,16 @@ cd backend/cloudflare && bash tests/verify.sh --unit-only
 
 ```bash
 # Regressão rápida (sem replay sGTM) — rodar antes de qualquer deploy
-bash backend/cloudflare/tests/run-scenarios.sh --all --skip-sgtm
+bash tests/run-scenarios.sh --all --skip-sgtm
 
 # Validação completa com sGTM + Meta
-bash backend/cloudflare/tests/run-scenarios.sh --all --meta-test-event-code TEST15651
+bash tests/run-scenarios.sh --all --meta-test-event-code TEST15651
 
 # Cenários afectados por mudança específica:
-bash backend/cloudflare/tests/run-scenarios.sh --scenario 01,07      # ingress/identity
-bash backend/cloudflare/tests/run-scenarios.sh --scenario 02,03,08   # emit_tracking
-bash backend/cloudflare/tests/run-scenarios.sh --scenario 06,03      # enrich_attribution
-bash backend/cloudflare/tests/run-scenarios.sh --scenario 04         # PURCHASE_OUT_OF_SHOPPING_CART
+bash tests/run-scenarios.sh --scenario 01,07      # ingress/identity
+bash tests/run-scenarios.sh --scenario 02,03,08   # emit_tracking
+bash tests/run-scenarios.sh --scenario 06,03      # enrich_attribution
+bash tests/run-scenarios.sh --scenario 04         # PURCHASE_OUT_OF_SHOPPING_CART
 ```
 
 **Mapeamento mudança → cenário E2E:**
@@ -309,7 +309,7 @@ bash backend/cloudflare/tests/run-scenarios.sh --scenario 04         # PURCHASE_
 
 ```bash
 # Tudo: unitários + E2E
-bash backend/cloudflare/tests/verify.sh
+bash tests/verify.sh
 ```
 
 ---
@@ -318,10 +318,10 @@ bash backend/cloudflare/tests/verify.sh
 
 ```bash
 # Worker individual
-cd backend/cloudflare/workers/funnel-dispatcher && npx wrangler deploy
+cd workers/funnel-dispatcher && npx wrangler deploy
 
 # Script incremental (com dry-run e healthcheck)
-bash backend/cloudflare/scripts/deploy-incremental.sh --worker funnel-dispatcher
+bash scripts/deploy-incremental.sh --worker funnel-dispatcher
 ```
 
 **Ordem recomendada de deploy quando múltiplos workers são afectados:**
@@ -336,7 +336,7 @@ bash backend/cloudflare/scripts/deploy-incremental.sh --worker funnel-dispatcher
 ### Health check
 
 ```bash
-bash backend/cloudflare/scripts/healthcheck-worker.sh \
+bash scripts/healthcheck-worker.sh \
   --url https://decole-funnel-dispatcher.chicoria.workers.dev/health
 ```
 
@@ -352,7 +352,7 @@ npx wrangler queues consumer worker add decole-q-funnel-events decole-funnel-dis
 ### Replay de tracking (após fix de payload)
 
 ```bash
-node backend/cloudflare/scripts/replay-emit-tracking.mjs \
+node scripts/replay-emit-tracking.mjs \
   --event-id <event_id> \
   --meta-test-event-code TEST15651 \
   --apply

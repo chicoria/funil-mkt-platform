@@ -9,8 +9,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-CF_DIR="$ROOT_DIR/backend/cloudflare"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+CF_DIR="$ROOT_DIR"
 
 UNIT_ONLY=0
 E2E_ONLY=0

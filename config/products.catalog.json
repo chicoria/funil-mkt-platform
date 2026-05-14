@@ -29,7 +29,7 @@
       "replyToEmail": "contato@decolesuacarreiraesg.com.br",
       "replyToEmailEnvVar": "BREVO_REPLY_TO_EMAIL",
       "templateRepository": {
-        "path": "backend/cloudflare/config/email-templates/",
+        "path": "config/email-templates/",
         "syncPolicy": "manual_dashboard_sync_required"
       },
       "governance": {
@@ -90,13 +90,13 @@
               "doi": {
                 "id": "1",
                 "description": "Double Opt-In confirmation via Brevo native DOI",
-                "localFile": "backend/cloudflare/config/email-templates/decole-esg/doi-v1.html",
+                "localFile": "config/email-templates/decole-esg/doi-v1.html",
                 "version": "v1"
               },
               "cartAbandonment": {
                 "id": "8",
                 "description": "Email carrinho abandonado",
-                "localFile": "backend/cloudflare/config/email-templates/decole-esg/cart-abandonment-v1.html",
+                "localFile": "config/email-templates/decole-esg/cart-abandonment-v1.html",
                 "version": "v1"
               }
             },
@@ -111,7 +111,7 @@
                 "templatePlaceholder": "{{ params.DOIurl }}",
                 "description": "Confirmação Double Opt-In nativa da Brevo para lead de precheckout.",
                 "managedVia": "api",
-                "localTemplateFile": "backend/cloudflare/config/email-templates/decole-esg/doi-v1.html"
+                "localTemplateFile": "config/email-templates/decole-esg/doi-v1.html"
               }
             ],
             "transactionalEmails": [
@@ -121,7 +121,7 @@
                 "triggerEvent": "PURCHASE_OUT_OF_SHOPPING_CART",
                 "description": "Recuperação de carrinho abandonado.",
                 "managedVia": "manual_dashboard",
-                "localTemplateFile": "backend/cloudflare/config/email-templates/decole-esg/cart-abandonment-v1.html"
+                "localTemplateFile": "config/email-templates/decole-esg/cart-abandonment-v1.html"
               }
             ],
             "segments": [
@@ -690,31 +690,31 @@
                 "id": "10",
                 "tag": "optin",
                 "description": "Double Opt-In confirmation via Brevo native DOI - Plano de Voo",
-                "localFile": "backend/cloudflare/config/email-templates/planovoo/doi-v1.html",
+                "localFile": "config/email-templates/planovoo/doi-v1.html",
                 "version": "v1"
               },
               "cartAbandonment": {
                 "id": "11",
                 "description": "Email carrinho abandonado - Plano de Voo",
-                "localFile": "backend/cloudflare/config/email-templates/planovoo/cart-abandonment-v1.html",
+                "localFile": "config/email-templates/planovoo/cart-abandonment-v1.html",
                 "version": "v1"
               },
               "purchaseLink": {
                 "id": "12",
                 "description": "Email transacional com link do formulario Plano de Voo",
-                "localFile": "backend/cloudflare/config/email-templates/planovoo/purchase-link-v1.html",
+                "localFile": "config/email-templates/planovoo/purchase-link-v1.html",
                 "version": "v1"
               },
               "refunded": {
                 "id": "13",
                 "description": "Email transacional de reembolso confirmado Plano de Voo",
-                "localFile": "backend/cloudflare/config/email-templates/planovoo/purchase-refunded-v1.html",
+                "localFile": "config/email-templates/planovoo/purchase-refunded-v1.html",
                 "version": "v1"
               },
               "protest": {
                 "id": "14",
                 "description": "Email transacional de contestacao recebida Plano de Voo",
-                "localFile": "backend/cloudflare/config/email-templates/planovoo/purchase-protest-v1.html",
+                "localFile": "config/email-templates/planovoo/purchase-protest-v1.html",
                 "version": "v1"
               }
             },
@@ -729,7 +729,7 @@
                 "templatePlaceholder": "{{ params.DOIurl }}",
                 "description": "Confirmação Double Opt-In nativa da Brevo para lead de precheckout Plano de Voo.",
                 "managedVia": "api",
-                "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/doi-v1.html"
+                "localTemplateFile": "config/email-templates/planovoo/doi-v1.html"
               }
             ],
             "transactionalEmails": [
@@ -739,7 +739,7 @@
                 "triggerEvent": "PURCHASE_OUT_OF_SHOPPING_CART",
                 "description": "Recuperação de carrinho abandonado do Plano de Voo.",
                 "managedVia": "api",
-                "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/cart-abandonment-v1.html"
+                "localTemplateFile": "config/email-templates/planovoo/cart-abandonment-v1.html"
               },
               {
                 "key": "purchaseLink",
@@ -747,7 +747,7 @@
                 "triggerEvent": "PURCHASE_APPROVED",
                 "description": "Entrega do link do formulario Plano de Voo apos compra aprovada.",
                 "managedVia": "api",
-                "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/purchase-link-v1.html"
+                "localTemplateFile": "config/email-templates/planovoo/purchase-link-v1.html"
               },
               {
                 "key": "refunded",
@@ -755,7 +755,7 @@
                 "triggerEvent": "PURCHASE_REFUNDED",
                 "description": "Notificacao de reembolso/cancelamento do Plano de Voo.",
                 "managedVia": "api",
-                "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/purchase-refunded-v1.html"
+                "localTemplateFile": "config/email-templates/planovoo/purchase-refunded-v1.html"
               },
               {
                 "key": "protest",
@@ -763,7 +763,7 @@
                 "triggerEvent": "PURCHASE_PROTEST",
                 "description": "Notificacao de contestacao/disputa do Plano de Voo.",
                 "managedVia": "api",
-                "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/purchase-protest-v1.html"
+                "localTemplateFile": "config/email-templates/planovoo/purchase-protest-v1.html"
               }
             ],
             "segments": [

@@ -47,7 +47,7 @@ Todos lidos automaticamente do `.env.local` na raiz do projeto.
 ## Uso
 
 ```bash
-cd backend/cloudflare/tests
+cd tests
 
 # Rodar cenário isolado
 node scenarios/01-generate-lead.mjs

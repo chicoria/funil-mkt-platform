@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-CONFIG_FILE="${ROOT_DIR}/backend/cloudflare/config/cloudflare-greenfield.resources.json"
-OUT_FILE="${ROOT_DIR}/backend/cloudflare/config/generated/cloudflare-greenfield.ids.json"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CONFIG_FILE="${ROOT_DIR}/config/cloudflare-greenfield.resources.json"
+OUT_FILE="${ROOT_DIR}/config/generated/cloudflare-greenfield.ids.json"
 APPLY=0
 SUFFIX=""
 

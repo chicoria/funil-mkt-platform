@@ -272,7 +272,7 @@ decole-dashboard/
 
 ## D1: novas tabelas a criar
 
-### `ga4_daily_metrics` → `backend/cloudflare/config/d1/ga4_daily_metrics.sql`
+### `ga4_daily_metrics` → `config/d1/ga4_daily_metrics.sql`
 
 ```sql
 CREATE TABLE IF NOT EXISTS ga4_daily_metrics (
@@ -287,7 +287,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_ga4_daily_unique
 ON ga4_daily_metrics(date, product_code, event_name);
 ```
 
-### `meta_daily_metrics` → `backend/cloudflare/config/d1/meta_daily_metrics.sql`
+### `meta_daily_metrics` → `config/d1/meta_daily_metrics.sql`
 
 ```sql
 CREATE TABLE IF NOT EXISTS meta_daily_metrics (
@@ -386,7 +386,7 @@ crons = ["0 4 * * *"]
 
 ```bash
 # Aplicar schemas D1
-bash backend/cloudflare/scripts/apply-d1-schema.sh
+bash scripts/apply-d1-schema.sh
 
 # Build + deploy Pages
 cd decole-dashboard
@@ -429,6 +429,6 @@ Compatibilidade:
 | Acção | Caminho |
 |-------|---------|
 | CRIAR | `decole-dashboard/` (novo repo) |
-| CRIAR | `backend/cloudflare/config/d1/ga4_daily_metrics.sql` |
-| CRIAR | `backend/cloudflare/config/d1/meta_daily_metrics.sql` |
-| MODIFICAR | `backend/cloudflare/scripts/apply-d1-schema.sh` |
+| CRIAR | `config/d1/ga4_daily_metrics.sql` |
+| CRIAR | `config/d1/meta_daily_metrics.sql` |
+| MODIFICAR | `scripts/apply-d1-schema.sh` |

@@ -10,12 +10,12 @@ Refletir no repositorio a semantica final de delivery e eventos web:
 
 ## Arquivos no escopo
 
-- `backend/cloudflare/config/products.catalog.json`
-- `backend/cloudflare/config/DIAGRAMS.md`
-- `backend/cloudflare/config/DASHBOARD.md`
-- `backend/cloudflare/config/ARCHITECTURE.md`
-- `backend/cloudflare/config/diagramas/*.puml`
-- `backend/cloudflare/workers/dashboard-sync/src/index.ts`
+- `config/products.catalog.json`
+- `config/DIAGRAMS.md`
+- `config/DASHBOARD.md`
+- `config/ARCHITECTURE.md`
+- `config/diagramas/*.puml`
+- `workers/dashboard-sync/src/index.ts`
 - `marketing/Estrategia.md`
 - `site/bio-insta.html`
 
@@ -33,8 +33,8 @@ Refletir no repositorio a semantica final de delivery e eventos web:
 ## Validacao executada
 
 - `products.catalog.json` parse OK.
-- `plantuml -checkonly backend/cloudflare/config/diagramas/05-dados-entrada-funil.puml backend/cloudflare/config/diagramas/06-eventos-delivery.puml` OK.
-- `npx tsc --noEmit` em `backend/cloudflare/workers/dashboard-sync` OK.
+- `plantuml -checkonly config/diagramas/05-dados-entrada-funil.puml config/diagramas/06-eventos-delivery.puml` OK.
+- `npx tsc --noEmit` em `workers/dashboard-sync` OK.
 - `rg "button_click|BUTTON_CLICK"` retorna apenas estes tickets, sem referencias ativas no codigo/catalogo/docs operacionais.
 
 ## Gate

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-IDS_FILE="${ROOT_DIR}/backend/cloudflare/config/generated/cloudflare-greenfield.ids.json"
-WRANGLER_DISPATCHER="${ROOT_DIR}/backend/cloudflare/workers/funnel-dispatcher/wrangler.toml"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+IDS_FILE="${ROOT_DIR}/config/generated/cloudflare-greenfield.ids.json"
+WRANGLER_DISPATCHER="${ROOT_DIR}/workers/funnel-dispatcher/wrangler.toml"
 
 usage() {
   cat <<USAGE
@@ -11,7 +11,7 @@ Usage:
   $(basename "$0") [--ids <file>]
 
 Reads generated IDs and applies them to:
-- backend/cloudflare/workers/funnel-dispatcher/wrangler.toml
+- workers/funnel-dispatcher/wrangler.toml
 USAGE
 }
 

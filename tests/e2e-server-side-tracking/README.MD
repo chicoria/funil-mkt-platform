@@ -50,7 +50,7 @@ Este runner automatiza:
 ### Uso rápido
 
 ```bash
-cd backend/cloudflare/tests/e2e-server-side-tracking
+cd tests/e2e-server-side-tracking
 chmod +x run-e2e-server-side-tracking.sh
 ./run-e2e-server-side-tracking.sh
 ```

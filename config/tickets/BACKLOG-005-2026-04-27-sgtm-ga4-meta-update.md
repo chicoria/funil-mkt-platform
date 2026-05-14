@@ -9,10 +9,10 @@ Validacao E2E do fluxo server-side para tracking via Cloudflare + sGTM, com foco
   - `meta_event_name`
   - `meta_test_event_code` e `test_event_code` (quando informado)
 - Script de replay atualizado para suportar injeção de codigo de teste Meta:
-  - `backend/cloudflare/scripts/replay-emit-tracking.mjs`
+  - `scripts/replay-emit-tracking.mjs`
   - flag: `--meta-test-event-code`
 - Suite de validacao E2E criada/organizada em:
-  - `backend/cloudflare/tests/e2e-server-side-tracking/`
+  - `tests/e2e-server-side-tracking/`
   - `run-e2e-server-side-tracking.sh`
   - `verify-ga4-realtime.mjs`
   - `verify-sgtm-meta-delivery.mjs`
@@ -106,7 +106,7 @@ Duplicava `InitiateCheckout` com `BEGIN_CHECKOUT`. Chain agora: `resolve_identit
 
 ### Suite E2E de referencia
 
-`backend/cloudflare/tests/` — 8 cenarios independentes, todos verdes em producao:
+`tests/` — 8 cenarios independentes, todos verdes em producao:
 
 | # | Cenario | Tags |
 |---|---|---|
@@ -121,10 +121,10 @@ Duplicava `InitiateCheckout` com `BEGIN_CHECKOUT`. Chain agora: `resolve_identit
 
 ```bash
 # Regressao rapida (antes de qualquer deploy)
-./backend/cloudflare/tests/run-scenarios.sh --all --skip-sgtm
+./tests/run-scenarios.sh --all --skip-sgtm
 
 # Validacao completa
-./backend/cloudflare/tests/run-scenarios.sh --all --meta-test-event-code TEST15651
+./tests/run-scenarios.sh --all --meta-test-event-code TEST15651
 ```
 
 ### Workers deployados

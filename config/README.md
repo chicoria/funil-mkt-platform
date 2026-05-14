@@ -11,7 +11,7 @@ Antes de finalizar qualquer alteração relacionada aos itens abaixo, verifique 
 - eventos de funil, chains, handlers, workers, filas, KV, D1 ou env vars
 - Brevo: DOI, templates, listas, segmentos, automações, campos de funil ou emails transacionais
 - tracking: GA4, Meta, sGTM, n8n, event names, payloads ou attribution
-- templates em `backend/cloudflare/config/email-templates/`
+- templates em `config/email-templates/`
 
 Se a mudança afeta comportamento operacional documentado no catálogo, atualize o catálogo no mesmo commit.
 
@@ -23,6 +23,6 @@ Se a mudança afeta comportamento operacional documentado no catálogo, atualize
 - Conferir `brevoConfig` dos eventos: `listId`, `doiTemplateId`, `doiRedirectUrl`, `cartAbandonmentTemplateId` e `funnelPrefix`.
 - Conferir `links.checkoutPath`, `links.checkoutOfferPathTemplate` e `links.checkoutBaseUrl`.
 - Conferir `handlers` e `backend.workers` quando houver mudança em Cloudflare Workers.
-- Validar JSON com `node -e "JSON.parse(require('fs').readFileSync('backend/cloudflare/config/products.catalog.json','utf8'))"`.
+- Validar JSON com `node -e "JSON.parse(require('fs').readFileSync('config/products.catalog.json','utf8'))"`.
 
 Quando não for necessário atualizar o catálogo, registre isso no resumo final da tarefa.

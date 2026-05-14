@@ -5,15 +5,15 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const rootDir = resolve(__dirname, "../../..");
-const defaultCatalogPath = resolve(rootDir, "backend/cloudflare/config/products.catalog.json");
+const rootDir = resolve(__dirname, "..");
+const defaultCatalogPath = resolve(rootDir, "config/products.catalog.json");
 const defaultEnvFile = resolve(rootDir, ".env.local");
-const defaultWranglerCwd = resolve(rootDir, "backend/cloudflare/workers/funnel-dispatcher");
+const defaultWranglerCwd = resolve(rootDir, "workers/funnel-dispatcher");
 
 function usage() {
   console.log(`Usage:
-  node backend/cloudflare/scripts/replay-emit-tracking.mjs --event-id <id> [--event-id <id>] [--apply]
-  node backend/cloudflare/scripts/replay-emit-tracking.mjs --since <iso-date> [--limit 20] [--apply]
+  node scripts/replay-emit-tracking.mjs --event-id <id> [--event-id <id>] [--apply]
+  node scripts/replay-emit-tracking.mjs --since <iso-date> [--limit 20] [--apply]
 
 Options:
   --event-id <id>        Replays emit_tracking for a stored event_id. Repeatable.

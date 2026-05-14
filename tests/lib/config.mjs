@@ -4,10 +4,10 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-export const ROOT_DIR = resolve(__dirname, "../../../..");
+export const ROOT_DIR = resolve(__dirname, "../..");
 export const DEFAULT_ENV_FILE = resolve(ROOT_DIR, ".env.local");
-export const DEFAULT_CATALOG_PATH = resolve(ROOT_DIR, "backend/cloudflare/config/products.catalog.json");
-export const DEFAULT_WRANGLER_CWD = resolve(ROOT_DIR, "backend/cloudflare/workers/funnel-dispatcher");
+export const DEFAULT_CATALOG_PATH = resolve(ROOT_DIR, "config/products.catalog.json");
+export const DEFAULT_WRANGLER_CWD = resolve(ROOT_DIR, "workers/funnel-dispatcher");
 
 export function loadEnv(envFile = DEFAULT_ENV_FILE) {
   const env = {};

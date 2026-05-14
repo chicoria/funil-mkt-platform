@@ -16,19 +16,19 @@
  *
  * Exemplos:
  *   # Inspecionar — não altera nada
- *   node backend/cloudflare/scripts/cleanup-transaction.mjs HP4217962122
+ *   node scripts/cleanup-transaction.mjs HP4217962122
  *
  *   # Remover só o PURCHASE_REFUNDED e limpar dedupe (re-testar desde esse evento)
- *   node backend/cloudflare/scripts/cleanup-transaction.mjs HP4217962122 --remove-event PURCHASE_REFUNDED
+ *   node scripts/cleanup-transaction.mjs HP4217962122 --remove-event PURCHASE_REFUNDED
  *
  *   # Reset completo para re-testar desde o início (remove tudo + tokens)
- *   node backend/cloudflare/scripts/cleanup-transaction.mjs HP4217962122 --remove-all-events --delete-tokens --yes
+ *   node scripts/cleanup-transaction.mjs HP4217962122 --remove-all-events --delete-tokens --yes
  *
  *   # Só limpar dedupe para reenvio sem perder historial
- *   node backend/cloudflare/scripts/cleanup-transaction.mjs HP4217962122 --replay
+ *   node scripts/cleanup-transaction.mjs HP4217962122 --replay
  *
  *   # Apagar tokens Postgres (pergunta antes)
- *   node backend/cloudflare/scripts/cleanup-transaction.mjs HP4217962122 --delete-tokens
+ *   node scripts/cleanup-transaction.mjs HP4217962122 --delete-tokens
  */
 
 import { execFileSync } from "node:child_process";
@@ -37,8 +37,8 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const rootDir = resolve(__dirname, "../../..");
-const wranglerDispatcherCwd = resolve(rootDir, "backend/cloudflare/workers/funnel-dispatcher");
+const rootDir = resolve(__dirname, "..");
+const wranglerDispatcherCwd = resolve(rootDir, "workers/funnel-dispatcher");
 
 const DEDUPE_KV_BINDING = "DEDUPE_KV";
 const EVENT_STORE_DB = "decole-d1-event-store";

@@ -23,8 +23,8 @@
  *                        (obtidos via paginação da API Brevo)
  *
  * Uso:
- *   node backend/cloudflare/scripts/cleanup-test-data.mjs           # dry-run
- *   node backend/cloudflare/scripts/cleanup-test-data.mjs --apply   # executa
+ *   node scripts/cleanup-test-data.mjs           # dry-run
+ *   node scripts/cleanup-test-data.mjs --apply   # executa
  */
 
 import { execFileSync } from "node:child_process";
@@ -33,8 +33,8 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const rootDir = resolve(__dirname, "../../..");
-const wranglerCwd = resolve(rootDir, "backend/cloudflare/workers/funnel-dispatcher");
+const rootDir = resolve(__dirname, "..");
+const wranglerCwd = resolve(rootDir, "workers/funnel-dispatcher");
 
 const EVENT_STORE_DB = "decole-d1-event-store";
 const IDENTITY_DB = "decole-d1-identity";

@@ -5,8 +5,8 @@
 # dos workers. Deve ser executado antes de qualquer deploy.
 #
 # Uso:
-#   ./backend/cloudflare/scripts/check-pending-placeholders.sh
-#   ./backend/cloudflare/scripts/check-pending-placeholders.sh --worker funnel-dispatcher
+#   ./scripts/check-pending-placeholders.sh
+#   ./scripts/check-pending-placeholders.sh --worker funnel-dispatcher
 
 set -euo pipefail
 

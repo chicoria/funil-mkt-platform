@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { ROOT_DIR, DEFAULT_ENV_FILE, DEFAULT_WRANGLER_CWD } from "./config.mjs";
 
-const REPLAY_SCRIPT = resolve(ROOT_DIR, "backend/cloudflare/scripts/replay-emit-tracking.mjs");
+const REPLAY_SCRIPT = resolve(ROOT_DIR, "scripts/replay-emit-tracking.mjs");
 
 export async function replayApply(eventId, opts = {}) {
   const { metaTestEventCode = "", envFile = DEFAULT_ENV_FILE, wranglerCwd = DEFAULT_WRANGLER_CWD, dbName = "decole-d1-event-store" } = opts;

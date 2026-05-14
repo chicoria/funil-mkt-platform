@@ -1,0 +1,51 @@
+name: Deploy Incremental - api-hotmart-ingress
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run wrangler deploy --dry-run"
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies (worker)
+        working-directory: workers/api-hotmart-ingress
+        run: npm ci
+
+      - name: Unit tests
+        working-directory: workers/api-hotmart-ingress
+        run: npm test
+
+      - name: Typecheck
+        working-directory: workers/api-hotmart-ingress
+        run: npm run typecheck
+
+      - name: Deploy incremental (pilot)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            bash scripts/deploy-incremental.sh --worker api-hotmart-ingress --dry-run
+          else
+            bash scripts/deploy-incremental.sh --worker api-hotmart-ingress
+          fi

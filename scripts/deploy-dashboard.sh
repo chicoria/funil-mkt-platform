@@ -5,11 +5,11 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# scripts/ → cloudflare/ → backend/ → monorepo root
-MONOREPO="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-DASHBOARD="$(cd "$MONOREPO/../../decole-dashboard" && pwd)"
-ENV_LOCAL="$MONOREPO/.env.local"
-BACKEND="$MONOREPO/backend/cloudflare"
+# Repo root = parent of scripts/ (funil-mkt-platform)
+FUNIL_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+DASHBOARD="$(cd "$FUNIL_ROOT/../decole-dashboard" && pwd)"
+ENV_LOCAL="$FUNIL_ROOT/.env.local"
+BACKEND="$FUNIL_ROOT"
 ROOT="$DASHBOARD"
 
 GREEN='\033[0;32m'
