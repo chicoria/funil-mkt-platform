@@ -5,6 +5,8 @@ workers_dev = false
 routes = [
   "api.decolesuacarreiraesg.com.br/funnel/*",
   "api.decolesuacarreiraesg.com.br/webhooks/v1/planovoo/app/event"
+  # SUPERARE (futuro, Slice 2.7 multi-tenant): adicionar quando zona DNS estiver ativa.
+  # "api.superare.com.br/funnel/*"
 ]
 
 [[queues.producers]]
@@ -13,6 +15,7 @@ queue = "decole-q-funnel-events"
 
 [vars]
 ALLOWED_ORIGINS = "https://decolesuacarreiraesg.com.br"
+DEFAULT_TENANT_ID = "decole"
 
 [observability]
 enabled = true

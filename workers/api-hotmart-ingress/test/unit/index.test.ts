@@ -113,4 +113,49 @@ describe("api-hotmart-ingress", () => {
     const res = await worker.fetch(req, makeEnv({ HOTMART_WEBHOOK_TOKEN: "secret" }));
     expect(res.status).toBe(401);
   });
+
+  it("popula tenant_id por hostname conhecido (decole)", async () => {
+    const send = vi.fn(async () => undefined);
+    const req = new Request("https://api.decolesuacarreiraesg.com.br/webhooks/v1/planovoo/hotmart/purchase", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: "evt-tenant-1", event: "PURCHASE_APPROVED", data: { buyer: { email: "x@y.com" } } }),
+    });
+
+    const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send } }));
+    expect(res.status).toBe(202);
+    const firstCall = send.mock.calls[0] as unknown[] | undefined;
+    const payload = (firstCall?.[0] ?? {}) as { tenant_id?: string; product_code?: string };
+    expect(payload.tenant_id).toBe("decole");
+  });
+
+  it("aplica fallback DEFAULT_TENANT_ID para hostname desconhecido", async () => {
+    const send = vi.fn(async () => undefined);
+    const req = new Request("https://preview.workers.dev/webhooks/v1/planovoo/hotmart/purchase", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: "evt-tenant-2", event: "PURCHASE_APPROVED", data: { buyer: { email: "x@y.com" } } }),
+    });
+
+    const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send }, DEFAULT_TENANT_ID: "decole" }));
+    expect(res.status).toBe(202);
+    const firstCall = send.mock.calls[0] as unknown[] | undefined;
+    const payload = (firstCall?.[0] ?? {}) as { tenant_id?: string };
+    expect(payload.tenant_id).toBe("decole");
+  });
+
+  it("usa fallback 'decole' quando DEFAULT_TENANT_ID e hostname desconhecidos", async () => {
+    const send = vi.fn(async () => undefined);
+    const req = new Request("https://preview.workers.dev/webhooks/v1/planovoo/hotmart/purchase", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: "evt-tenant-3", event: "PURCHASE_APPROVED", data: { buyer: { email: "x@y.com" } } }),
+    });
+
+    const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send } }));
+    expect(res.status).toBe(202);
+    const firstCall = send.mock.calls[0] as unknown[] | undefined;
+    const payload = (firstCall?.[0] ?? {}) as { tenant_id?: string };
+    expect(payload.tenant_id).toBe("decole");
+  });
 });

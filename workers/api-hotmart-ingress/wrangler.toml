@@ -6,7 +6,12 @@ routes = [
   "api.decolesuacarreiraesg.com.br/webhooks/v1/decole-esg/hotmart/*",
   "api.decolesuacarreiraesg.com.br/webhooks/v1/planovoo/hotmart/*",
   "api.decolesuacarreiraesg.com.br/webhooks/v1/plano-de-voo/hotmart/*"
+  # SUPERARE (futuro, Slice 2.7 multi-tenant): adicionar quando zona DNS estiver ativa.
+  # "api.superare.com.br/webhooks/v1/*/hotmart/*"
 ]
+
+[vars]
+DEFAULT_TENANT_ID = "decole"
 
 [[queues.producers]]
 binding = "FUNNEL_EVENTS"

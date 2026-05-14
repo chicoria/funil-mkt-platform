@@ -1,4 +1,6 @@
 import { fromHotmartWebhook } from "../../../packages/shared/src/event-normalizer";
+import { resolveTenantIdFromHostname } from "../../../packages/shared/src/tenant-from-hostname";
+import bundledCatalog from "../../../config/products.catalog.json";
 
 interface QueueBinding {
   send(message: unknown): Promise<void>;
@@ -7,6 +9,7 @@ interface QueueBinding {
 interface Env {
   FUNNEL_EVENTS?: QueueBinding;
   HOTMART_WEBHOOK_TOKEN?: string;
+  DEFAULT_TENANT_ID?: string;
 }
 
 function asString(value: unknown): string {
@@ -110,11 +113,16 @@ export default {
     raw.event = incomingEvent;
 
     const normalized = fromHotmartWebhook(raw, productCodeFromSlug(parsed.productSlug));
+    const hostname = new URL(request.url).hostname;
+    const tenantId = resolveTenantIdFromHostname(hostname, bundledCatalog, env.DEFAULT_TENANT_ID || "decole");
+    normalized.tenant_id = tenantId;
     await env.FUNNEL_EVENTS.send(normalized);
     logIngress({
       stage: "queued",
       pathname,
+      hostname,
       product_slug: parsed.productSlug,
+      tenant_id: tenantId,
       event_id: normalized.event_id,
       event_type: normalized.event_type,
       product_code: normalized.product_code,

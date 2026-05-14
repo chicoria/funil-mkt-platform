@@ -100,4 +100,46 @@ describe("api-funnel-ingress", () => {
     const evt = send.mock.calls[0]?.[0] as { attribution?: { client_ip?: string } };
     expect(evt?.attribution?.client_ip).toBe("5.6.7.8");
   });
+
+  it("popula tenant_id em /funnel/precheckout por hostname conhecido", async () => {
+    const send = vi.fn(async () => undefined);
+    const req = new Request("https://api.decolesuacarreiraesg.com.br/funnel/precheckout", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "lead@example.com", product_code: "DECOLE_PLANOVOO" }),
+    });
+
+    const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send } }));
+    expect(res.status).toBe(202);
+    const evt = send.mock.calls[0]?.[0] as { tenant_id?: string };
+    expect(evt?.tenant_id).toBe("decole");
+  });
+
+  it("popula tenant_id em /funnel/event", async () => {
+    const send = vi.fn(async () => undefined);
+    const req = new Request("https://decolesuacarreiraesg.com.br/funnel/event", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ event: "PAGE_VIEW", product_code: "DECOLE_PLANOVOO" }),
+    });
+
+    const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send } }));
+    expect(res.status).toBe(202);
+    const evt = send.mock.calls[0]?.[0] as { tenant_id?: string };
+    expect(evt?.tenant_id).toBe("decole");
+  });
+
+  it("popula tenant_id em /webhooks/v1/planovoo/app/event", async () => {
+    const send = vi.fn(async () => undefined);
+    const req = new Request("https://api.decolesuacarreiraesg.com.br/webhooks/v1/planovoo/app/event", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ event: "PLAN_READY", email: "x@y.com" }),
+    });
+
+    const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send } }));
+    expect(res.status).toBe(202);
+    const evt = send.mock.calls[0]?.[0] as { tenant_id?: string };
+    expect(evt?.tenant_id).toBe("decole");
+  });
 });
