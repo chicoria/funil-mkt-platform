@@ -9,14 +9,17 @@ jobs:
     permissions:
       contents: read
 
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node 24
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
 
       - name: Install wrangler workspace deps
         working-directory: workers/funnel-dispatcher
