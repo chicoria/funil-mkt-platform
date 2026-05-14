@@ -114,6 +114,8 @@ export default {
 
     const normalized = fromHotmartWebhook(raw, productCodeFromSlug(parsed.productSlug));
     const hostname = new URL(request.url).hostname;
+    // Intencional: hotmart é S2S com HMAC; não honramos tenant_id do payload (Hotmart não envia).
+    // Diverge de api-funnel-ingress, que aceita payload.tenant_id como fallback para LPs em preview.
     const tenantId = resolveTenantIdFromHostname(hostname, bundledCatalog, env.DEFAULT_TENANT_ID || "decole");
     normalized.tenant_id = tenantId;
     await env.FUNNEL_EVENTS.send(normalized);

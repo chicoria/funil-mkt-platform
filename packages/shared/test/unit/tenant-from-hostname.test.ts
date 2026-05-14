@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { resolveTenantIdFromHostname } from "../../src/tenant-from-hostname";
+import {
+  resolveTenantIdFromHostname,
+  tryResolveTenantIdFromHostname,
+} from "../../src/tenant-from-hostname";
 
 const catalog = {
   tenants: {
@@ -48,5 +51,19 @@ describe("resolveTenantIdFromHostname", () => {
   it("returns fallback when tenant has no domains array", () => {
     const c = { tenants: { decole: {} } };
     expect(resolveTenantIdFromHostname("api.decolesuacarreiraesg.com.br", c)).toBe("decole");
+  });
+});
+
+describe("tryResolveTenantIdFromHostname (no fallback)", () => {
+  it("returns tenant_id when hostname matches", () => {
+    expect(tryResolveTenantIdFromHostname("api.superare.com.br", catalog)).toBe("superare");
+  });
+
+  it("returns undefined for unknown hostname (no fallback applied)", () => {
+    expect(tryResolveTenantIdFromHostname("preview.workers.dev", catalog)).toBeUndefined();
+  });
+
+  it("returns undefined when catalog has no tenants", () => {
+    expect(tryResolveTenantIdFromHostname("anywhere.com", {})).toBeUndefined();
   });
 });

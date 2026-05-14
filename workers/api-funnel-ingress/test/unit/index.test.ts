@@ -142,4 +142,60 @@ describe("api-funnel-ingress", () => {
     const evt = send.mock.calls[0]?.[0] as { tenant_id?: string };
     expect(evt?.tenant_id).toBe("decole");
   });
+
+  it("hostname tem prioridade sobre tenant_id do payload", async () => {
+    const send = vi.fn(async () => undefined);
+    const req = new Request("https://api.decolesuacarreiraesg.com.br/funnel/precheckout", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "x@y.com", product_code: "DECOLE_PLANOVOO", tenant_id: "superare" }),
+    });
+
+    const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send } }));
+    expect(res.status).toBe(202);
+    const evt = send.mock.calls[0]?.[0] as { tenant_id?: string };
+    expect(evt?.tenant_id).toBe("decole");
+  });
+
+  it("usa tenant_id do payload quando hostname desconhecido", async () => {
+    const send = vi.fn(async () => undefined);
+    const req = new Request("https://preview.pages.dev/funnel/precheckout", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "x@y.com", product_code: "DECOLE_PLANOVOO", tenant_id: "decole" }),
+    });
+
+    const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send }, ALLOWED_ORIGINS: "" }));
+    expect(res.status).toBe(202);
+    const evt = send.mock.calls[0]?.[0] as { tenant_id?: string };
+    expect(evt?.tenant_id).toBe("decole");
+  });
+
+  it("ignora payload.tenant_id desconhecido e cai no DEFAULT_TENANT_ID", async () => {
+    const send = vi.fn(async () => undefined);
+    const req = new Request("https://preview.pages.dev/funnel/precheckout", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "x@y.com", product_code: "DECOLE_PLANOVOO", tenant_id: "evil-tenant" }),
+    });
+
+    const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send }, ALLOWED_ORIGINS: "", DEFAULT_TENANT_ID: "decole" }));
+    expect(res.status).toBe(202);
+    const evt = send.mock.calls[0]?.[0] as { tenant_id?: string };
+    expect(evt?.tenant_id).toBe("decole");
+  });
+
+  it("hostname tem prioridade sobre payload em /funnel/event também", async () => {
+    const send = vi.fn(async () => undefined);
+    const req = new Request("https://api.decolesuacarreiraesg.com.br/funnel/event", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ event: "PAGE_VIEW", product_code: "DECOLE_PLANOVOO", tenant_id: "superare" }),
+    });
+
+    const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send } }));
+    expect(res.status).toBe(202);
+    const evt = send.mock.calls[0]?.[0] as { tenant_id?: string };
+    expect(evt?.tenant_id).toBe("decole");
+  });
 });

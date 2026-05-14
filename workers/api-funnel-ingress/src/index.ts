@@ -1,5 +1,5 @@
 import { fromAppEvent, fromBrowserTracking, fromPrecheckoutForm } from "../../../packages/shared/src/event-normalizer";
-import { resolveTenantIdFromHostname } from "../../../packages/shared/src/tenant-from-hostname";
+import { tryResolveTenantIdFromHostname } from "../../../packages/shared/src/tenant-from-hostname";
 import bundledCatalog from "../../../config/products.catalog.json";
 import type { FunnelEvent } from "../../../packages/shared/src/funnel-event";
 
@@ -14,9 +14,14 @@ interface Env {
   DEFAULT_TENANT_ID?: string;
 }
 
-function withTenantId(event: FunnelEvent, request: Request, env: Env): FunnelEvent {
+const KNOWN_TENANT_IDS = new Set(Object.keys(bundledCatalog.tenants || {}));
+
+function withTenantId(event: FunnelEvent, request: Request, env: Env, payload: Record<string, unknown>): FunnelEvent {
   const hostname = new URL(request.url).hostname;
-  event.tenant_id = resolveTenantIdFromHostname(hostname, bundledCatalog, env.DEFAULT_TENANT_ID || "decole");
+  const fromHostname = tryResolveTenantIdFromHostname(hostname, bundledCatalog);
+  const candidate = typeof payload.tenant_id === "string" ? payload.tenant_id.trim() : "";
+  const fromPayload = candidate && KNOWN_TENANT_IDS.has(candidate) ? candidate : undefined;
+  event.tenant_id = fromHostname ?? fromPayload ?? env.DEFAULT_TENANT_ID ?? "decole";
   return event;
 }
 
@@ -155,7 +160,7 @@ export default {
     if (pathname === "/funnel/precheckout") {
       const clientIp = request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "";
       if (clientIp) payload.client_ip = clientIp;
-      const event = withTenantId(fromPrecheckoutForm(payload, productCodeFromBody(payload, "UNKNOWN_PRODUCT")), request, env);
+      const event = withTenantId(fromPrecheckoutForm(payload, productCodeFromBody(payload, "UNKNOWN_PRODUCT")), request, env, payload);
       await env.FUNNEL_EVENTS.send(event);
       logIngress({
         stage: "queued",
@@ -170,7 +175,7 @@ export default {
     }
 
     if (pathname === "/funnel/event") {
-      const event = withTenantId(fromBrowserTracking(payload, productCodeFromBody(payload, "UNKNOWN_PRODUCT")), request, env);
+      const event = withTenantId(fromBrowserTracking(payload, productCodeFromBody(payload, "UNKNOWN_PRODUCT")), request, env, payload);
       await env.FUNNEL_EVENTS.send(event);
       logIngress({
         stage: "queued",
@@ -189,7 +194,7 @@ export default {
         logIngress({ stage: "blocked", pathname, error: "unauthorized", status: 401 });
         return withCors(jsonResponse({ ok: false, error: "unauthorized" }, 401), request, env);
       }
-      const event = withTenantId(fromAppEvent(payload, productCodeFromBody(payload, "DECOLE_PLANOVOO")), request, env);
+      const event = withTenantId(fromAppEvent(payload, productCodeFromBody(payload, "DECOLE_PLANOVOO")), request, env, payload);
       await env.FUNNEL_EVENTS.send(event);
       logIngress({
         stage: "queued",
