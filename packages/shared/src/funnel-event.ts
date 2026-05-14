@@ -28,6 +28,7 @@ export interface FunnelLead {
 export interface FunnelEvent {
   event_id: string;
   event_type: string;
+  tenant_id?: string;
   product_code: string;
   source: FunnelSource;
   occurred_at: string;

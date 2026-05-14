@@ -7,6 +7,18 @@ import {
   callPlanoVooProtest,
 } from "../../src/handlers/call-plano-voo-api";
 
+type FetchMock = typeof fetch & {
+  mock: { calls: Array<[RequestInfo | URL, RequestInit?]> };
+};
+
+function getFetchCall(fetchMock: FetchMock, index: number): [string, RequestInit] {
+  const call = fetchMock.mock.calls[index];
+  expect(call).toBeDefined();
+  const [input, init] = call as [RequestInfo | URL, RequestInit?];
+  expect(init).toBeDefined();
+  return [String(input), init as RequestInit];
+}
+
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
@@ -49,11 +61,10 @@ function makeEnv(overrides: Record<string, unknown> = {}): DispatcherEnv {
  * for API calls (first call) and email calls (second call).
  */
 function mockFetch(apiResponseBody: Record<string, unknown>, apiStatus = 200) {
-  let callCount = 0;
-  return vi.fn(async (url: string) => {
-    callCount++;
+  return vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
     // First call is the Plano de Voo API, subsequent calls are Brevo email
-    if (typeof url === "string" && url.includes("brevo.com")) {
+    if (url.includes("brevo.com")) {
       return new Response(JSON.stringify({ messageId: "msg-1" }), {
         status: 201,
         headers: { "content-type": "application/json" },
@@ -63,7 +74,7 @@ function mockFetch(apiResponseBody: Record<string, unknown>, apiStatus = 200) {
       status: apiStatus,
       headers: { "content-type": "application/json" },
     });
-  });
+  }) as unknown as FetchMock;
 }
 
 /** Creates a fetch mock that only responds to API calls (no email expected) */
@@ -73,7 +84,7 @@ function mockFetchApiOnly(responseBody: Record<string, unknown>, status = 200) {
       status,
       headers: { "content-type": "application/json" },
     })
-  );
+  ) as unknown as FetchMock;
 }
 
 // ---------------------------------------------------------------------------
@@ -90,12 +101,12 @@ describe("callPlanoVooPurchase", () => {
 
     // First call is API, second is Brevo email
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    const [url, init] = fetchMock.mock.calls[0];
+    const [url, init] = getFetchCall(fetchMock, 0);
     expect(url).toBe("https://app.decole.test/api/hooks/purchase");
     expect(init.method).toBe("POST");
-    expect(init.headers["x-signature"]).toMatch(/^sha256=[0-9a-f]{64}$/);
+    expect((init.headers as Record<string, string>)["x-signature"]).toMatch(/^sha256=[0-9a-f]{64}$/);
 
-    const body = JSON.parse(init.body);
+    const body = JSON.parse(String(init.body));
     expect(body).toEqual({
       email: "buyer@example.com",
       nome: "Maria Silva",
@@ -115,11 +126,11 @@ describe("callPlanoVooPurchase", () => {
     await callPlanoVooPurchase(event, env, fetchMock);
 
     // Second call is the Brevo email
-    const [emailUrl, emailInit] = fetchMock.mock.calls[1];
+    const [emailUrl, emailInit] = getFetchCall(fetchMock, 1);
     expect(emailUrl).toBe("https://api.brevo.com/v3/smtp/email");
     expect(emailInit.method).toBe("POST");
 
-    const emailBody = JSON.parse(emailInit.body);
+    const emailBody = JSON.parse(String(emailInit.body));
     expect(emailBody.to).toEqual([{ email: "buyer@example.com" }]);
     expect(emailBody.templateId).toBe(12); // default purchaseLinkTemplateId
     expect(emailBody.params.primeiroNome).toBe("Maria");
@@ -182,7 +193,8 @@ describe("callPlanoVooPurchase", () => {
 
     await callPlanoVooPurchase(event, makeEnv(), fetchMock);
 
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const [, init] = getFetchCall(fetchMock, 0);
+    const body = JSON.parse(String(init.body));
     expect(body.email).toBe("flat@example.com");
     expect(body.transacao).toBe("TRX-FLAT");
     expect(body.pagamento).toBe("PIX");
@@ -194,19 +206,21 @@ describe("callPlanoVooPurchase", () => {
 
     await callPlanoVooPurchase(makeEvent(), env, fetchMock);
 
-    expect(fetchMock.mock.calls[0][0]).toBe("https://app.decole.test/api/hooks/purchase");
+    const [url] = getFetchCall(fetchMock, 0);
+    expect(url).toBe("https://app.decole.test/api/hooks/purchase");
   });
 
   it("throws when Brevo email fails (fatal for queue retry)", async () => {
-    const fetchMock = vi.fn(async (url: string) => {
-      if (typeof url === "string" && url.includes("brevo.com")) {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("brevo.com")) {
         return new Response("rate limited", { status: 429 });
       }
       return new Response(JSON.stringify({ token: "t" }), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
-    });
+    }) as unknown as FetchMock;
 
     await expect(
       callPlanoVooPurchase(makeEvent(), makeEnv(), fetchMock)
@@ -220,7 +234,8 @@ describe("callPlanoVooPurchase", () => {
 
     await callPlanoVooPurchase(event, makeEnv(), fetchMock);
 
-    const emailBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+    const [, emailInit] = getFetchCall(fetchMock, 1);
+    const emailBody = JSON.parse(String(emailInit.body));
     expect(emailBody.params.primeiroNome).toBe("Maria");
   });
 
@@ -238,7 +253,8 @@ describe("callPlanoVooPurchase", () => {
 
     await callPlanoVooPurchase(event, makeEnv(), fetchMock);
 
-    const emailBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+    const [, emailInit] = getFetchCall(fetchMock, 1);
+    const emailBody = JSON.parse(String(emailInit.body));
     expect(emailBody.params.primeiroNome).toBe("Estudante");
   });
 });
@@ -255,17 +271,17 @@ describe("callPlanoVooRefund", () => {
     await callPlanoVooRefund(event, makeEnv(), fetchMock);
 
     // First call: API
-    const [url, init] = fetchMock.mock.calls[0];
+    const [url, init] = getFetchCall(fetchMock, 0);
     expect(url).toBe("https://app.decole.test/api/hooks/refund");
-    const body = JSON.parse(init.body);
+    const body = JSON.parse(String(init.body));
     expect(body).toEqual({ transacao: "TRX-100" });
-    expect(init.headers["x-signature"]).toMatch(/^sha256=[0-9a-f]{64}$/);
+    expect((init.headers as Record<string, string>)["x-signature"]).toMatch(/^sha256=[0-9a-f]{64}$/);
 
     // Second call: Brevo email
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    const [emailUrl, emailInit] = fetchMock.mock.calls[1];
+    const [emailUrl, emailInit] = getFetchCall(fetchMock, 1);
     expect(emailUrl).toBe("https://api.brevo.com/v3/smtp/email");
-    const emailBody = JSON.parse(emailInit.body);
+    const emailBody = JSON.parse(String(emailInit.body));
     expect(emailBody.templateId).toBe(13); // default refundedTemplateId
     expect(emailBody.params.primeiroNome).toBe("Maria");
     expect(emailBody.params.transacao).toBe("TRX-100");
@@ -281,7 +297,7 @@ describe("callPlanoVooRefund", () => {
 
     // Only the email call (no API call because transacao is empty)
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [emailUrl] = fetchMock.mock.calls[0];
+    const [emailUrl] = getFetchCall(fetchMock, 0);
     expect(emailUrl).toBe("https://api.brevo.com/v3/smtp/email");
   });
 
@@ -300,7 +316,8 @@ describe("callPlanoVooRefund", () => {
 
     await callPlanoVooRefund(event, makeEnv(), fetchMock);
 
-    const emailBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+    const [, emailInit] = getFetchCall(fetchMock, 1);
+    const emailBody = JSON.parse(String(emailInit.body));
     // valor is 197 → should be formatted as BRL
     expect(emailBody.params.valor).toMatch(/197/);
     // data should be a formatted date
@@ -320,14 +337,15 @@ describe("callPlanoVooProtest", () => {
     await callPlanoVooProtest(event, makeEnv(), fetchMock);
 
     // First call: API
-    const [url, init] = fetchMock.mock.calls[0];
+    const [url, init] = getFetchCall(fetchMock, 0);
     expect(url).toBe("https://app.decole.test/api/hooks/protest");
-    const body = JSON.parse(init.body);
+    const body = JSON.parse(String(init.body));
     expect(body).toEqual({ transacao: "TRX-100" });
 
     // Second call: Brevo email
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    const emailBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+    const [, emailInit] = getFetchCall(fetchMock, 1);
+    const emailBody = JSON.parse(String(emailInit.body));
     expect(emailBody.templateId).toBe(14); // default protestTemplateId
   });
 
@@ -340,7 +358,7 @@ describe("callPlanoVooProtest", () => {
     await callPlanoVooProtest(event, makeEnv(), fetchMock);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [emailUrl] = fetchMock.mock.calls[0];
+    const [emailUrl] = getFetchCall(fetchMock, 0);
     expect(emailUrl).toBe("https://api.brevo.com/v3/smtp/email");
   });
 

@@ -115,6 +115,27 @@ describe("mapValue with filters", () => {
   it("trims whitespace around filter name", () => {
     expect(mapValue(event, "$.buyer.name |  first_name ")).toBe("João");
   });
+
+  it("supports fallback expressions with ??", () => {
+    expect(mapValue({ buyer: { email: "flat@example.com" } }, "$.data.buyer.email ?? $.buyer.email")).toBe("flat@example.com");
+  });
+
+  it("applies filters inside fallback expressions", () => {
+    expect(
+      mapValue(
+        { buyer: { name: "Ana Silva" } },
+        "$.data.buyer.name | first_name ?? $.buyer.name | first_name"
+      )
+    ).toBe("Ana");
+  });
+
+  it("formats numbers as BRL", () => {
+    expect(mapValue({ price: { value: 197 } }, "$.price.value | format_brl")).toBe("R$ 197,00");
+  });
+
+  it("formats ISO strings as Brazilian dates in Sao Paulo timezone", () => {
+    expect(mapValue({ occurred_at: "2026-05-14T12:00:00.000Z" }, "$.occurred_at | date_br")).toBe("14/05/2026");
+  });
 });
 
 // ---------------------------------------------------------------------------

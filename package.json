@@ -1,0 +1,11 @@
+{
+  "name": "decole-cloudflare",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "tail":          "bash scripts/tail-workers.sh",
+    "tail:dispatcher": "bash scripts/tail-workers.sh decole-funnel-dispatcher",
+    "tail:hotmart":  "bash scripts/tail-workers.sh decole-api-hotmart-ingress",
+    "check-config":  "bash scripts/check-pending-placeholders.sh"
+  }
+}

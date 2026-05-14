@@ -1,12 +1,15 @@
 import { HandlerContext } from "../handler-context";
-import { mapPayload } from "../payload-mapper";
+import { mapValue } from "../payload-mapper";
 
 export interface ProductApiConfig {
-  url: string;
+  url?: string;
+  url_env?: string;
+  path?: string;
   method: string;
   hmac_secret_env: string;
   request_mapping: Record<string, string>;
   response_key?: string;
+  skip_if_missing?: string[];
 }
 
 async function signHmac(body: string, secret: string): Promise<string> {
@@ -25,6 +28,36 @@ async function signHmac(body: string, secret: string): Promise<string> {
   return `sha256=${hex}`;
 }
 
+function mapEventPayload(ctx: HandlerContext, mapping: Record<string, string>): Record<string, unknown> {
+  const safeEventFields = { lead: ctx.event.lead };
+  const result: Record<string, unknown> = {};
+  for (const [key, expr] of Object.entries(mapping)) {
+    const payloadValue = mapValue(ctx.event.payload, expr);
+    const value = payloadValue !== null ? payloadValue : mapValue(safeEventFields, expr);
+    if (value !== null) {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+function resolveProductApiUrl(ctx: HandlerContext, config: ProductApiConfig): string {
+  if (config.url) return config.url;
+
+  const baseUrl =
+    config.url_env && typeof ctx.env[config.url_env] === "string"
+      ? String(ctx.env[config.url_env]).replace(/\/$/, "")
+      : "";
+  if (!baseUrl) {
+    throw new Error(
+      `call_product_api: missing url or env var ${config.url_env || "product_api.url_env"}`
+    );
+  }
+
+  const path = config.path || "";
+  return `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 export async function callProductApi(
   ctx: HandlerContext,
   config: ProductApiConfig,
@@ -35,11 +68,30 @@ export async function callProductApi(
     throw new Error(`call_product_api: missing env var ${config.hmac_secret_env}`);
   }
 
-  const mapped = mapPayload(ctx.event.payload, config.request_mapping);
+  const mapped = mapEventPayload(ctx, config.request_mapping);
+  const missing = (config.skip_if_missing || []).filter((key) => {
+    const value = mapped[key];
+    return value === undefined || value === null || value === "";
+  });
+  if (missing.length) {
+    console.log(
+      JSON.stringify({
+        stage: "handler_skip",
+        handler: "call_product_api",
+        reason: "missing_required_mapping",
+        missing,
+        event_id: ctx.event.event_id,
+        tenant: ctx.tenant_id,
+      })
+    );
+    return;
+  }
+
   const body = JSON.stringify(mapped);
   const signature = await signHmac(body, secret);
+  const url = resolveProductApiUrl(ctx, config);
 
-  const response = await fetchImpl(config.url, {
+  const response = await fetchImpl(url, {
     method: config.method,
     headers: {
       "content-type": "application/json",

@@ -1,11 +1,23 @@
 import { FunnelEvent } from "../../../../packages/shared/src/funnel-event";
 import bundledCatalogJson from "../../../../config/products.catalog.json";
-import { DispatcherEnv, HandlerFn } from "../dispatcher";
 import {
-  callPlanoVooPurchase,
-  callPlanoVooRefund,
-  callPlanoVooProtest,
-} from "./call-plano-voo-api";
+  DispatcherEnv,
+  HandlerFn,
+  HANDLER_RESULT_PAYLOAD_KEY,
+  getHandlerResult,
+  setHandlerResult,
+} from "../dispatcher";
+import {
+  isConfiguredCatalog,
+  parseCatalog,
+  resolveCatalogEvent as resolveCatalogEventFromCatalog,
+  resolveCatalogProduct,
+  type CatalogTenantConfig,
+  type ParsedCatalog,
+} from "../catalog-adapter";
+import { HandlerContext } from "../handler-context";
+import { callProductApi, type ProductApiConfig } from "./call-product-api";
+import { sendTemplateEmail, type TemplateEmailConfig } from "./send-template-email";
 
 const BREVO_BASE_URL = "https://api.brevo.com/v3";
 const LINKS_BASE_URL = "https://links.decolesuacarreiraesg.com.br";
@@ -59,6 +71,8 @@ interface CatalogEventConfig {
     doiRedirectUrl?: string;
     cartAbandonmentTemplateId?: string;
   };
+  product_api?: ProductApiConfig;
+  template_email?: TemplateEmailConfig;
 }
 
 interface CatalogProductConfig {
@@ -113,10 +127,6 @@ interface CatalogProductConfig {
   funnelEventArchitecture?: {
     events?: CatalogEventConfig[];
   };
-}
-
-interface ParsedCatalog {
-  products?: Record<string, CatalogProductConfig>;
 }
 
 const bundledCatalog = bundledCatalogJson as ParsedCatalog;
@@ -511,36 +521,18 @@ async function postJson(url: string, init: RequestInit): Promise<void> {
   }
 }
 
-function parseCatalog(raw: string | undefined): ParsedCatalog {
-  if (!raw) return {};
-  try {
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object") return parsed as ParsedCatalog;
-    return {};
-  } catch {
-    return {};
-  }
-}
-
 function getCatalog(env: DispatcherEnv): ParsedCatalog {
   const fromEnv = parseCatalog(env.CATALOG_JSON);
-  if (fromEnv.products) return fromEnv;
+  if (isConfiguredCatalog(fromEnv)) return fromEnv;
   return bundledCatalog;
 }
 
-function getCatalogProduct(catalog: ParsedCatalog, productCode: string): CatalogProductConfig | undefined {
-  const products = catalog.products || {};
-  const direct = products[productCode];
-  if (direct) return direct;
-
-  const normalizedProductCode = productCode.toUpperCase();
-  return Object.values(products).find((product) =>
-    (product.aliases || []).some((alias) => alias.toUpperCase() === normalizedProductCode)
-  );
+function getCatalogProduct(catalog: ParsedCatalog, event: FunnelEvent): CatalogProductConfig | undefined {
+  return resolveCatalogProduct(catalog, event)?.product as CatalogProductConfig | undefined;
 }
 
 function resolveTrackingConfig(event: FunnelEvent, env: DispatcherEnv): TrackingDestinationConfig {
-  const product = getCatalogProduct(getCatalog(env), event.product_code);
+  const product = getCatalogProduct(getCatalog(env), event);
   const tracking = product?.tracking;
   const fallbackMeta = product?.meta;
   const sgtmEndpointUrl =
@@ -567,20 +559,12 @@ function resolveTrackingConfig(event: FunnelEvent, env: DispatcherEnv): Tracking
 }
 
 function resolveCatalogEvent(event: FunnelEvent, env: DispatcherEnv): CatalogEventConfig | null {
-  const product = getCatalogProduct(getCatalog(env), event.product_code);
-  const events = product?.funnelEventArchitecture?.events || [];
-  const target = event.event_type.toUpperCase();
-  return (
-    events.find((entry) => {
-      const candidate = asString(entry.eventType || entry.id).toUpperCase();
-      return candidate === target;
-    }) || null
-  );
+  return resolveCatalogEventFromCatalog(getCatalog(env), event, event.event_type) as CatalogEventConfig | null;
 }
 
 function resolveDoiRedirectionUrl(event: FunnelEvent, env: DispatcherEnv): string {
   const catalog = getCatalog(env);
-  const product = getCatalogProduct(catalog, event.product_code);
+  const product = getCatalogProduct(catalog, event);
   const fromEventConfig = asAbsoluteHttpUrl(resolveCatalogEvent(event, env)?.brevoConfig?.doiRedirectUrl);
   if (fromEventConfig) return fromEventConfig;
 
@@ -592,7 +576,7 @@ function resolveDoiRedirectionUrl(event: FunnelEvent, env: DispatcherEnv): strin
 
 function resolveDoiListIds(event: FunnelEvent, env: DispatcherEnv): number[] {
   const catalog = getCatalog(env);
-  const product = getCatalogProduct(catalog, event.product_code);
+  const product = getCatalogProduct(catalog, event);
   const eventConfig = resolveCatalogEvent(event, env)?.brevoConfig;
   return normalizeUniqueIds([
     eventConfig?.listIds,
@@ -606,7 +590,7 @@ function resolveDoiTemplateId(event: FunnelEvent, env: DispatcherEnv): string {
   const fromEventConfig = asString(resolveCatalogEvent(event, env)?.brevoConfig?.doiTemplateId);
   if (fromEventConfig) return fromEventConfig;
 
-  const product = getCatalogProduct(getCatalog(env), event.product_code);
+  const product = getCatalogProduct(getCatalog(env), event);
   const fromProductConfig = asString(product?.brevo?.templates?.doi?.id);
   if (fromProductConfig) return fromProductConfig;
 
@@ -779,13 +763,7 @@ function purchaseTransactionFromPayload(payload: Record<string, unknown>): strin
 
 function resolveCanonicalProductCode(event: FunnelEvent, env: DispatcherEnv): string {
   const rawProductCode = asString(event.product_code).toUpperCase() || "UNKNOWN_PRODUCT";
-  const products = getCatalog(env).products || {};
-  if (products[rawProductCode]) return rawProductCode;
-
-  const matchedEntry = Object.entries(products).find(([, product]) =>
-    (product.aliases || []).some((alias) => alias.toUpperCase() === rawProductCode)
-  );
-  return matchedEntry?.[0] || rawProductCode;
+  return resolveCatalogProduct(getCatalog(env), event)?.product_code || rawProductCode;
 }
 
 async function buildCheckoutRecoveryIndexKeys(
@@ -1022,7 +1000,7 @@ async function buildCheckoutRecoveryLink(
 async function resolveCartAbandonmentParams(event: FunnelEvent, env: DispatcherEnv): Promise<Record<string, unknown>> {
   const payload = event.payload || {};
   const catalog = getCatalog(env);
-  const product = getCatalogProduct(catalog, event.product_code);
+  const product = getCatalogProduct(catalog, event);
   const fallbackCheckoutUrl =
     asString(payload.checkout_url) ||
     asString(payload.checkoutUrl) ||
@@ -1061,7 +1039,7 @@ async function resolveCartAbandonmentParams(event: FunnelEvent, env: DispatcherE
 }
 
 function resolveBrevoFunnelFields(event: FunnelEvent, env: DispatcherEnv): BrevoFunnelFieldsConfig | null {
-  const product = getCatalogProduct(getCatalog(env), event.product_code);
+  const product = getCatalogProduct(getCatalog(env), event);
   const fields = product?.brevo?.funnelFields;
   const stepsField = asString(fields?.steps);
   const lastStepField = asString(fields?.lastStep);
@@ -1454,7 +1432,8 @@ async function forwardN8n(event: FunnelEvent, env: DispatcherEnv): Promise<void>
 function buildN8nForwardPayload(event: FunnelEvent): Record<string, unknown> | FunnelEvent {
   if (event.source !== "hotmart" || !isPlanovooProductCode(event.product_code)) return event;
 
-  const payload = isRecord(event.payload) ? { ...event.payload } : {};
+  const rawPayload = isRecord(event.payload) ? { ...event.payload } : {};
+  const { [HANDLER_RESULT_PAYLOAD_KEY]: _handlerResults, ...payload } = rawPayload;
   const data = isRecord(payload.data) ? { ...payload.data } : {};
   for (const key of ["buyer", "purchase", "product"] as const) {
     if (data[key] === undefined && payload[key] !== undefined) {
@@ -1484,6 +1463,81 @@ function buildN8nForwardPayload(event: FunnelEvent): Record<string, unknown> | F
   };
 
   return payload;
+}
+
+const chainContexts = new WeakMap<FunnelEvent, HandlerContext>();
+
+interface ProductApiHandlerResult {
+  api_response?: unknown;
+  api_response_key?: unknown;
+}
+
+function resolveContextTenant(event: FunnelEvent, catalog: ParsedCatalog): string {
+  const resolvedProduct = resolveCatalogProduct(catalog, event);
+  return resolvedProduct?.tenant_id || asString(event.tenant_id) || "decole";
+}
+
+function resolveContextCredentials(
+  tenant: CatalogTenantConfig | undefined,
+  env: DispatcherEnv
+): { brevoApiKey: string; hotmartToken: string; replyToEmail?: string } {
+  const credentials = tenant?.credentials;
+  if (credentials) {
+    const brevoApiKeyEnv = asString(credentials.brevo_api_key_env);
+    const hotmartTokenEnv = asString(credentials.hotmart_token_env);
+    const replyToEmail = asString(credentials.replyToEmail);
+    return {
+      brevoApiKey: envString(env, brevoApiKeyEnv),
+      hotmartToken: envString(env, hotmartTokenEnv),
+      ...(replyToEmail ? { replyToEmail } : {}),
+    };
+  }
+
+  return {
+    brevoApiKey: asString(env.BREVO_API_KEY),
+    hotmartToken: "",
+    replyToEmail: "contato@decolesuacarreiraesg.com.br",
+  };
+}
+
+function getOrCreateContext(event: FunnelEvent, env: DispatcherEnv): HandlerContext {
+  let ctx = chainContexts.get(event);
+  if (ctx) return ctx;
+
+  const catalog = getCatalog(env);
+  const tenantId = resolveContextTenant(event, catalog);
+  ctx = new HandlerContext(
+    event,
+    env,
+    tenantId,
+    resolveContextCredentials(catalog.tenants?.[tenantId], env)
+  );
+  const productApiResult = getHandlerResult<ProductApiHandlerResult>(event, "call_product_api");
+  if (productApiResult && isRecord(productApiResult)) {
+    if (productApiResult.api_response !== undefined) {
+      ctx.set("api_response", productApiResult.api_response);
+    }
+    if (productApiResult.api_response_key !== undefined) {
+      ctx.set("api_response_key", productApiResult.api_response_key);
+    }
+  }
+  chainContexts.set(event, ctx);
+  return ctx;
+}
+
+function persistProductApiResult(event: FunnelEvent, ctx: HandlerContext): void {
+  const apiResponse = ctx.get("api_response");
+  const apiResponseKey = ctx.get("api_response_key");
+  if (apiResponse === undefined && apiResponseKey === undefined) return;
+
+  setHandlerResult(event, "call_product_api", {
+    ...(apiResponse !== undefined ? { api_response: apiResponse } : {}),
+    ...(apiResponseKey !== undefined ? { api_response_key: apiResponseKey } : {}),
+  });
+}
+
+function resolveGenericEventConfig(event: FunnelEvent, env: DispatcherEnv): CatalogEventConfig | null {
+  return resolveCatalogEvent(event, env);
 }
 
 export function createHandlers(): HandlerMap {
@@ -1537,19 +1591,25 @@ export function createHandlers(): HandlerMap {
       console.log(JSON.stringify({ stage: "handler", handler: "sync_brevo_segments", event_id: event.event_id }));
     },
 
-    async call_plano_voo_purchase(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
-      console.log(JSON.stringify({ stage: "handler", handler: "call_plano_voo_purchase", event_id: event.event_id }));
-      await callPlanoVooPurchase(event, env);
+    async call_product_api(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
+      const eventConfig = resolveGenericEventConfig(event, env);
+      if (!eventConfig?.product_api) {
+        console.log(JSON.stringify({ stage: "handler_skip", handler: "call_product_api", reason: "no_product_api_config", event_id: event.event_id }));
+        return;
+      }
+      const ctx = getOrCreateContext(event, env);
+      await callProductApi(ctx, eventConfig.product_api);
+      persistProductApiResult(event, ctx);
     },
 
-    async call_plano_voo_refund(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
-      console.log(JSON.stringify({ stage: "handler", handler: "call_plano_voo_refund", event_id: event.event_id }));
-      await callPlanoVooRefund(event, env);
-    },
-
-    async call_plano_voo_protest(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
-      console.log(JSON.stringify({ stage: "handler", handler: "call_plano_voo_protest", event_id: event.event_id }));
-      await callPlanoVooProtest(event, env);
+    async send_template_email(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
+      const eventConfig = resolveGenericEventConfig(event, env);
+      if (!eventConfig?.template_email) {
+        console.log(JSON.stringify({ stage: "handler_skip", handler: "send_template_email", reason: "no_template_email_config", event_id: event.event_id }));
+        return;
+      }
+      const ctx = getOrCreateContext(event, env);
+      await sendTemplateEmail(ctx, eventConfig.template_email);
     },
   };
 }

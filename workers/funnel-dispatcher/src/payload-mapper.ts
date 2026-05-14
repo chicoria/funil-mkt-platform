@@ -1,9 +1,20 @@
 type Obj = Record<string, unknown>;
 
-const FILTERS: Record<string, (v: string) => string> = {
-  first_name: (v) => v.split(" ")[0],
-  lowercase:  (v) => v.toLowerCase(),
-  uppercase:  (v) => v.toUpperCase(),
+const FILTERS: Record<string, (v: unknown) => unknown> = {
+  first_name: (v) => (typeof v === "string" ? v.split(" ")[0] : v),
+  lowercase:  (v) => (typeof v === "string" ? v.toLowerCase() : v),
+  uppercase:  (v) => (typeof v === "string" ? v.toUpperCase() : v),
+  format_brl: (v) => {
+    const value = typeof v === "number" ? v : Number(v);
+    if (!Number.isFinite(value)) return v;
+    return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  },
+  date_br: (v) => {
+    if (typeof v !== "string" && typeof v !== "number") return v;
+    const date = new Date(v);
+    if (Number.isNaN(date.getTime())) return v;
+    return date.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+  },
 };
 
 function resolvePath(obj: unknown, segments: string[]): unknown {
@@ -16,6 +27,15 @@ function resolvePath(obj: unknown, segments: string[]): unknown {
 }
 
 export function mapValue(obj: unknown, expr: string): unknown {
+  const fallbackParts = expr.split("??").map((part) => part.trim()).filter(Boolean);
+  if (fallbackParts.length > 1) {
+    for (const part of fallbackParts) {
+      const value = mapValue(obj, part);
+      if (value !== null && value !== undefined && value !== "") return value;
+    }
+    return null;
+  }
+
   const [pathPart, ...filterParts] = expr.split("|");
   const path = pathPart.trim();
 
@@ -29,7 +49,7 @@ export function mapValue(obj: unknown, expr: string): unknown {
   for (const raw of filterParts) {
     const filterName = raw.trim();
     const fn = FILTERS[filterName];
-    if (fn && typeof value === "string") {
+    if (fn) {
       value = fn(value);
     }
   }

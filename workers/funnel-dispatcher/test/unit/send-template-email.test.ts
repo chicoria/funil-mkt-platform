@@ -5,6 +5,18 @@ import type { FunnelEvent } from "../../../../packages/shared/src/funnel-event";
 import type { DispatcherEnv } from "../../src/dispatcher";
 import type { ResolvedCredentials } from "../../src/tenant-resolver";
 
+type FetchMock = typeof fetch & {
+  mock: { calls: Array<[RequestInfo | URL, RequestInit?]> };
+};
+
+function getFetchCall(fetchMock: FetchMock, index: number): [string, RequestInit] {
+  const call = fetchMock.mock.calls[index];
+  expect(call).toBeDefined();
+  const [input, init] = call as [RequestInfo | URL, RequestInit?];
+  expect(init).toBeDefined();
+  return [String(input), init as RequestInit];
+}
+
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
@@ -35,7 +47,10 @@ function makeCtx(
     ctxData?: Record<string, unknown>;
   } = {}
 ): HandlerContext {
-  const env = {} as unknown as DispatcherEnv;
+  const env = {
+    BREVO_BASE_URL: undefined,
+    BREVO_TIMEOUT_MS: undefined,
+  } as unknown as DispatcherEnv;
   const creds: ResolvedCredentials = {
     brevoApiKey: "xkeysib-test",
     hotmartToken: "hotmart-test",
@@ -79,7 +94,7 @@ function mockFetch(status = 201) {
       status,
       headers: { "content-type": "application/json" },
     })
-  );
+  ) as unknown as FetchMock;
 }
 
 // ---------------------------------------------------------------------------
@@ -94,11 +109,11 @@ describe("sendTemplateEmail", () => {
     await sendTemplateEmail(ctx, refundEmailConfig, fetchMock);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0];
+    const [url, init] = getFetchCall(fetchMock, 0);
     expect(url).toBe("https://api.brevo.com/v3/smtp/email");
     expect(init.method).toBe("POST");
 
-    const body = JSON.parse(init.body);
+    const body = JSON.parse(String(init.body));
     expect(body.templateId).toBe(13);
     expect(body.to).toEqual([{ email: "buyer@example.com" }]);
     expect(body.params.primeiroNome).toBe("Maria");
@@ -114,7 +129,8 @@ describe("sendTemplateEmail", () => {
 
     await sendTemplateEmail(ctx, purchaseEmailConfig, fetchMock);
 
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const [, init] = getFetchCall(fetchMock, 0);
+    const body = JSON.parse(String(init.body));
     expect(body.params.formUrl).toBe("https://app.decole.com/formulario/abc-token-123");
   });
 
@@ -124,7 +140,8 @@ describe("sendTemplateEmail", () => {
 
     await sendTemplateEmail(ctx, purchaseEmailConfig, fetchMock);
 
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const [, init] = getFetchCall(fetchMock, 0);
+    const body = JSON.parse(String(init.body));
     expect(body.params.formUrl).toBe("https://app.decole.com/formulario/");
   });
 
@@ -134,7 +151,8 @@ describe("sendTemplateEmail", () => {
 
     await sendTemplateEmail(ctx, refundEmailConfig, fetchMock);
 
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const [, init] = getFetchCall(fetchMock, 0);
+    const body = JSON.parse(String(init.body));
     expect(body.replyTo).toEqual({ email: "contato@decole.com.br" });
   });
 
@@ -144,7 +162,8 @@ describe("sendTemplateEmail", () => {
 
     await sendTemplateEmail(ctx, refundEmailConfig, fetchMock);
 
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const [, init] = getFetchCall(fetchMock, 0);
+    const body = JSON.parse(String(init.body));
     expect(body.replyTo).toBeUndefined();
   });
 
@@ -183,12 +202,13 @@ describe("sendTemplateEmail", () => {
 
     await sendTemplateEmail(ctx, refundEmailConfig, fetchMock);
 
-    const headers = fetchMock.mock.calls[0][1].headers;
+    const [, init] = getFetchCall(fetchMock, 0);
+    const headers = init.headers as Record<string, string>;
     expect(headers["api-key"]).toBe("xkeysib-tenant-specific");
   });
 
   it("throws on network failure (fatal for queue retry)", async () => {
-    const fetchMock = vi.fn(() => Promise.reject(new Error("ECONNREFUSED")));
+    const fetchMock = vi.fn(() => Promise.reject(new Error("ECONNREFUSED"))) as unknown as FetchMock;
     const ctx = makeCtx();
 
     await expect(
@@ -204,7 +224,33 @@ describe("sendTemplateEmail", () => {
 
     await sendTemplateEmail(ctx, purchaseEmailConfig, fetchMock);
 
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const [, init] = getFetchCall(fetchMock, 0);
+    const body = JSON.parse(String(init.body));
     expect(body.params.formUrl).toBe("https://app.decole.com/formulario/");
+  });
+
+  it("maps params from FunnelEvent when a value is not in payload", async () => {
+    const fetchMock = mockFetch();
+    const ctx = makeCtx({
+      event: { occurred_at: "2026-05-14T12:00:00.000Z" },
+    });
+
+    await sendTemplateEmail(
+      ctx,
+      {
+        ...refundEmailConfig,
+        params_mapping: {
+          ...refundEmailConfig.params_mapping,
+          data: "$.occurred_at | date_br",
+          valor: "$.data.purchase.price.value | format_brl",
+        },
+      },
+      fetchMock
+    );
+
+    const [, init] = getFetchCall(fetchMock, 0);
+    const body = JSON.parse(String(init.body));
+    expect(body.params.data).toBe("14/05/2026");
+    expect(body.params.valor).toContain("197,00");
   });
 });

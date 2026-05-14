@@ -99,4 +99,80 @@ describe("BrevoTransactionalEmailSender", () => {
       })
     ).rejects.toThrow(/Brevo transactional email failed/);
   });
+
+  it("trunca body do erro em 200 caracteres", async () => {
+    const longBody = "e".repeat(500);
+    const fetchMock = vi.fn(async () => ({
+      ok: false,
+      status: 500,
+      text: async () => longBody,
+    })) as unknown as typeof fetch;
+    const sender = new BrevoTransactionalEmailSender("api-key", fetchMock);
+
+    await expect(
+      sender.send({ to: { email: "a@b.com" }, templateId: 1 })
+    ).rejects.toThrow("e".repeat(200));
+  });
+
+  describe("opcao baseUrl", () => {
+    it("usa URL padrao quando baseUrl nao e fornecida", async () => {
+      const fetchMock = vi.fn(async () => ({ ok: true })) as unknown as typeof fetch;
+      const sender = new BrevoTransactionalEmailSender("api-key", fetchMock);
+      await sender.send({ to: { email: "a@b.com" }, templateId: 1 });
+
+      const [url] = (fetchMock as any).mock.calls[0] as [string, RequestInit];
+      expect(url).toBe("https://api.brevo.com/v3/smtp/email");
+    });
+
+    it("usa baseUrl customizada quando fornecida", async () => {
+      const fetchMock = vi.fn(async () => ({ ok: true })) as unknown as typeof fetch;
+      const sender = new BrevoTransactionalEmailSender(
+        "api-key",
+        fetchMock,
+        { baseUrl: "https://sandbox.brevo.com/v3" }
+      );
+      await sender.send({ to: { email: "a@b.com" }, templateId: 1 });
+
+      const [url] = (fetchMock as any).mock.calls[0] as [string, RequestInit];
+      expect(url).toBe("https://sandbox.brevo.com/v3/smtp/email");
+    });
+
+    it("normaliza baseUrl removendo barra final", async () => {
+      const fetchMock = vi.fn(async () => ({ ok: true })) as unknown as typeof fetch;
+      const sender = new BrevoTransactionalEmailSender(
+        "api-key",
+        fetchMock,
+        { baseUrl: "https://api.brevo.com/v3/" }
+      );
+      await sender.send({ to: { email: "a@b.com" }, templateId: 1 });
+
+      const [url] = (fetchMock as any).mock.calls[0] as [string, RequestInit];
+      expect(url).toBe("https://api.brevo.com/v3/smtp/email");
+      expect(url).not.toContain("//smtp");
+    });
+  });
+
+  describe("opcao timeoutMs", () => {
+    it("passa AbortSignal para o fetch", async () => {
+      const fetchMock = vi.fn(async () => ({ ok: true })) as unknown as typeof fetch;
+      const sender = new BrevoTransactionalEmailSender("api-key", fetchMock, { timeoutMs: 5000 });
+      await sender.send({ to: { email: "a@b.com" }, templateId: 1 });
+
+      const [, init] = (fetchMock as any).mock.calls[0] as [string, RequestInit];
+      expect(init.signal).toBeInstanceOf(AbortSignal);
+    });
+
+    it("propaga AbortError quando o timeout expira", async () => {
+      const fetchMock = vi.fn((_url: unknown, init: RequestInit) =>
+        new Promise<never>((_res, rej) => {
+          (init.signal as AbortSignal).addEventListener("abort", () =>
+            rej(new DOMException("aborted", "AbortError"))
+          );
+        })
+      ) as unknown as typeof fetch;
+
+      const sender = new BrevoTransactionalEmailSender("api-key", fetchMock, { timeoutMs: 1 });
+      await expect(sender.send({ to: { email: "a@b.com" }, templateId: 1 })).rejects.toThrow();
+    });
+  });
 });

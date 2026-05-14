@@ -5,6 +5,18 @@ import type { FunnelEvent } from "../../../../packages/shared/src/funnel-event";
 import type { DispatcherEnv } from "../../src/dispatcher";
 import type { ResolvedCredentials } from "../../src/tenant-resolver";
 
+type FetchMock = typeof fetch & {
+  mock: { calls: Array<[RequestInfo | URL, RequestInit?]> };
+};
+
+function getFetchCall(fetchMock: FetchMock, index: number): [string, RequestInit] {
+  const call = fetchMock.mock.calls[index];
+  expect(call).toBeDefined();
+  const [input, init] = call as [RequestInfo | URL, RequestInit?];
+  expect(init).toBeDefined();
+  return [String(input), init as RequestInit];
+}
+
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
@@ -67,6 +79,19 @@ const purchaseApiConfig: ProductApiConfig = {
   response_key: "token",
 };
 
+const purchaseApiConfigWithFallbacks: ProductApiConfig = {
+  ...purchaseApiConfig,
+  request_mapping: {
+    email: "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
+    nome: "$.data.buyer.name ?? $.buyer.name",
+    transacao: "$.data.purchase.transaction ?? $.purchase.transaction",
+    produto: "$.data.product.name ?? $.product.name ?? $.product_code",
+    valor: "$.data.purchase.price.value ?? $.purchase.price.value",
+    pagamento: "$.data.purchase.payment.type ?? $.purchase.payment.type",
+  },
+  skip_if_missing: ["email"],
+};
+
 const refundApiConfig: ProductApiConfig = {
   url: "https://app.decole.test/api/hooks/refund",
   method: "POST",
@@ -82,7 +107,7 @@ function mockFetch(body: Record<string, unknown>, status = 200) {
       status,
       headers: { "content-type": "application/json" },
     })
-  );
+  ) as unknown as FetchMock;
 }
 
 // ---------------------------------------------------------------------------
@@ -97,13 +122,13 @@ describe("callProductApi", () => {
     await callProductApi(ctx, purchaseApiConfig, fetchMock);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0];
+    const [url, init] = getFetchCall(fetchMock, 0);
     expect(url).toBe("https://app.decole.test/api/hooks/purchase");
     expect(init.method).toBe("POST");
-    expect(init.headers["x-signature"]).toMatch(/^sha256=[0-9a-f]{64}$/);
-    expect(init.headers["content-type"]).toBe("application/json");
+    expect((init.headers as Record<string, string>)["x-signature"]).toMatch(/^sha256=[0-9a-f]{64}$/);
+    expect((init.headers as Record<string, string>)["content-type"]).toBe("application/json");
 
-    const body = JSON.parse(init.body);
+    const body = JSON.parse(String(init.body));
     expect(body).toEqual({
       email: "buyer@example.com",
       nome: "Maria Silva",
@@ -185,10 +210,74 @@ describe("callProductApi", () => {
 
     await callProductApi(ctx, purchaseApiConfig, fetchMock);
 
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const [, init] = getFetchCall(fetchMock, 0);
+    const body = JSON.parse(String(init.body));
     expect(body.email).toBe("a@b.com");
     expect(body).not.toHaveProperty("transacao");
     expect(body).not.toHaveProperty("valor");
+  });
+
+  it("supports flat Hotmart payload mappings", async () => {
+    const fetchMock = mockFetch({ token: "t" });
+    const ctx = makeCtx({
+      event: {
+        payload: {
+          buyer: { email: "flat@example.com", name: "Flat User" },
+          purchase: { transaction: "TRX-FLAT", price: { value: 99 }, payment: { type: "PIX" } },
+          product: { name: "Flat Product" },
+        },
+      },
+    });
+
+    await callProductApi(ctx, purchaseApiConfigWithFallbacks, fetchMock);
+
+    const [, init] = getFetchCall(fetchMock, 0);
+    const body = JSON.parse(String(init.body));
+    expect(body).toMatchObject({
+      email: "flat@example.com",
+      nome: "Flat User",
+      transacao: "TRX-FLAT",
+      produto: "Flat Product",
+      valor: 99,
+      pagamento: "PIX",
+    });
+  });
+
+  it("falls back to event.lead.email for generic mappings", async () => {
+    const fetchMock = mockFetch({ token: "t" });
+    const ctx = makeCtx({
+      event: {
+        lead: { email: "lead@example.com" },
+        payload: {
+          data: {
+            buyer: { name: "Lead User" },
+            purchase: { transaction: "TRX-LEAD" },
+            product: { name: "Plano de Voo" },
+          },
+        },
+      },
+    });
+
+    await callProductApi(ctx, purchaseApiConfigWithFallbacks, fetchMock);
+
+    const [, init] = getFetchCall(fetchMock, 0);
+    const body = JSON.parse(String(init.body));
+    expect(body.email).toBe("lead@example.com");
+  });
+
+  it("skips API call when configured required mapped field is missing", async () => {
+    const fetchMock = mockFetch({ token: "t" });
+    const ctx = makeCtx({
+      event: {
+        lead: undefined,
+        payload: { data: { buyer: {}, purchase: {}, product: {} } },
+      },
+    });
+
+    await callProductApi(ctx, purchaseApiConfigWithFallbacks, fetchMock);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(ctx.get("api_response")).toBeUndefined();
   });
 
   it("preserves URL as configured (no trailing slash stripping)", async () => {
@@ -198,11 +287,46 @@ describe("callProductApi", () => {
 
     await callProductApi(ctx, config, fetchMock);
 
-    expect(fetchMock.mock.calls[0][0]).toBe("https://app.decole.test/");
+    const [url] = getFetchCall(fetchMock, 0);
+    expect(url).toBe("https://app.decole.test/");
+  });
+
+  it("builds URL from configured env var and path", async () => {
+    const fetchMock = mockFetch({ token: "t" });
+    const ctx = makeCtx({
+      envOverrides: {
+        PLANOVOO_API_BASE_URL: "https://staging.planovoo.test/",
+      },
+    });
+    const config: ProductApiConfig = {
+      ...purchaseApiConfig,
+      url: undefined,
+      url_env: "PLANOVOO_API_BASE_URL",
+      path: "/api/hooks/purchase",
+    };
+
+    await callProductApi(ctx, config, fetchMock);
+
+    const [url] = getFetchCall(fetchMock, 0);
+    expect(url).toBe("https://staging.planovoo.test/api/hooks/purchase");
+  });
+
+  it("throws when neither URL nor configured URL env var is available", async () => {
+    const fetchMock = mockFetch({ token: "t" });
+    const ctx = makeCtx();
+    const config: ProductApiConfig = {
+      ...purchaseApiConfig,
+      url: undefined,
+      url_env: "PLANOVOO_API_BASE_URL",
+      path: "/api/hooks/purchase",
+    };
+
+    await expect(callProductApi(ctx, config, fetchMock)).rejects.toThrow(/PLANOVOO_API_BASE_URL/);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("throws on network failure (fatal for queue retry)", async () => {
-    const fetchMock = vi.fn(() => Promise.reject(new Error("ECONNREFUSED")));
+    const fetchMock = vi.fn(() => Promise.reject(new Error("ECONNREFUSED"))) as unknown as FetchMock;
     const ctx = makeCtx();
 
     await expect(

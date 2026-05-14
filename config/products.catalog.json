@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "updatedAt": "2026-05-11",
+  "updatedAt": "2026-05-14",
   "description": "Catálogo central de produtos — cada produto declara seus subsistemas.",
   "global": {
     "hotmart": {
@@ -685,6 +685,24 @@
             "description": "Email carrinho abandonado - Plano de Voo",
             "localFile": "backend/cloudflare/config/email-templates/planovoo/cart-abandonment-v1.html",
             "version": "v1"
+          },
+          "purchaseLink": {
+            "id": "12",
+            "description": "Email transacional com link do formulario Plano de Voo",
+            "localFile": "backend/cloudflare/config/email-templates/planovoo/purchase-link-v1.html",
+            "version": "v1"
+          },
+          "refunded": {
+            "id": "13",
+            "description": "Email transacional de reembolso confirmado Plano de Voo",
+            "localFile": "backend/cloudflare/config/email-templates/planovoo/purchase-refunded-v1.html",
+            "version": "v1"
+          },
+          "protest": {
+            "id": "14",
+            "description": "Email transacional de contestacao recebida Plano de Voo",
+            "localFile": "backend/cloudflare/config/email-templates/planovoo/purchase-protest-v1.html",
+            "version": "v1"
           }
         },
         "doiFlows": [
@@ -709,6 +727,30 @@
             "description": "Recuperação de carrinho abandonado do Plano de Voo.",
             "managedVia": "api",
             "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/cart-abandonment-v1.html"
+          },
+          {
+            "key": "purchaseLink",
+            "templateId": "12",
+            "triggerEvent": "PURCHASE_APPROVED",
+            "description": "Entrega do link do formulario Plano de Voo apos compra aprovada.",
+            "managedVia": "api",
+            "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/purchase-link-v1.html"
+          },
+          {
+            "key": "refunded",
+            "templateId": "13",
+            "triggerEvent": "PURCHASE_REFUNDED",
+            "description": "Notificacao de reembolso/cancelamento do Plano de Voo.",
+            "managedVia": "api",
+            "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/purchase-refunded-v1.html"
+          },
+          {
+            "key": "protest",
+            "templateId": "14",
+            "triggerEvent": "PURCHASE_PROTEST",
+            "description": "Notificacao de contestacao/disputa do Plano de Voo.",
+            "managedVia": "api",
+            "localTemplateFile": "backend/cloudflare/config/email-templates/planovoo/purchase-protest-v1.html"
           }
         ],
         "segments": [
@@ -928,14 +970,42 @@
               "enrich_attribution",
               "update_brevo_funnel",
               "emit_tracking",
-              "call_plano_voo_purchase"
+              "call_product_api",
+              "send_template_email"
             ],
             "destinations": [
               "Brevo",
               "Event Store",
               "sGTM",
               "Plano de Voo API"
-            ]
+            ],
+            "product_api": {
+              "url_env": "PLANOVOO_API_BASE_URL",
+              "path": "/api/hooks/purchase",
+              "method": "POST",
+              "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
+              "request_mapping": {
+                "email": "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
+                "nome": "$.data.buyer.name ?? $.buyer.name",
+                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction",
+                "produto": "$.data.product.name ?? $.product.name ?? $.product_code",
+                "oferta": "$.data.purchase.offer_code ?? $.purchase.offer_code",
+                "valor": "$.data.purchase.price.value ?? $.purchase.price.value",
+                "pagamento": "$.data.purchase.payment.type ?? $.purchase.payment.type"
+              },
+              "skip_if_missing": ["email"],
+              "response_key": "token"
+            },
+            "template_email": {
+              "templateId": 12,
+              "to_email": "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
+              "params_mapping": {
+                "primeiroNome": "$.data.buyer.name | first_name ?? $.buyer.name | first_name",
+                "produto": "$.data.product.name ?? $.product.name ?? $.product_code",
+                "formUrl": "https://plano.decolesuacarreiraesg.com.br/formulario/{{response.token}}",
+                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+              }
+            }
           },
           {
             "funnelStage": "RETENTION",
@@ -971,8 +1041,30 @@
               "upsert_event_store",
               "invalidate_purchase_token",
               "update_brevo_funnel",
-              "call_plano_voo_refund"
+              "call_product_api",
+              "send_template_email"
             ],
+            "product_api": {
+              "url_env": "PLANOVOO_API_BASE_URL",
+              "path": "/api/hooks/refund",
+              "method": "POST",
+              "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
+              "request_mapping": {
+                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+              },
+              "skip_if_missing": ["transacao"]
+            },
+            "template_email": {
+              "templateId": 13,
+              "to_email": "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
+              "params_mapping": {
+                "primeiroNome": "$.data.buyer.name | first_name ?? $.buyer.name | first_name",
+                "produto": "$.data.product.name ?? $.product.name ?? $.product_code",
+                "valor": "$.data.purchase.price.value | format_brl ?? $.purchase.price.value | format_brl",
+                "data": "$.occurred_at | date_br",
+                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+              }
+            },
             "destinations": [
               "Brevo",
               "Event Store",
@@ -996,8 +1088,30 @@
               "upsert_event_store",
               "invalidate_purchase_token",
               "update_brevo_funnel",
-              "call_plano_voo_refund"
+              "call_product_api",
+              "send_template_email"
             ],
+            "product_api": {
+              "url_env": "PLANOVOO_API_BASE_URL",
+              "path": "/api/hooks/refund",
+              "method": "POST",
+              "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
+              "request_mapping": {
+                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+              },
+              "skip_if_missing": ["transacao"]
+            },
+            "template_email": {
+              "templateId": 13,
+              "to_email": "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
+              "params_mapping": {
+                "primeiroNome": "$.data.buyer.name | first_name ?? $.buyer.name | first_name",
+                "produto": "$.data.product.name ?? $.product.name ?? $.product_code",
+                "valor": "$.data.purchase.price.value | format_brl ?? $.purchase.price.value | format_brl",
+                "data": "$.occurred_at | date_br",
+                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+              }
+            },
             "destinations": [
               "Brevo",
               "Event Store",
@@ -1021,8 +1135,30 @@
               "upsert_event_store",
               "invalidate_purchase_token",
               "update_brevo_funnel",
-              "call_plano_voo_refund"
+              "call_product_api",
+              "send_template_email"
             ],
+            "product_api": {
+              "url_env": "PLANOVOO_API_BASE_URL",
+              "path": "/api/hooks/refund",
+              "method": "POST",
+              "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
+              "request_mapping": {
+                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+              },
+              "skip_if_missing": ["transacao"]
+            },
+            "template_email": {
+              "templateId": 13,
+              "to_email": "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
+              "params_mapping": {
+                "primeiroNome": "$.data.buyer.name | first_name ?? $.buyer.name | first_name",
+                "produto": "$.data.product.name ?? $.product.name ?? $.product_code",
+                "valor": "$.data.purchase.price.value | format_brl ?? $.purchase.price.value | format_brl",
+                "data": "$.occurred_at | date_br",
+                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+              }
+            },
             "destinations": [
               "Brevo",
               "Event Store",
@@ -1046,8 +1182,30 @@
               "upsert_event_store",
               "invalidate_purchase_token",
               "update_brevo_funnel",
-              "call_plano_voo_protest"
+              "call_product_api",
+              "send_template_email"
             ],
+            "product_api": {
+              "url_env": "PLANOVOO_API_BASE_URL",
+              "path": "/api/hooks/protest",
+              "method": "POST",
+              "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
+              "request_mapping": {
+                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+              },
+              "skip_if_missing": ["transacao"]
+            },
+            "template_email": {
+              "templateId": 14,
+              "to_email": "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
+              "params_mapping": {
+                "primeiroNome": "$.data.buyer.name | first_name ?? $.buyer.name | first_name",
+                "produto": "$.data.product.name ?? $.product.name ?? $.product_code",
+                "valor": "$.data.purchase.price.value | format_brl ?? $.purchase.price.value | format_brl",
+                "data": "$.occurred_at | date_br",
+                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+              }
+            },
             "destinations": [
               "Brevo",
               "Event Store",
@@ -1071,8 +1229,30 @@
               "upsert_event_store",
               "invalidate_purchase_token",
               "update_brevo_funnel",
-              "call_plano_voo_refund"
+              "call_product_api",
+              "send_template_email"
             ],
+            "product_api": {
+              "url_env": "PLANOVOO_API_BASE_URL",
+              "path": "/api/hooks/refund",
+              "method": "POST",
+              "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
+              "request_mapping": {
+                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+              },
+              "skip_if_missing": ["transacao"]
+            },
+            "template_email": {
+              "templateId": 13,
+              "to_email": "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
+              "params_mapping": {
+                "primeiroNome": "$.data.buyer.name | first_name ?? $.buyer.name | first_name",
+                "produto": "$.data.product.name ?? $.product.name ?? $.product_code",
+                "valor": "$.data.purchase.price.value | format_brl ?? $.purchase.price.value | format_brl",
+                "data": "$.occurred_at | date_br",
+                "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
+              }
+            },
             "destinations": [
               "Brevo",
               "Event Store",
@@ -1267,8 +1447,10 @@
       ],
       "secrets": [
         "BREVO_API_KEY",
+        "BREVO_BASE_URL",
         "BREVO_DOI_TEMPLATE_ID",
         "BREVO_CART_ABANDONMENT_TEMPLATE_ID",
+        "BREVO_TIMEOUT_MS",
         "N8N_WEBHOOK_URL",
         "SGTM_ENDPOINT_URL",
         "SGTM_ENDPOINT_URL_DECOLE_ESG",
@@ -1372,20 +1554,14 @@
       "worker": "funnel-dispatcher",
       "binding": "BREVO_API_KEY"
     },
-    "call_plano_voo_purchase": {
+    "call_product_api": {
       "worker": "funnel-dispatcher",
-      "bindings": ["PLANOVOO_API_BASE_URL", "PLANOVOO_HOOK_SECRET", "BREVO_API_KEY"],
-      "description": "Calls Plano de Voo API to create token, then sends purchase link email via Brevo"
+      "description": "Generic handler: reads product_api config from catalog event, maps payload, calls API via HTTP+HMAC, stores response in context"
     },
-    "call_plano_voo_refund": {
+    "send_template_email": {
       "worker": "funnel-dispatcher",
-      "bindings": ["PLANOVOO_API_BASE_URL", "PLANOVOO_HOOK_SECRET", "BREVO_API_KEY"],
-      "description": "Calls Plano de Voo API to mark tokens as CANCELADO, then sends refund email via Brevo"
-    },
-    "call_plano_voo_protest": {
-      "worker": "funnel-dispatcher",
-      "bindings": ["PLANOVOO_API_BASE_URL", "PLANOVOO_HOOK_SECRET", "BREVO_API_KEY"],
-      "description": "Calls Plano de Voo API to mark tokens as SUSPENSO, then sends protest email via Brevo"
+      "bindings": ["BREVO_API_KEY", "BREVO_BASE_URL", "BREVO_TIMEOUT_MS"],
+      "description": "Generic handler: reads template_email config from catalog event, maps params with interpolation from API response, sends via Brevo"
     }
   }
 }

@@ -10,6 +10,12 @@ export interface TemplateEmailConfig {
   params_mapping: Record<string, string>;
 }
 
+function mapEventValue(ctx: HandlerContext, expr: string): unknown {
+  const value = mapValue(ctx.event.payload, expr);
+  if (value !== null) return value;
+  return mapValue(ctx.event, expr);
+}
+
 export async function sendTemplateEmail(
   ctx: HandlerContext,
   config: TemplateEmailConfig,
@@ -20,7 +26,7 @@ export async function sendTemplateEmail(
     throw new Error("send_template_email: Brevo API key not configured for tenant " + ctx.tenant_id);
   }
 
-  const toEmail = mapValue(ctx.event.payload, config.to_email);
+  const toEmail = mapEventValue(ctx, config.to_email);
   if (!toEmail || typeof toEmail !== "string") {
     console.log(
       JSON.stringify({
@@ -45,14 +51,19 @@ export async function sendTemplateEmail(
     if (expr.includes("{{") && !expr.startsWith("$.")) {
       params[key] = interpolate(expr, interpolationContext);
     } else {
-      const value = mapValue(ctx.event.payload, expr);
+      const value = mapEventValue(ctx, expr);
       if (value !== null) {
         params[key] = value;
       }
     }
   }
 
-  const sender = new BrevoTransactionalEmailSender(apiKey, fetchImpl);
+  const timeoutMs = Number(ctx.env.BREVO_TIMEOUT_MS);
+  const baseUrl = typeof ctx.env.BREVO_BASE_URL === "string" ? ctx.env.BREVO_BASE_URL : "";
+  const sender = new BrevoTransactionalEmailSender(apiKey, fetchImpl, {
+    ...(baseUrl ? { baseUrl } : {}),
+    ...(Number.isFinite(timeoutMs) && timeoutMs > 0 ? { timeoutMs } : {}),
+  });
   await sender.send({
     to: { email: toEmail },
     ...(ctx.credentials.replyToEmail

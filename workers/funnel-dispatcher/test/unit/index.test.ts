@@ -534,9 +534,47 @@ describe("funnel-dispatcher", () => {
 		    vi.stubGlobal("fetch", fetchMock);
 
 		    const env = makeEnv({
-		      PLANOVOO_API_BASE_URL: "https://app.planovoo.test",
 		      PLANOVOO_HOOK_SECRET: "test-secret",
 		      BREVO_API_KEY: "xkeysib-test",
+		      CATALOG_JSON: JSON.stringify({
+		        products: {
+		          DECOLE_PLANOVOO: {
+		            aliases: ["PLANOVOO"],
+		            funnelEventArchitecture: {
+		              events: [
+		                {
+		                  eventType: "PURCHASE_PROTEST",
+		                  chain: ["resolve_identity", "upsert_event_store", "invalidate_purchase_token", "update_brevo_funnel", "call_product_api", "send_template_email"],
+		                  product_api: {
+		                    url: "https://app.planovoo.test/api/hooks/protest",
+		                    method: "POST",
+		                    hmac_secret_env: "PLANOVOO_HOOK_SECRET",
+		                    request_mapping: { transacao: "$.data.purchase.transaction" },
+		                  },
+		                  template_email: {
+		                    templateId: 14,
+		                    to_email: "$.data.buyer.email",
+		                    params_mapping: {
+		                      primeiroNome: "$.data.buyer.name | first_name",
+		                      transacao: "$.data.purchase.transaction",
+		                    },
+		                  },
+		                },
+		              ],
+		            },
+		          },
+		          DECOLE_ESG_MENTORIA: {
+		            funnelEventArchitecture: {
+		              events: [
+		                {
+		                  eventType: "PURCHASE_PROTEST",
+		                  chain: ["resolve_identity", "upsert_event_store", "invalidate_purchase_token", "update_brevo_funnel"],
+		                },
+		              ],
+		            },
+		          },
+		        },
+		      }),
 		    });
 
 		    await worker.queue(

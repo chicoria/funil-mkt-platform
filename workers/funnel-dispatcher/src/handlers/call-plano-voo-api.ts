@@ -175,7 +175,11 @@ async function callPlanoVooApi(
 
 function createEmailSender(env: DispatcherEnv, fetchImpl: typeof fetch = fetch): BrevoTransactionalEmailSender {
   const apiKey = str(env.BREVO_API_KEY);
-  return new BrevoTransactionalEmailSender(apiKey, fetchImpl);
+  const timeoutMs = Number(env.BREVO_TIMEOUT_MS);
+  return new BrevoTransactionalEmailSender(apiKey, fetchImpl, {
+    ...(str(env.BREVO_BASE_URL) ? { baseUrl: str(env.BREVO_BASE_URL) } : {}),
+    ...(Number.isFinite(timeoutMs) && timeoutMs > 0 ? { timeoutMs } : {}),
+  });
 }
 
 // ---------------------------------------------------------------------------
