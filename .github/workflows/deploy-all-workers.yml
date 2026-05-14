@@ -30,7 +30,7 @@ jobs:
       - name: Setup Node 20
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Verificar placeholders _PENDENTE
         run: bash scripts/check-pending-placeholders.sh
