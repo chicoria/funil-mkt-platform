@@ -1,0 +1,143 @@
+name: Deploy — todos os workers
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run (sem publicar)"
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+jobs:
+  deploy:
+    name: Deploy workers (${{ inputs.dry_run == 'true' && 'dry-run' || 'produção' }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Verificar placeholders _PENDENTE
+        run: bash scripts/check-pending-placeholders.sh
+
+      # ── funnel-dispatcher ────────────────────────────────────────────────────
+
+      - name: "[funnel-dispatcher] Install"
+        working-directory: workers/funnel-dispatcher
+        run: npm ci
+
+      - name: "[funnel-dispatcher] Typecheck"
+        working-directory: workers/funnel-dispatcher
+        run: npm run typecheck
+
+      - name: "[funnel-dispatcher] Test"
+        working-directory: workers/funnel-dispatcher
+        run: npm test
+
+      - name: "[funnel-dispatcher] Deploy"
+        working-directory: workers/funnel-dispatcher
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            npx wrangler deploy --dry-run
+          else
+            npx wrangler deploy
+          fi
+
+      # ── api-hotmart-ingress ──────────────────────────────────────────────────
+
+      - name: "[api-hotmart-ingress] Install"
+        working-directory: workers/api-hotmart-ingress
+        run: npm ci
+
+      - name: "[api-hotmart-ingress] Typecheck"
+        working-directory: workers/api-hotmart-ingress
+        run: npm run typecheck
+
+      - name: "[api-hotmart-ingress] Test"
+        working-directory: workers/api-hotmart-ingress
+        run: npm test
+
+      - name: "[api-hotmart-ingress] Deploy"
+        working-directory: workers/api-hotmart-ingress
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            npx wrangler deploy --dry-run
+          else
+            npx wrangler deploy
+          fi
+
+      # ── api-funnel-ingress ───────────────────────────────────────────────────
+
+      - name: "[api-funnel-ingress] Install"
+        working-directory: workers/api-funnel-ingress
+        run: npm ci
+
+      - name: "[api-funnel-ingress] Typecheck"
+        working-directory: workers/api-funnel-ingress
+        run: npm run typecheck
+
+      - name: "[api-funnel-ingress] Test"
+        working-directory: workers/api-funnel-ingress
+        run: npm test
+
+      - name: "[api-funnel-ingress] Deploy"
+        working-directory: workers/api-funnel-ingress
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            npx wrangler deploy --dry-run
+          else
+            npx wrangler deploy
+          fi
+
+      # ── links-redirect ───────────────────────────────────────────────────────
+
+      - name: "[links-redirect] Install"
+        working-directory: workers/links-redirect
+        run: npm ci
+
+      - name: "[links-redirect] Typecheck"
+        working-directory: workers/links-redirect
+        run: npm run typecheck
+
+      - name: "[links-redirect] Test"
+        working-directory: workers/links-redirect
+        run: npm test
+
+      - name: "[links-redirect] Deploy"
+        working-directory: workers/links-redirect
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            npx wrangler deploy --dry-run
+          else
+            npx wrangler deploy
+          fi
+
+      # ── dashboard-sync ───────────────────────────────────────────────────────
+
+      - name: "[dashboard-sync] Install"
+        working-directory: workers/dashboard-sync
+        run: npm ci
+
+      - name: "[dashboard-sync] Deploy"
+        working-directory: workers/dashboard-sync
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            npx wrangler deploy --dry-run
+          else
+            npx wrangler deploy
+          fi
