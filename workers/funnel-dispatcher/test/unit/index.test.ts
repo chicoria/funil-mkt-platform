@@ -520,14 +520,23 @@ describe("funnel-dispatcher", () => {
 		  expect(env.IDENTITY_KV.delete).toHaveBeenCalledWith("checkout_recovery_index:transaction:DECOLE_PLANOVOO:hp-123");
 		});
 
-		  it("encaminha eventos terminais do Plano de Voo ao n8n sem afetar a mentoria", async () => {
-		    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+		  it("chama API do Plano de Voo para eventos terminais do Plano de Voo sem afetar a mentoria", async () => {
+		    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+		      const url = String(input);
+		      if (url.includes("app.planovoo.test/api/hooks/protest")) {
+		        return new Response(JSON.stringify({ updated: 1 }), { status: 200 });
+		      }
+		      if (url.includes("brevo.com")) {
+		        return new Response(JSON.stringify({ messageId: "ok" }), { status: 201 });
+		      }
 		      return new Response(JSON.stringify({ ok: true }), { status: 200 });
 		    });
 		    vi.stubGlobal("fetch", fetchMock);
 
 		    const env = makeEnv({
-		      N8N_WEBHOOK_URL: "https://n8n.example.com/webhook/plano-de-voo/hotmart",
+		      PLANOVOO_API_BASE_URL: "https://app.planovoo.test",
+		      PLANOVOO_HOOK_SECRET: "test-secret",
+		      BREVO_API_KEY: "xkeysib-test",
 		    });
 
 		    await worker.queue(
@@ -535,7 +544,7 @@ describe("funnel-dispatcher", () => {
 		        messages: [
 		          {
 		            body: {
-		              event_id: "evt-planovoo-protest-n8n-1",
+		              event_id: "evt-planovoo-protest-api-1",
 		              event_type: "PURCHASE_PROTEST",
 		              product_code: "PLANOVOO",
 		              source: "hotmart",
@@ -560,7 +569,7 @@ describe("funnel-dispatcher", () => {
 		        messages: [
 		          {
 		            body: {
-		              event_id: "evt-esg-protest-no-n8n-1",
+		              event_id: "evt-esg-protest-no-api-1",
 		              event_type: "PURCHASE_PROTEST",
 		              product_code: "DECOLE_ESG_MENTORIA",
 		              source: "hotmart",
@@ -580,15 +589,17 @@ describe("funnel-dispatcher", () => {
 		      env
 		    );
 
-		    const n8nCalls = fetchMock.mock.calls.filter((call) => String(call[0]).includes("n8n.example.com"));
-		    expect(n8nCalls).toHaveLength(1);
-		    const body = JSON.parse(String((n8nCalls[0]?.[1] as RequestInit)?.body || "{}")) as {
-		      event?: string;
-		      data?: { purchase?: { transaction?: string; status?: string } };
+		    // Plano de Voo protest should call API + send email
+		    const apiCalls = fetchMock.mock.calls.filter((call) => String(call[0]).includes("app.planovoo.test"));
+		    expect(apiCalls).toHaveLength(1);
+		    const apiBody = JSON.parse(String((apiCalls[0]?.[1] as RequestInit)?.body || "{}")) as {
+		      transacao?: string;
 		    };
-		    expect(body.event).toBe("PURCHASE_PROTEST");
-		    expect(body.data?.purchase?.transaction).toBe("HP-PLANOVOO-PROTEST-1");
-		    expect(body.data?.purchase?.status).toBe("DISPUTE");
+		    expect(apiBody.transacao).toBe("HP-PLANOVOO-PROTEST-1");
+
+		    // ESG mentoria should NOT call Plano de Voo API
+		    const allApiCalls = fetchMock.mock.calls.filter((call) => String(call[0]).includes("app.planovoo.test"));
+		    expect(allApiCalls).toHaveLength(1); // only from planovoo, not from mentoria
 
 		    vi.unstubAllGlobals();
 		  });
@@ -1202,7 +1213,16 @@ describe("funnel-dispatcher", () => {
   });
 
   it("enrich_attribution injeta fbp/client_ip no evento quando evento site anterior existe no D1", async () => {
-    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response("{}", { status: 200 }));
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/api/hooks/purchase")) {
+        return new Response(JSON.stringify({ token: "enriched-token" }), { status: 201 });
+      }
+      if (url.includes("brevo.com")) {
+        return new Response(JSON.stringify({ messageId: "ok" }), { status: 201 });
+      }
+      return new Response("{}", { status: 200 });
+    });
     vi.stubGlobal("fetch", fetchMock);
 
     const sitePayload = JSON.stringify({ fbp: "fb.1.site.111", client_ip: "9.9.9.9" });
@@ -1227,6 +1247,9 @@ describe("funnel-dispatcher", () => {
       SGTM_ENDPOINT_URL_PLANOVOO: "https://sgtm.test",
       GA4_MEASUREMENT_ID: "G-TEST",
       GA4_API_SECRET: "test-secret",
+      PLANOVOO_API_BASE_URL: "https://app.planovoo.test",
+      PLANOVOO_HOOK_SECRET: "test-secret",
+      BREVO_API_KEY: "xkeysib-test",
     });
 
     // Hotmart event without fbp — enrich_attribution should recover from D1
@@ -1238,7 +1261,16 @@ describe("funnel-dispatcher", () => {
       occurred_at: new Date().toISOString(),
       identity: { email_hash: "abc123" },
       attribution: {},
-      payload: { profile_id: "profile-enrich-1", value: 297 },
+      lead: { email: "buyer@example.com" },
+      payload: {
+        profile_id: "profile-enrich-1",
+        value: 297,
+        data: {
+          buyer: { email: "buyer@example.com", name: "Test" },
+          purchase: { transaction: "TRX-ENRICH-1" },
+          product: { name: "Plano de Voo" },
+        },
+      },
     };
 
     await worker.queue({ messages: [{ body: event }] }, env);

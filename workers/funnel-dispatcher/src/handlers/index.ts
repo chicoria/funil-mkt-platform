@@ -1,6 +1,11 @@
 import { FunnelEvent } from "../../../../packages/shared/src/funnel-event";
 import bundledCatalogJson from "../../../../config/products.catalog.json";
 import { DispatcherEnv, HandlerFn } from "../dispatcher";
+import {
+  callPlanoVooPurchase,
+  callPlanoVooRefund,
+  callPlanoVooProtest,
+} from "./call-plano-voo-api";
 
 const BREVO_BASE_URL = "https://api.brevo.com/v3";
 const LINKS_BASE_URL = "https://links.decolesuacarreiraesg.com.br";
@@ -1530,6 +1535,21 @@ export function createHandlers(): HandlerMap {
 
     async sync_brevo_segments(event: FunnelEvent): Promise<void> {
       console.log(JSON.stringify({ stage: "handler", handler: "sync_brevo_segments", event_id: event.event_id }));
+    },
+
+    async call_plano_voo_purchase(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
+      console.log(JSON.stringify({ stage: "handler", handler: "call_plano_voo_purchase", event_id: event.event_id }));
+      await callPlanoVooPurchase(event, env);
+    },
+
+    async call_plano_voo_refund(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
+      console.log(JSON.stringify({ stage: "handler", handler: "call_plano_voo_refund", event_id: event.event_id }));
+      await callPlanoVooRefund(event, env);
+    },
+
+    async call_plano_voo_protest(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
+      console.log(JSON.stringify({ stage: "handler", handler: "call_plano_voo_protest", event_id: event.event_id }));
+      await callPlanoVooProtest(event, env);
     },
   };
 }

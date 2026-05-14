@@ -29,6 +29,8 @@ export interface DispatcherEnv {
   META_CAPI_ACCESS_TOKEN?: string;
   META_TEST_EVENT_CODE?: string;
   SGTM_ENDPOINT_URL?: string;
+  PLANOVOO_API_BASE_URL?: string;
+  PLANOVOO_HOOK_SECRET?: string;
 }
 
 export type HandlerFn = (event: FunnelEvent, env: DispatcherEnv) => Promise<void>;
@@ -75,7 +77,6 @@ const DEFAULT_CHAIN_MAP: Record<string, string[]> = {
     "upsert_event_store",
     "update_brevo_funnel",
     "emit_tracking",
-    "forward_n8n",
   ],
   PURCHASE_COMPLETE: ["resolve_identity", "upsert_event_store", "update_brevo_funnel"],
   PURCHASE_CANCELED: ["resolve_identity", "upsert_event_store", "invalidate_purchase_token", "update_brevo_funnel"],

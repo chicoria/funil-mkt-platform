@@ -322,19 +322,18 @@
             "source": "hotmart",
             "ingress": "api-hotmart-ingress",
             "queue": "decole-q-funnel-events",
+            "description": "Compra aprovada. Acesso ao curso é entregue pela própria Hotmart via https://hotmart.com/pt-br/club/carreira-em-esg/products/5083704",
             "chain": [
               "resolve_identity",
               "upsert_event_store",
               "enrich_attribution",
               "update_brevo_funnel",
-              "emit_tracking",
-              "forward_n8n"
+              "emit_tracking"
             ],
             "destinations": [
               "Brevo",
               "Event Store",
-              "sGTM",
-              "n8n"
+              "sGTM"
             ]
           },
           {
@@ -929,13 +928,13 @@
               "enrich_attribution",
               "update_brevo_funnel",
               "emit_tracking",
-              "forward_n8n"
+              "call_plano_voo_purchase"
             ],
             "destinations": [
               "Brevo",
               "Event Store",
               "sGTM",
-              "n8n"
+              "Plano de Voo API"
             ]
           },
           {
@@ -966,19 +965,19 @@
             "source": "hotmart",
             "ingress": "api-hotmart-ingress",
             "queue": "decole-q-funnel-events",
-            "description": "Compra cancelada antes de permanecer ativa. Invalida token de recuperacao em KV e encaminha ao n8n para bloquear o token do app Plano de Voo.",
+            "description": "Compra cancelada. Invalida token de recuperacao em KV e chama API do Plano de Voo para marcar tokens como CANCELADO.",
             "chain": [
               "resolve_identity",
               "upsert_event_store",
               "invalidate_purchase_token",
               "update_brevo_funnel",
-              "forward_n8n"
+              "call_plano_voo_refund"
             ],
             "destinations": [
               "Brevo",
               "Event Store",
               "Identity KV",
-              "n8n"
+              "Plano de Voo API"
             ],
             "brevoConfig": {
               "funnelPrefix": "DECOLE_PLANOVOO"
@@ -991,19 +990,19 @@
             "source": "hotmart",
             "ingress": "api-hotmart-ingress",
             "queue": "decole-q-funnel-events",
-            "description": "Reembolso processado, normalmente por desistencia dentro do periodo de garantia. Invalida token de recuperacao em KV e encaminha ao n8n para bloquear o token do app Plano de Voo.",
+            "description": "Reembolso processado. Invalida token de recuperacao em KV e chama API do Plano de Voo para marcar tokens como CANCELADO.",
             "chain": [
               "resolve_identity",
               "upsert_event_store",
               "invalidate_purchase_token",
               "update_brevo_funnel",
-              "forward_n8n"
+              "call_plano_voo_refund"
             ],
             "destinations": [
               "Brevo",
               "Event Store",
               "Identity KV",
-              "n8n"
+              "Plano de Voo API"
             ],
             "brevoConfig": {
               "funnelPrefix": "DECOLE_PLANOVOO"
@@ -1016,19 +1015,19 @@
             "source": "hotmart",
             "ingress": "api-hotmart-ingress",
             "queue": "decole-q-funnel-events",
-            "description": "Contestacao/reversao de pagamento junto ao emissor do cartao. Invalida token de recuperacao em KV e encaminha ao n8n para bloquear o token do app Plano de Voo.",
+            "description": "Contestacao/reversao de pagamento. Invalida token de recuperacao em KV e chama API do Plano de Voo para marcar tokens como CANCELADO.",
             "chain": [
               "resolve_identity",
               "upsert_event_store",
               "invalidate_purchase_token",
               "update_brevo_funnel",
-              "forward_n8n"
+              "call_plano_voo_refund"
             ],
             "destinations": [
               "Brevo",
               "Event Store",
               "Identity KV",
-              "n8n"
+              "Plano de Voo API"
             ],
             "brevoConfig": {
               "funnelPrefix": "DECOLE_PLANOVOO"
@@ -1041,19 +1040,19 @@
             "source": "hotmart",
             "ingress": "api-hotmart-ingress",
             "queue": "decole-q-funnel-events",
-            "description": "Disputa/protesto da compra. Invalida token de recuperacao em KV e encaminha ao n8n para bloquear preventivamente o token do app Plano de Voo enquanto a compra esta sob contestacao.",
+            "description": "Disputa/protesto da compra. Invalida token de recuperacao em KV e chama API do Plano de Voo para marcar tokens como SUSPENSO.",
             "chain": [
               "resolve_identity",
               "upsert_event_store",
               "invalidate_purchase_token",
               "update_brevo_funnel",
-              "forward_n8n"
+              "call_plano_voo_protest"
             ],
             "destinations": [
               "Brevo",
               "Event Store",
               "Identity KV",
-              "n8n"
+              "Plano de Voo API"
             ],
             "brevoConfig": {
               "funnelPrefix": "DECOLE_PLANOVOO"
@@ -1066,19 +1065,19 @@
             "source": "hotmart",
             "ingress": "api-hotmart-ingress",
             "queue": "decole-q-funnel-events",
-            "description": "Pagamento expirado sem conclusao. Invalida token de recuperacao em KV e encaminha ao n8n para bloquear o token do app Plano de Voo quando existir token associado.",
+            "description": "Pagamento expirado sem conclusao. Invalida token de recuperacao em KV e chama API do Plano de Voo para marcar tokens como CANCELADO.",
             "chain": [
               "resolve_identity",
               "upsert_event_store",
               "invalidate_purchase_token",
               "update_brevo_funnel",
-              "forward_n8n"
+              "call_plano_voo_refund"
             ],
             "destinations": [
               "Brevo",
               "Event Store",
               "Identity KV",
-              "n8n"
+              "Plano de Voo API"
             ],
             "brevoConfig": {
               "funnelPrefix": "DECOLE_PLANOVOO"
@@ -1275,7 +1274,9 @@
         "SGTM_ENDPOINT_URL_DECOLE_ESG",
         "SGTM_ENDPOINT_URL_PLANOVOO",
         "BREVO_SANDBOX",
-        "N8N_DISABLE_FORWARD"
+        "N8N_DISABLE_FORWARD",
+        "PLANOVOO_API_BASE_URL",
+        "PLANOVOO_HOOK_SECRET"
       ]
     },
     "api-precheckout": {
@@ -1370,6 +1371,21 @@
     "sync_brevo_segments": {
       "worker": "funnel-dispatcher",
       "binding": "BREVO_API_KEY"
+    },
+    "call_plano_voo_purchase": {
+      "worker": "funnel-dispatcher",
+      "bindings": ["PLANOVOO_API_BASE_URL", "PLANOVOO_HOOK_SECRET", "BREVO_API_KEY"],
+      "description": "Calls Plano de Voo API to create token, then sends purchase link email via Brevo"
+    },
+    "call_plano_voo_refund": {
+      "worker": "funnel-dispatcher",
+      "bindings": ["PLANOVOO_API_BASE_URL", "PLANOVOO_HOOK_SECRET", "BREVO_API_KEY"],
+      "description": "Calls Plano de Voo API to mark tokens as CANCELADO, then sends refund email via Brevo"
+    },
+    "call_plano_voo_protest": {
+      "worker": "funnel-dispatcher",
+      "bindings": ["PLANOVOO_API_BASE_URL", "PLANOVOO_HOOK_SECRET", "BREVO_API_KEY"],
+      "description": "Calls Plano de Voo API to mark tokens as SUSPENSO, then sends protest email via Brevo"
     }
   }
 }
