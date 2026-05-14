@@ -16,6 +16,7 @@ import {
   type ParsedCatalog,
 } from "../catalog-adapter";
 import { HandlerContext } from "../handler-context";
+import { DEFAULT_TENANT_ID, resolveEventTenantId, tenantScopedKey } from "../tenant-scope";
 import { callProductApi, type ProductApiConfig } from "./call-product-api";
 import { sendTemplateEmail, type TemplateEmailConfig } from "./send-template-email";
 
@@ -50,6 +51,7 @@ const CHECKOUT_RECOVERY_PARAM_KEYS = [
 type HandlerMap = Record<string, HandlerFn>;
 type SqlBindable = string | number | null;
 type KVNamespaceLike = NonNullable<DispatcherEnv["IDENTITY_KV"]>;
+const appliedD1Migrations = new WeakMap<D1DatabaseLike, Set<string>>();
 
 interface D1StatementLike {
   bind(...values: SqlBindable[]): D1StatementLike;
@@ -147,6 +149,7 @@ interface BrevoFunnelFieldsConfig {
 
 interface CheckoutRecoveryRecord {
   version: number;
+  tenant_id?: string;
   product_code: string;
   event_id: string;
   profile_id?: string;
@@ -326,26 +329,95 @@ function ensureIdentity(event: FunnelEvent): { anonymousId: string; emailHash: s
   return { anonymousId, emailHash, profileId };
 }
 
+async function runD1(db: D1DatabaseLike, query: string): Promise<void> {
+  await db.prepare(query).run();
+}
+
+async function runD1IgnoringError(db: D1DatabaseLike, query: string): Promise<void> {
+  await db.prepare(query).run().catch(() => undefined);
+}
+
+async function runD1MigrationOnce(db: D1DatabaseLike, id: string, queries: string[]): Promise<void> {
+  const cached = appliedD1Migrations.get(db);
+  if (cached?.has(id)) return;
+
+  await runD1(
+    db,
+    `CREATE TABLE IF NOT EXISTS __funilmkt_schema_migrations (
+      id TEXT PRIMARY KEY,
+      applied_at TEXT NOT NULL
+    )`
+  );
+
+  const row = await db
+    .prepare(`SELECT id FROM __funilmkt_schema_migrations WHERE id = ? LIMIT 1`)
+    .bind(id)
+    .first<{ id?: string }>();
+  if (row?.id) {
+    const migrations = cached || new Set<string>();
+    migrations.add(id);
+    appliedD1Migrations.set(db, migrations);
+    return;
+  }
+
+  for (const query of queries) {
+    await runD1(db, query);
+  }
+  await db
+    .prepare(`INSERT INTO __funilmkt_schema_migrations (id, applied_at) VALUES (?, ?)`)
+    .bind(id, new Date().toISOString())
+    .run();
+
+  const migrations = cached || new Set<string>();
+  migrations.add(id);
+  appliedD1Migrations.set(db, migrations);
+}
+
 async function ensureIdentitySchema(db: D1DatabaseLike): Promise<void> {
   await db
     .prepare(
       `CREATE TABLE IF NOT EXISTS identity_links (
-        profile_id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL DEFAULT 'decole',
+        profile_id TEXT NOT NULL,
         anonymous_id TEXT,
         email_hash TEXT,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (tenant_id, profile_id)
       )`
     )
     .run();
-  await db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_identity_links_anonymous_id ON identity_links(anonymous_id)`).run();
-  await db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_identity_links_email_hash ON identity_links(email_hash)`).run();
+  await runD1IgnoringError(db, `ALTER TABLE identity_links ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'decole'`);
+  await runD1MigrationOnce(db, "2026-05-14_identity_links_tenant_pk", [
+    `DROP INDEX IF EXISTS idx_identity_links_anonymous_id`,
+    `DROP INDEX IF EXISTS idx_identity_links_email_hash`,
+    `CREATE TABLE IF NOT EXISTS identity_links_tenant_migration (
+      tenant_id TEXT NOT NULL DEFAULT 'decole',
+      profile_id TEXT NOT NULL,
+      anonymous_id TEXT,
+      email_hash TEXT,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (tenant_id, profile_id)
+    )`,
+    `INSERT OR REPLACE INTO identity_links_tenant_migration (
+      tenant_id, profile_id, anonymous_id, email_hash, updated_at
+    )
+    SELECT COALESCE(tenant_id, 'decole'), profile_id, anonymous_id, email_hash, updated_at
+    FROM identity_links
+    WHERE profile_id IS NOT NULL`,
+    `DROP TABLE identity_links`,
+    `ALTER TABLE identity_links_tenant_migration RENAME TO identity_links`,
+  ]);
+  await runD1(db, `CREATE UNIQUE INDEX IF NOT EXISTS idx_identity_links_tenant_profile ON identity_links(tenant_id, profile_id)`);
+  await runD1(db, `CREATE UNIQUE INDEX IF NOT EXISTS idx_identity_links_tenant_anonymous_id ON identity_links(tenant_id, anonymous_id)`);
+  await runD1(db, `CREATE UNIQUE INDEX IF NOT EXISTS idx_identity_links_tenant_email_hash ON identity_links(tenant_id, email_hash)`);
 }
 
 async function ensureEventStoreSchema(db: D1DatabaseLike): Promise<void> {
   await db
     .prepare(
       `CREATE TABLE IF NOT EXISTS funnel_events (
-        event_id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL DEFAULT 'decole',
+        event_id TEXT NOT NULL,
         profile_id TEXT,
         anonymous_id TEXT,
         email_hash TEXT,
@@ -354,23 +426,56 @@ async function ensureEventStoreSchema(db: D1DatabaseLike): Promise<void> {
         source TEXT NOT NULL,
         occurred_at TEXT NOT NULL,
         payload_json TEXT NOT NULL,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (tenant_id, event_id)
       )`
     )
     .run();
-  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_funnel_events_profile ON funnel_events(profile_id, occurred_at)`).run();
+  await runD1IgnoringError(db, `ALTER TABLE funnel_events ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'decole'`);
+  await runD1MigrationOnce(db, "2026-05-14_funnel_events_tenant_pk", [
+    `DROP INDEX IF EXISTS idx_funnel_events_profile`,
+    `CREATE TABLE IF NOT EXISTS funnel_events_tenant_migration (
+      tenant_id TEXT NOT NULL DEFAULT 'decole',
+      event_id TEXT NOT NULL,
+      profile_id TEXT,
+      anonymous_id TEXT,
+      email_hash TEXT,
+      event_type TEXT NOT NULL,
+      product_code TEXT NOT NULL,
+      source TEXT NOT NULL,
+      occurred_at TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (tenant_id, event_id)
+    )`,
+    `INSERT OR REPLACE INTO funnel_events_tenant_migration (
+      tenant_id, event_id, profile_id, anonymous_id, email_hash, event_type, product_code, source, occurred_at, payload_json, created_at
+    )
+    SELECT COALESCE(tenant_id, 'decole'), event_id, profile_id, anonymous_id, email_hash, event_type, product_code, source, occurred_at, payload_json, created_at
+    FROM funnel_events
+    WHERE event_id IS NOT NULL`,
+    `DROP TABLE funnel_events`,
+    `ALTER TABLE funnel_events_tenant_migration RENAME TO funnel_events`,
+  ]);
+  await runD1(db, `CREATE UNIQUE INDEX IF NOT EXISTS idx_funnel_events_tenant_event_id ON funnel_events(tenant_id, event_id)`);
+  await runD1(db, `CREATE INDEX IF NOT EXISTS idx_funnel_events_tenant_profile ON funnel_events(tenant_id, profile_id, occurred_at)`);
 }
 
 async function resolveIdentityState(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
+  const tenantId = tenantIdFor(event, env);
   const state = ensureIdentity(event);
   const now = new Date().toISOString();
   const email = asString(event.lead?.email).toLowerCase();
   const computedEmailHash = state.emailHash || (email ? await sha256Hex(email) : "");
 
-  const anonKey = `identity:anon:${state.anonymousId}`;
-  const emailKey = computedEmailHash ? `identity:email:${computedEmailHash}` : "";
-  const profileIdFromAnon = asString((await env.IDENTITY_KV?.get(anonKey)) || "");
-  const profileIdFromEmail = emailKey ? asString((await env.IDENTITY_KV?.get(emailKey)) || "") : "";
+  const anonKey = tenantScopedKey(tenantId, `identity:anon:${state.anonymousId}`);
+  const emailKey = computedEmailHash ? tenantScopedKey(tenantId, `identity:email:${computedEmailHash}`) : "";
+  let profileIdFromAnon = asString((await env.IDENTITY_KV?.get(anonKey)) || "");
+  let profileIdFromEmail = emailKey ? asString((await env.IDENTITY_KV?.get(emailKey)) || "") : "";
+  if (env.IDENTITY_KV && tenantId === DEFAULT_TENANT_ID) {
+    profileIdFromAnon ||= asString((await env.IDENTITY_KV.get(`identity:anon:${state.anonymousId}`)) || "");
+    profileIdFromEmail ||= computedEmailHash ? asString((await env.IDENTITY_KV.get(`identity:email:${computedEmailHash}`)) || "") : "";
+  }
   const profileId = state.profileId || profileIdFromAnon || profileIdFromEmail || crypto.randomUUID();
 
   event.identity = {
@@ -395,18 +500,19 @@ async function resolveIdentityState(event: FunnelEvent, env: DispatcherEnv): Pro
   await ensureIdentitySchema(identityDb);
   await identityDb
     .prepare(
-      `INSERT INTO identity_links (profile_id, anonymous_id, email_hash, updated_at)
-       VALUES (?, ?, ?, ?)
-       ON CONFLICT(profile_id) DO UPDATE SET
+      `INSERT INTO identity_links (tenant_id, profile_id, anonymous_id, email_hash, updated_at)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(tenant_id, profile_id) DO UPDATE SET
          anonymous_id = excluded.anonymous_id,
          email_hash = COALESCE(excluded.email_hash, identity_links.email_hash),
          updated_at = excluded.updated_at`
     )
-    .bind(profileId, state.anonymousId, computedEmailHash || null, now)
+    .bind(tenantId, profileId, state.anonymousId, computedEmailHash || null, now)
     .run();
 }
 
 async function upsertEventStoreRecord(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
+  const tenantId = tenantIdFor(event, env);
   const db = getEventStoreDb(env);
   if (!db) {
     return;
@@ -424,15 +530,16 @@ async function upsertEventStoreRecord(event: FunnelEvent, env: DispatcherEnv): P
   await db
     .prepare(
       `INSERT INTO funnel_events (
-        event_id, profile_id, anonymous_id, email_hash, event_type, product_code, source, occurred_at, payload_json, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(event_id) DO UPDATE SET
+        tenant_id, event_id, profile_id, anonymous_id, email_hash, event_type, product_code, source, occurred_at, payload_json, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(tenant_id, event_id) DO UPDATE SET
         profile_id = COALESCE(excluded.profile_id, funnel_events.profile_id),
         anonymous_id = COALESCE(excluded.anonymous_id, funnel_events.anonymous_id),
         email_hash = COALESCE(excluded.email_hash, funnel_events.email_hash),
         payload_json = excluded.payload_json`
     )
     .bind(
+      tenantId,
       event.event_id,
       profileId,
       anonymousId,
@@ -451,6 +558,7 @@ async function enrichAttributionFromHistory(event: FunnelEvent, env: DispatcherE
   const db = getEventStoreDb(env);
   if (!db) return;
 
+  const tenantId = tenantIdFor(event, env);
   const profileId = asString((event.payload || {}).profile_id);
   if (!profileId) return;
 
@@ -463,10 +571,10 @@ async function enrichAttributionFromHistory(event: FunnelEvent, env: DispatcherE
     const result = await db
       .prepare(
         `SELECT payload_json FROM funnel_events
-         WHERE profile_id = ? AND source = 'site'
+         WHERE tenant_id = ? AND profile_id = ? AND source = 'site'
          ORDER BY occurred_at DESC LIMIT 1`
       )
-      .bind(profileId)
+      .bind(tenantId, profileId)
       .first<{ payload_json: string }>();
     row = result ?? null;
   } catch {
@@ -525,6 +633,10 @@ function getCatalog(env: DispatcherEnv): ParsedCatalog {
   const fromEnv = parseCatalog(env.CATALOG_JSON);
   if (isConfiguredCatalog(fromEnv)) return fromEnv;
   return bundledCatalog;
+}
+
+function tenantIdFor(event: FunnelEvent, env: DispatcherEnv): string {
+  return resolveEventTenantId(event, getCatalog(env));
 }
 
 function getCatalogProduct(catalog: ParsedCatalog, event: FunnelEvent): CatalogProductConfig | undefined {
@@ -704,7 +816,15 @@ function cartRecoveryCampaignName(productCode: string): string {
   return `cart_abandonment_${campaignProduct || "checkout"}`;
 }
 
-function checkoutRecoveryTokenKey(recoveryId: string): string {
+function checkoutRecoveryTokenKey(tenantId: string, recoveryId: string): string {
+  const normalized = asString(recoveryId);
+  if (!normalized) return "";
+  if (normalized.startsWith(`${tenantId}:${CHECKOUT_RECOVERY_KEY_PREFIX}`)) return normalized;
+  if (normalized.startsWith(CHECKOUT_RECOVERY_KEY_PREFIX)) return tenantScopedKey(tenantId, normalized);
+  return tenantScopedKey(tenantId, `${CHECKOUT_RECOVERY_KEY_PREFIX}${normalized}`);
+}
+
+function legacyCheckoutRecoveryTokenKey(recoveryId: string): string {
   const normalized = asString(recoveryId);
   if (!normalized) return "";
   return normalized.startsWith(CHECKOUT_RECOVERY_KEY_PREFIX)
@@ -726,13 +846,26 @@ function parseRecoveryIndexToken(raw: string | null): string {
   return value;
 }
 
-function parseRecoveryRecordIndexKeys(raw: string | null): string[] {
+function parseRecoveryRecordIndexKeys(raw: string | null, tenantId: string, includeLegacyKeys = false): string[] {
   const value = asString(raw);
   if (!value) return [];
   try {
     const parsed = JSON.parse(value);
     if (!isRecord(parsed) || !Array.isArray(parsed.index_keys)) return [];
-    return parsed.index_keys.map((entry) => asString(entry)).filter((entry) => entry.startsWith(CHECKOUT_RECOVERY_INDEX_PREFIX));
+    const scopedIndexPrefix = tenantScopedKey(tenantId, CHECKOUT_RECOVERY_INDEX_PREFIX);
+    const keys = new Set<string>();
+    for (const rawEntry of parsed.index_keys) {
+      const entry = asString(rawEntry);
+      if (entry.startsWith(scopedIndexPrefix)) {
+        keys.add(entry);
+        continue;
+      }
+      if (tenantId === DEFAULT_TENANT_ID && entry.startsWith(CHECKOUT_RECOVERY_INDEX_PREFIX)) {
+        keys.add(tenantScopedKey(tenantId, entry));
+        if (includeLegacyKeys) keys.add(entry);
+      }
+    }
+    return [...keys];
   } catch {
     return [];
   }
@@ -777,7 +910,7 @@ async function buildCheckoutRecoveryIndexKeys(
   const add = (kind: string, value: string): void => {
     const normalized = asString(value);
     if (!normalized) return;
-    keys.add(`${CHECKOUT_RECOVERY_INDEX_PREFIX}${kind}:${productCode}:${recoveryIndexComponent(normalized)}`);
+    keys.add(tenantScopedKey(tenantIdFor(event, env), `${CHECKOUT_RECOVERY_INDEX_PREFIX}${kind}:${productCode}:${recoveryIndexComponent(normalized)}`));
   };
 
   add("profile", asString(payload.profile_id));
@@ -802,18 +935,27 @@ async function deleteKvKey(kv: KVNamespaceLike, key: string): Promise<void> {
 
 async function deleteCheckoutRecoveryToken(
   kv: KVNamespaceLike,
+  tenantId: string,
   recoveryId: string,
   indexKeysToDelete: Set<string>
 ): Promise<boolean> {
-  const tokenKey = checkoutRecoveryTokenKey(recoveryId);
+  const tokenKey = checkoutRecoveryTokenKey(tenantId, recoveryId);
   if (!tokenKey) return false;
 
-  const recordRaw = await kv.get(tokenKey);
-  for (const indexKey of parseRecoveryRecordIndexKeys(recordRaw)) {
+  let recordRaw = await kv.get(tokenKey);
+  let keyToDelete = tokenKey;
+  let includeLegacyIndexKeys = false;
+  if (!recordRaw && tenantId === DEFAULT_TENANT_ID) {
+    const legacyKey = legacyCheckoutRecoveryTokenKey(recoveryId);
+    recordRaw = await kv.get(legacyKey);
+    keyToDelete = legacyKey;
+    includeLegacyIndexKeys = Boolean(recordRaw);
+  }
+  for (const indexKey of parseRecoveryRecordIndexKeys(recordRaw, tenantId, includeLegacyIndexKeys)) {
     indexKeysToDelete.add(indexKey);
   }
 
-  await deleteKvKey(kv, tokenKey);
+  await deleteKvKey(kv, keyToDelete);
   return Boolean(recordRaw);
 }
 
@@ -825,6 +967,7 @@ async function storeCheckoutRecoveryRecord(
 ): Promise<void> {
   if (!env.IDENTITY_KV) return;
 
+  const tenantId = tenantIdFor(event, env);
   const indexKeys = await buildCheckoutRecoveryIndexKeys(event, env, recoveryParams);
   const staleIndexKeys = new Set<string>();
   const staleRecoveryIds = new Set<string>();
@@ -837,7 +980,7 @@ async function storeCheckoutRecoveryRecord(
   }
 
   for (const previousRecoveryId of staleRecoveryIds) {
-    await deleteCheckoutRecoveryToken(env.IDENTITY_KV, previousRecoveryId, staleIndexKeys);
+    await deleteCheckoutRecoveryToken(env.IDENTITY_KV, tenantId, previousRecoveryId, staleIndexKeys);
   }
   for (const staleIndexKey of staleIndexKeys) {
     await deleteKvKey(env.IDENTITY_KV, staleIndexKey);
@@ -845,6 +988,7 @@ async function storeCheckoutRecoveryRecord(
 
   const recoveryRecord: CheckoutRecoveryRecord = {
     version: 2,
+    tenant_id: tenantId,
     product_code: event.product_code,
     event_id: event.event_id,
     profile_id: asString((event.payload || {}).profile_id) || undefined,
@@ -853,7 +997,7 @@ async function storeCheckoutRecoveryRecord(
     created_at: new Date().toISOString(),
   };
 
-  await env.IDENTITY_KV.put(checkoutRecoveryTokenKey(recoveryId), JSON.stringify(recoveryRecord), {
+  await env.IDENTITY_KV.put(checkoutRecoveryTokenKey(tenantId, recoveryId), JSON.stringify(recoveryRecord), {
     expirationTtl: CHECKOUT_RECOVERY_TTL_SECONDS,
   });
 
@@ -875,6 +1019,7 @@ async function invalidatePurchaseToken(event: FunnelEvent, env: DispatcherEnv): 
     return;
   }
 
+  const tenantId = tenantIdFor(event, env);
   const indexKeys = await buildCheckoutRecoveryIndexKeys(event, env);
   const indexKeysToDelete = new Set(indexKeys);
   const recoveryIds = new Set(collectPurchaseTokenHints(event));
@@ -882,11 +1027,16 @@ async function invalidatePurchaseToken(event: FunnelEvent, env: DispatcherEnv): 
   for (const indexKey of indexKeys) {
     const recoveryId = parseRecoveryIndexToken(await env.IDENTITY_KV.get(indexKey));
     if (recoveryId) recoveryIds.add(recoveryId);
+    if (tenantId === DEFAULT_TENANT_ID && indexKey.startsWith(`${DEFAULT_TENANT_ID}:`)) {
+      const legacyIndexKey = indexKey.slice(`${DEFAULT_TENANT_ID}:`.length);
+      const legacyRecoveryId = parseRecoveryIndexToken(await env.IDENTITY_KV.get(legacyIndexKey));
+      if (legacyRecoveryId) recoveryIds.add(legacyRecoveryId);
+    }
   }
 
   let deletedTokens = 0;
   for (const recoveryId of recoveryIds) {
-    if (await deleteCheckoutRecoveryToken(env.IDENTITY_KV, recoveryId, indexKeysToDelete)) {
+    if (await deleteCheckoutRecoveryToken(env.IDENTITY_KV, tenantId, recoveryId, indexKeysToDelete)) {
       deletedTokens += 1;
     }
   }
@@ -910,6 +1060,7 @@ async function invalidatePurchaseToken(event: FunnelEvent, env: DispatcherEnv): 
 
 async function readLatestSitePayloadForRecovery(event: FunnelEvent, env: DispatcherEnv): Promise<Record<string, unknown>> {
   const db = getEventStoreDb(env);
+  const tenantId = tenantIdFor(event, env);
   const profileId = asString((event.payload || {}).profile_id);
   if (!db || !profileId) return {};
 
@@ -918,11 +1069,11 @@ async function readLatestSitePayloadForRecovery(event: FunnelEvent, env: Dispatc
     row = await db
       .prepare(
         `SELECT event_type, payload_json FROM funnel_events
-         WHERE profile_id = ? AND source = 'site'
+         WHERE tenant_id = ? AND profile_id = ? AND source = 'site'
          ORDER BY CASE WHEN event_type = 'BEGIN_CHECKOUT' THEN 0 ELSE 1 END, occurred_at DESC
          LIMIT 1`
       )
-      .bind(profileId)
+      .bind(tenantId, profileId)
       .first<{ payload_json?: string }>();
   } catch {
     return {};
@@ -1057,6 +1208,7 @@ function resolveBrevoFunnelFields(event: FunnelEvent, env: DispatcherEnv): Brevo
 }
 
 async function resolveBrevoFunnelSteps(event: FunnelEvent, env: DispatcherEnv): Promise<string> {
+  const tenantId = tenantIdFor(event, env);
   const profileId = asString((event.payload || {}).profile_id);
   const eventStoreDb = getEventStoreDb(env);
   if (!profileId || !eventStoreDb) {
@@ -1069,12 +1221,12 @@ async function resolveBrevoFunnelSteps(event: FunnelEvent, env: DispatcherEnv): 
        FROM (
          SELECT event_type
          FROM funnel_events
-         WHERE profile_id = ?
+         WHERE tenant_id = ? AND profile_id = ?
          GROUP BY event_type
          ORDER BY MIN(occurred_at)
        )`
     )
-    .bind(profileId)
+    .bind(tenantId, profileId)
     .first<{ steps?: string }>();
 
   const fromStore = asString(row?.steps);
@@ -1473,8 +1625,7 @@ interface ProductApiHandlerResult {
 }
 
 function resolveContextTenant(event: FunnelEvent, catalog: ParsedCatalog): string {
-  const resolvedProduct = resolveCatalogProduct(catalog, event);
-  return resolvedProduct?.tenant_id || asString(event.tenant_id) || "decole";
+  return resolveEventTenantId(event, catalog);
 }
 
 function resolveContextCredentials(

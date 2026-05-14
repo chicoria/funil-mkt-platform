@@ -8,6 +8,7 @@ import {
   type CatalogEventConfig,
   type ParsedCatalog,
 } from "./catalog-adapter";
+import { resolveEventTenantId } from "./tenant-scope";
 
 interface KVNamespaceLike {
   get(key: string): Promise<string | null>;
@@ -90,9 +91,8 @@ function dedupeValueFor(event: FunnelEvent, handlerName: string): string {
 
 function dedupeKeyFor(event: FunnelEvent, catalog: ParsedCatalog, handlerName: string): string {
   const resolvedProduct = resolveCatalogProduct(catalog, event);
-  const tenantId = resolvedProduct?.tenant_id || event.tenant_id || "";
+  const tenantId = resolveEventTenantId(event, catalog);
   const productCode = resolvedProduct?.product_code || event.product_code;
-  if (!tenantId) return `${event.event_id}:${handlerName}`;
   return `${tenantId}:${productCode}:${event.event_id}:${handlerName}`;
 }
 

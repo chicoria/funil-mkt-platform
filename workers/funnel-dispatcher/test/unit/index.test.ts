@@ -134,6 +134,78 @@ describe("funnel-dispatcher", () => {
     expect(hasEventInsert).toBe(true);
   });
 
+  it("isola identity KV e D1 por tenant", async () => {
+    const env = makeEnv({
+      CATALOG_JSON: JSON.stringify({
+        tenants: {
+          decole: {
+            products: {
+              PLANOVOO: {
+                aliases: ["DECOLE_PLANOVOO"],
+                funnelEventArchitecture: {
+                  events: [{ eventType: "GENERATE_LEAD", chain: ["resolve_identity", "upsert_event_store"] }],
+                },
+              },
+            },
+          },
+          superare: {
+            products: {
+              PLANOVOO: {
+                funnelEventArchitecture: {
+                  events: [{ eventType: "GENERATE_LEAD", chain: ["resolve_identity", "upsert_event_store"] }],
+                },
+              },
+            },
+          },
+        },
+      }),
+    });
+
+    const base = {
+      event_type: "GENERATE_LEAD",
+      product_code: "PLANOVOO",
+      source: "site",
+      occurred_at: "2026-05-14T12:00:00.000Z",
+      lead: { email: "same@example.com" },
+      identity: { anonymous_id: "anon-same" },
+      payload: {},
+    };
+    const decoleEvent: any = { ...base, event_id: "evt-tenant-identity-decole", tenant_id: "decole", payload: {} };
+    const superareEvent: any = { ...base, event_id: "evt-tenant-identity-superare", tenant_id: "superare", payload: {} };
+
+    await worker.queue({ messages: [{ body: decoleEvent }, { body: superareEvent }] }, env);
+
+    expect(decoleEvent.payload.profile_id).toBeTruthy();
+    expect(superareEvent.payload.profile_id).toBeTruthy();
+    expect(superareEvent.payload.profile_id).not.toBe(decoleEvent.payload.profile_id);
+    expect((env.IDENTITY_KV.put as any).mock.calls.map((call: unknown[]) => call[0])).toEqual(
+      expect.arrayContaining([
+        "decole:identity:anon:anon-same",
+        "superare:identity:anon:anon-same",
+      ])
+    );
+    const identityInsert = (env.IDENTITY_DB.prepare as any).mock.calls.find((call: unknown[]) =>
+      String(call[0]).includes("INSERT INTO identity_links")
+    );
+    expect(String(identityInsert?.[0] || "")).toContain("tenant_id");
+    const eventInsert = (env.EVENT_STORE_DB.prepare as any).mock.calls.find((call: unknown[]) =>
+      String(call[0]).includes("INSERT INTO funnel_events")
+    );
+    expect(String(eventInsert?.[0] || "")).toContain("tenant_id");
+
+    const identitySql = (env.IDENTITY_DB.prepare as any).mock.calls.map((call: unknown[]) => String(call[0]));
+    const eventSql = (env.EVENT_STORE_DB.prepare as any).mock.calls.map((call: unknown[]) => String(call[0]));
+    expect(identitySql).toEqual(expect.arrayContaining([
+      expect.stringContaining("DROP INDEX IF EXISTS idx_identity_links_anonymous_id"),
+      expect.stringContaining("DROP INDEX IF EXISTS idx_identity_links_email_hash"),
+      expect.stringContaining("DROP TABLE identity_links"),
+    ]));
+    expect(eventSql).toEqual(expect.arrayContaining([
+      expect.stringContaining("DROP INDEX IF EXISTS idx_funnel_events_profile"),
+      expect.stringContaining("DROP TABLE funnel_events"),
+    ]));
+  });
+
   it("cria contato DOI nativo na Brevo usando configuracao do evento", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -350,175 +422,227 @@ describe("funnel-dispatcher", () => {
     const body = JSON.parse(String((emailCall?.[1] as RequestInit)?.body || "{}")) as {
       templateId?: number;
       params?: Record<string, string>;
-	    };
-	    expect(body.templateId).toBe(11);
-	    const checkoutUrl = new URL(String(body.params?.checkout_url || ""));
-	    expect(checkoutUrl.origin).toBe("https://links.decolesuacarreiraesg.com.br");
-	    expect(checkoutUrl.pathname).toBe("/plano-de-voo/checkout");
-	    expect(checkoutUrl.searchParams.get("rid")).toBeTruthy();
-	    expect(body.params?.checkoutUrl).toBe(body.params?.checkout_url);
-	    expect(body.params?.product_name).toBe("DECOLE - Plano de Voo");
-	    expect(body.params?.productName).toBe("DECOLE - Plano de Voo");
-	    const recoveryPutCall = (env.IDENTITY_KV.put as any).mock.calls.find((call: unknown[]) =>
-	      String(call[0]).startsWith("checkout_recovery:")
-	    );
-	    expect(recoveryPutCall).toBeTruthy();
-	    const recoveryPayload = JSON.parse(String(recoveryPutCall?.[1] || "{}")) as { params?: Record<string, string> };
-	    expect(recoveryPayload.params?.email).toBe("qa.cart@example.com");
-	    expect(recoveryPayload.params?.utm_source).toBe("brevo");
-	    expect(recoveryPayload.params?.utm_medium).toBe("email");
-	    const indexPutCalls = (env.IDENTITY_KV.put as any).mock.calls.filter((call: unknown[]) =>
-	      String(call[0]).startsWith("checkout_recovery_index:")
-	    );
-	    expect(indexPutCalls.length).toBeGreaterThan(0);
+    };
+    expect(body.templateId).toBe(11);
+    const checkoutUrl = new URL(String(body.params?.checkout_url || ""));
+    expect(checkoutUrl.origin).toBe("https://links.decolesuacarreiraesg.com.br");
+    expect(checkoutUrl.pathname).toBe("/plano-de-voo/checkout");
+    expect(checkoutUrl.searchParams.get("rid")).toBeTruthy();
+    expect(body.params?.checkoutUrl).toBe(body.params?.checkout_url);
+    expect(body.params?.product_name).toBe("DECOLE - Plano de Voo");
+    expect(body.params?.productName).toBe("DECOLE - Plano de Voo");
+    const recoveryPutCall = (env.IDENTITY_KV.put as any).mock.calls.find((call: unknown[]) =>
+      String(call[0]).startsWith("decole:checkout_recovery:")
+    );
+    expect(recoveryPutCall).toBeTruthy();
+    const recoveryPayload = JSON.parse(String(recoveryPutCall?.[1] || "{}")) as { params?: Record<string, string> };
+    expect(recoveryPayload.params?.email).toBe("qa.cart@example.com");
+    expect(recoveryPayload.params?.utm_source).toBe("brevo");
+    expect(recoveryPayload.params?.utm_medium).toBe("email");
+    const indexPutCalls = (env.IDENTITY_KV.put as any).mock.calls.filter((call: unknown[]) =>
+      String(call[0]).startsWith("decole:checkout_recovery_index:")
+    );
+    expect(indexPutCalls.length).toBeGreaterThan(0);
 
-	    vi.unstubAllGlobals();
-	  });
+    vi.unstubAllGlobals();
+  });
 
-	  it("grava dados de checkout recuperados do historico para prefill na Hotmart", async () => {
-	    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
-	      return new Response(JSON.stringify({ ok: true }), { status: 200 });
-	    });
-	    vi.stubGlobal("fetch", fetchMock);
+  it("grava dados de checkout recuperados do historico para prefill na Hotmart", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
 
-	    const sitePayload = JSON.stringify({
-	      link_url:
-	        "https://links.decolesuacarreiraesg.com.br/plano-de-voo/checkout?name=Ana%20Silva&email=ana@example.com&phoneac=11&phonenumber=999999999&fbp=fb.1.site&utm_source=ig",
-	      session_id: "sess-site-1",
-	      anonymous_id: "anon-site-1",
-	    });
-	    const d1Stub = makeD1Stub();
-	    d1Stub.db.prepare = vi.fn((sql: string) => {
-	      const state = { binds: [] as unknown[] };
-	      return {
-	        bind: vi.fn((...vals: unknown[]) => {
-	          state.binds = vals;
-	          return {
-	            run: vi.fn(async () => ({})),
-	            first: vi.fn(async () => {
-	              if (sql.includes("source = 'site'")) return { payload_json: sitePayload };
-	              return null;
-	            }),
-	          };
-	        }),
-	        run: vi.fn(async () => ({})),
-	        first: vi.fn(async () => null),
-	      };
-	    }) as any;
+    const sitePayload = JSON.stringify({
+      link_url:
+        "https://links.decolesuacarreiraesg.com.br/plano-de-voo/checkout?name=Ana%20Silva&email=ana@example.com&phoneac=11&phonenumber=999999999&fbp=fb.1.site&utm_source=ig",
+      session_id: "sess-site-1",
+      anonymous_id: "anon-site-1",
+    });
+    const d1Stub = makeD1Stub();
+    d1Stub.db.prepare = vi.fn((sql: string) => {
+      const state = { binds: [] as unknown[] };
+      return {
+        bind: vi.fn((...vals: unknown[]) => {
+          state.binds = vals;
+          return {
+            run: vi.fn(async () => ({})),
+            first: vi.fn(async () => {
+              if (sql.includes("source = 'site'")) return { payload_json: sitePayload };
+              return null;
+            }),
+          };
+        }),
+        run: vi.fn(async () => ({})),
+        first: vi.fn(async () => null),
+      };
+    }) as any;
 
-	    const env = makeEnv({
-	      EVENT_STORE_DB: d1Stub.db,
-	      BREVO_API_KEY: "set",
-	      CATALOG_JSON: JSON.stringify({
-	        products: {
-	          DECOLE_PLANOVOO: {
-	            name: "DECOLE - Plano de Voo",
-	            links: {
-	              checkoutPath: "/plano-de-voo/checkout",
-	              checkoutBaseUrl: "https://pay.hotmart.com/R105463680A?off=f3yweqek",
-	            },
-	            funnelEventArchitecture: {
-	              events: [
-	                {
-	                  eventType: "PURCHASE_OUT_OF_SHOPPING_CART",
-	                  chain: ["resolve_identity", "upsert_event_store", "send_cart_abandonment_email"],
-	                  brevoConfig: { cartAbandonmentTemplateId: "11" },
-	                },
-	              ],
-	            },
-	          },
-	        },
-	      }),
-	    });
+    const env = makeEnv({
+      EVENT_STORE_DB: d1Stub.db,
+      BREVO_API_KEY: "set",
+      CATALOG_JSON: JSON.stringify({
+        products: {
+          DECOLE_PLANOVOO: {
+            name: "DECOLE - Plano de Voo",
+            links: {
+              checkoutPath: "/plano-de-voo/checkout",
+              checkoutBaseUrl: "https://pay.hotmart.com/R105463680A?off=f3yweqek",
+            },
+            funnelEventArchitecture: {
+              events: [
+                {
+                  eventType: "PURCHASE_OUT_OF_SHOPPING_CART",
+                  chain: ["resolve_identity", "upsert_event_store", "send_cart_abandonment_email"],
+                  brevoConfig: { cartAbandonmentTemplateId: "11" },
+                },
+              ],
+            },
+          },
+        },
+      }),
+    });
 
-	    await worker.queue(
-	      {
-	        messages: [
-	          {
-	            body: {
-	              event_id: "evt-cart-prefill-1",
-	              event_type: "PURCHASE_OUT_OF_SHOPPING_CART",
-	              product_code: "DECOLE_PLANOVOO",
-	              source: "hotmart",
-	              occurred_at: new Date().toISOString(),
-	              lead: { email: "ana@example.com" },
-	              payload: {},
-	            },
-	          },
-	        ],
-	      },
-	      env
-	    );
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: {
+              event_id: "evt-cart-prefill-1",
+              event_type: "PURCHASE_OUT_OF_SHOPPING_CART",
+              product_code: "DECOLE_PLANOVOO",
+              source: "hotmart",
+              occurred_at: new Date().toISOString(),
+              lead: { email: "ana@example.com" },
+              payload: {},
+            },
+          },
+        ],
+      },
+      env
+    );
 
-	    const recoveryPutCall = (env.IDENTITY_KV.put as any).mock.calls.find((call: unknown[]) =>
-	      String(call[0]).startsWith("checkout_recovery:")
-	    );
-	    expect(recoveryPutCall).toBeTruthy();
-	    const recoveryPayload = JSON.parse(String(recoveryPutCall?.[1] || "{}")) as { params?: Record<string, string> };
-	    expect(recoveryPayload.params).toMatchObject({
-	      name: "Ana Silva",
-	      email: "ana@example.com",
-	      phoneac: "11",
-	      phonenumber: "999999999",
-	      fbp: "fb.1.site",
-	      utm_source: "ig",
-	      session_id: "sess-site-1",
-	      anonymous_id: "anon-site-1",
-	    });
+    const recoveryPutCall = (env.IDENTITY_KV.put as any).mock.calls.find((call: unknown[]) =>
+      String(call[0]).startsWith("decole:checkout_recovery:")
+    );
+    expect(recoveryPutCall).toBeTruthy();
+    const recoveryPayload = JSON.parse(String(recoveryPutCall?.[1] || "{}")) as { params?: Record<string, string> };
+    expect(recoveryPayload.params).toMatchObject({
+      name: "Ana Silva",
+      email: "ana@example.com",
+      phoneac: "11",
+      phonenumber: "999999999",
+      fbp: "fb.1.site",
+      utm_source: "ig",
+      session_id: "sess-site-1",
+      anonymous_id: "anon-site-1",
+    });
 
-	    vi.unstubAllGlobals();
-	  });
+    vi.unstubAllGlobals();
+  });
 
-	  it("invalida token de recuperacao associado a transacao Hotmart terminal", async () => {
-	    const env = makeEnv({
-	      CATALOG_JSON: JSON.stringify({
-	        products: {
-	          DECOLE_PLANOVOO: {
-	            aliases: ["PLANOVOO"],
-	            funnelEventArchitecture: {
-	              events: [{ eventType: "PURCHASE_REFUNDED", chain: ["invalidate_purchase_token"] }],
-	            },
-	          },
-	        },
-	      }),
-	    });
-	    await env.IDENTITY_KV.put(
-	      "checkout_recovery:rec-123",
-	      JSON.stringify({
-	        version: 2,
-	        product_code: "DECOLE_PLANOVOO",
-	        index_keys: ["checkout_recovery_index:transaction:DECOLE_PLANOVOO:hp-123"],
-	        params: { email: "buyer@example.com" },
-	      })
-	    );
-	    await env.IDENTITY_KV.put("checkout_recovery_index:transaction:DECOLE_PLANOVOO:hp-123", "rec-123");
+  it("invalida token de recuperacao associado a transacao Hotmart terminal", async () => {
+    const env = makeEnv({
+      CATALOG_JSON: JSON.stringify({
+        products: {
+          DECOLE_PLANOVOO: {
+            aliases: ["PLANOVOO"],
+            funnelEventArchitecture: {
+              events: [{ eventType: "PURCHASE_REFUNDED", chain: ["invalidate_purchase_token"] }],
+            },
+          },
+        },
+      }),
+    });
+    await env.IDENTITY_KV.put(
+      "decole:checkout_recovery:rec-123",
+      JSON.stringify({
+        version: 2,
+        product_code: "DECOLE_PLANOVOO",
+        index_keys: ["decole:checkout_recovery_index:transaction:DECOLE_PLANOVOO:hp-123"],
+        params: { email: "buyer@example.com" },
+      })
+    );
+    await env.IDENTITY_KV.put("decole:checkout_recovery_index:transaction:DECOLE_PLANOVOO:hp-123", "rec-123");
 
-	    await worker.queue(
-	      {
-	        messages: [
-	          {
-	            body: {
-	              event_id: "evt-refund-1",
-	              event_type: "PURCHASE_REFUNDED",
-	              product_code: "PLANOVOO",
-	              source: "hotmart",
-	              occurred_at: "2026-05-10T10:00:00.000Z",
-	              lead: { email: "buyer@example.com" },
-	              payload: {
-	                data: {
-	                  purchase: { transaction: "HP-123" },
-	                },
-	              },
-	            },
-	          },
-	        ],
-	      },
-	      env
-	    );
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: {
+              event_id: "evt-refund-1",
+              event_type: "PURCHASE_REFUNDED",
+              product_code: "PLANOVOO",
+              source: "hotmart",
+              occurred_at: "2026-05-10T10:00:00.000Z",
+              lead: { email: "buyer@example.com" },
+              payload: {
+                data: {
+                  purchase: { transaction: "HP-123" },
+                },
+              },
+            },
+          },
+        ],
+      },
+      env
+    );
 
-		  expect(env.IDENTITY_KV.delete).toHaveBeenCalledWith("checkout_recovery:rec-123");
-		  expect(env.IDENTITY_KV.delete).toHaveBeenCalledWith("checkout_recovery_index:transaction:DECOLE_PLANOVOO:hp-123");
-		});
+    expect(env.IDENTITY_KV.delete).toHaveBeenCalledWith("decole:checkout_recovery:rec-123");
+    expect(env.IDENTITY_KV.delete).toHaveBeenCalledWith("decole:checkout_recovery_index:transaction:DECOLE_PLANOVOO:hp-123");
+  });
+
+  it("remove token e indice legados de recuperacao DECOLE", async () => {
+    const env = makeEnv({
+      CATALOG_JSON: JSON.stringify({
+        products: {
+          DECOLE_PLANOVOO: {
+            aliases: ["PLANOVOO"],
+            funnelEventArchitecture: {
+              events: [{ eventType: "PURCHASE_REFUNDED", chain: ["invalidate_purchase_token"] }],
+            },
+          },
+        },
+      }),
+    });
+    await env.IDENTITY_KV.put(
+      "checkout_recovery:rec-legacy",
+      JSON.stringify({
+        version: 2,
+        product_code: "DECOLE_PLANOVOO",
+        index_keys: ["checkout_recovery_index:transaction:DECOLE_PLANOVOO:hp-legacy"],
+        params: { email: "buyer@example.com" },
+      })
+    );
+    await env.IDENTITY_KV.put("checkout_recovery_index:transaction:DECOLE_PLANOVOO:hp-legacy", "rec-legacy");
+
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: {
+              event_id: "evt-refund-legacy",
+              event_type: "PURCHASE_REFUNDED",
+              product_code: "PLANOVOO",
+              source: "hotmart",
+              occurred_at: "2026-05-10T10:00:00.000Z",
+              lead: { email: "buyer@example.com" },
+              payload: {
+                data: {
+                  purchase: { transaction: "HP-LEGACY" },
+                },
+              },
+            },
+          },
+        ],
+      },
+      env
+    );
+
+    expect(env.IDENTITY_KV.delete).toHaveBeenCalledWith("checkout_recovery:rec-legacy");
+    expect(env.IDENTITY_KV.delete).toHaveBeenCalledWith("checkout_recovery_index:transaction:DECOLE_PLANOVOO:hp-legacy");
+    expect(env.IDENTITY_KV.delete).toHaveBeenCalledWith("decole:checkout_recovery_index:transaction:DECOLE_PLANOVOO:hp-legacy");
+  });
 
 		  it("chama API do Plano de Voo para eventos terminais do Plano de Voo sem afetar a mentoria", async () => {
 		    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
@@ -1214,13 +1338,13 @@ describe("funnel-dispatcher", () => {
         bind: vi.fn((...vals: unknown[]) => {
           state.binds = vals;
           return {
-            run: vi.fn(async () => {
-              if (sql.includes("INSERT INTO funnel_events")) {
-                // payload_json is the 9th bind param (index 8)
-                storedPayloadJson = String(state.binds[8] ?? "");
-              }
-              return {};
-            }),
+	            run: vi.fn(async () => {
+	              if (sql.includes("INSERT INTO funnel_events")) {
+	                // payload_json is the 10th bind param (index 9), after tenant_id.
+	                storedPayloadJson = String(state.binds[9] ?? "");
+	              }
+	              return {};
+	            }),
             first: vi.fn(async () => null),
           };
         }),
@@ -1323,6 +1447,91 @@ describe("funnel-dispatcher", () => {
     expect(params.fbp).toBe("fb.1.site.111");
     expect(params.client_ip_address).toBe("9.9.9.9");
     expect(env.IDENTITY_KV.delete).not.toHaveBeenCalled();
+
+    vi.unstubAllGlobals();
+  });
+
+  it("consulta historico de atribuicao e etapas escopado por tenant", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const d1Stub = makeD1Stub();
+    const queryBinds: unknown[][] = [];
+    d1Stub.db.prepare = vi.fn((sql: string) => ({
+      bind: vi.fn((...vals: unknown[]) => {
+        queryBinds.push(vals);
+        return {
+          run: vi.fn(async () => ({})),
+          first: vi.fn(async () => {
+            if (sql.includes("source = 'site'")) return { payload_json: JSON.stringify({ fbp: "fb.tenant", client_ip: "8.8.8.8" }) };
+            if (sql.includes("group_concat")) return { steps: "GENERATE_LEAD|BEGIN_CHECKOUT" };
+            return null;
+          }),
+        };
+      }),
+      run: vi.fn(async () => ({})),
+      first: vi.fn(async () => null),
+    })) as any;
+
+    const env = makeEnv({
+      EVENT_STORE_DB: d1Stub.db,
+      BREVO_API_KEY: "set",
+      CATALOG_JSON: JSON.stringify({
+        tenants: {
+          superare: {
+            products: {
+              PLANOVOO: {
+                brevo: {
+                  funnelFields: {
+                    steps: "SUPERARE_FUNIL_STEPS",
+                    lastStep: "SUPERARE_FUNIL_LAST_STEP",
+                    lastStepTimestamp: "SUPERARE_FUNIL_LAST_STEP_TIMESTAMP",
+                  },
+                },
+                tracking: {
+                  sgtm: { endpointUrl: "https://sgtm.superare.test" },
+                  ga4: { measurementId: "G-SUPERARE", apiSecretEnvVar: "GA4_API_SECRET" },
+                },
+                funnelEventArchitecture: {
+                  events: [
+                    {
+                      eventType: "PURCHASE_APPROVED",
+                      chain: ["enrich_attribution", "update_brevo_funnel", "emit_tracking"],
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      }),
+      GA4_API_SECRET: "secret",
+    });
+    const event: any = {
+      event_id: "evt-tenant-history-1",
+      event_type: "PURCHASE_APPROVED",
+      tenant_id: "superare",
+      product_code: "PLANOVOO",
+      source: "hotmart",
+      occurred_at: "2026-05-14T12:00:00.000Z",
+      identity: { anonymous_id: "anon-tenant-history" },
+      attribution: {},
+      lead: { email: "buyer@superare.test" },
+      payload: { profile_id: "profile-same" },
+    };
+
+    await worker.queue({ messages: [{ body: event }] }, env);
+
+    const selectBinds = queryBinds.filter((binds) => binds.includes("profile-same"));
+    expect(selectBinds).toEqual(expect.arrayContaining([["superare", "profile-same"], ["superare", "profile-same"]]));
+    const contactCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/contacts"));
+    const contactBody = JSON.parse(String((contactCall?.[1] as RequestInit)?.body || "{}")) as { attributes?: Record<string, string> };
+    expect(contactBody.attributes?.SUPERARE_FUNIL_STEPS).toBe("GENERATE_LEAD|BEGIN_CHECKOUT|PURCHASE_APPROVED");
+    const sgtmCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/mp/collect"));
+    const sgtmBody = JSON.parse(String((sgtmCall?.[1] as RequestInit)?.body || "{}")) as { events?: Array<{ params?: Record<string, unknown> }> };
+    expect(sgtmBody.events?.[0]?.params?.fbp).toBe("fb.tenant");
 
     vi.unstubAllGlobals();
   });
