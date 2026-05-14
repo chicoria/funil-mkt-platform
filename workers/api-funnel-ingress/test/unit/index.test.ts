@@ -79,7 +79,7 @@ describe("api-funnel-ingress", () => {
 
     const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send } }));
     expect(res.status).toBe(202);
-    const evt = send.mock.calls[0]?.[0] as { attribution?: { client_ip?: string } };
+    const evt = ((send.mock.calls as unknown[][])[0]?.[0] as unknown) as { attribution?: { client_ip?: string } };
     expect(evt?.attribution?.client_ip).toBe("1.2.3.4");
   });
 
@@ -97,7 +97,7 @@ describe("api-funnel-ingress", () => {
 
     const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send } }));
     expect(res.status).toBe(202);
-    const evt = send.mock.calls[0]?.[0] as { attribution?: { client_ip?: string } };
+    const evt = ((send.mock.calls as unknown[][])[0]?.[0] as unknown) as { attribution?: { client_ip?: string } };
     expect(evt?.attribution?.client_ip).toBe("5.6.7.8");
   });
 
@@ -111,7 +111,7 @@ describe("api-funnel-ingress", () => {
 
     const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send } }));
     expect(res.status).toBe(202);
-    const evt = send.mock.calls[0]?.[0] as { tenant_id?: string };
+    const evt = ((send.mock.calls as unknown[][])[0]?.[0] as unknown) as { tenant_id?: string };
     expect(evt?.tenant_id).toBe("decole");
   });
 
@@ -125,7 +125,7 @@ describe("api-funnel-ingress", () => {
 
     const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send } }));
     expect(res.status).toBe(202);
-    const evt = send.mock.calls[0]?.[0] as { tenant_id?: string };
+    const evt = ((send.mock.calls as unknown[][])[0]?.[0] as unknown) as { tenant_id?: string };
     expect(evt?.tenant_id).toBe("decole");
   });
 
@@ -139,7 +139,7 @@ describe("api-funnel-ingress", () => {
 
     const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send } }));
     expect(res.status).toBe(202);
-    const evt = send.mock.calls[0]?.[0] as { tenant_id?: string };
+    const evt = ((send.mock.calls as unknown[][])[0]?.[0] as unknown) as { tenant_id?: string };
     expect(evt?.tenant_id).toBe("decole");
   });
 
@@ -153,7 +153,7 @@ describe("api-funnel-ingress", () => {
 
     const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send } }));
     expect(res.status).toBe(202);
-    const evt = send.mock.calls[0]?.[0] as { tenant_id?: string };
+    const evt = ((send.mock.calls as unknown[][])[0]?.[0] as unknown) as { tenant_id?: string };
     expect(evt?.tenant_id).toBe("decole");
   });
 
@@ -167,7 +167,7 @@ describe("api-funnel-ingress", () => {
 
     const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send }, ALLOWED_ORIGINS: "" }));
     expect(res.status).toBe(202);
-    const evt = send.mock.calls[0]?.[0] as { tenant_id?: string };
+    const evt = ((send.mock.calls as unknown[][])[0]?.[0] as unknown) as { tenant_id?: string };
     expect(evt?.tenant_id).toBe("decole");
   });
 
@@ -181,7 +181,7 @@ describe("api-funnel-ingress", () => {
 
     const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send }, ALLOWED_ORIGINS: "", DEFAULT_TENANT_ID: "decole" }));
     expect(res.status).toBe(202);
-    const evt = send.mock.calls[0]?.[0] as { tenant_id?: string };
+    const evt = ((send.mock.calls as unknown[][])[0]?.[0] as unknown) as { tenant_id?: string };
     expect(evt?.tenant_id).toBe("decole");
   });
 
@@ -195,7 +195,7 @@ describe("api-funnel-ingress", () => {
 
     const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send } }));
     expect(res.status).toBe(202);
-    const evt = send.mock.calls[0]?.[0] as { tenant_id?: string };
+    const evt = ((send.mock.calls as unknown[][])[0]?.[0] as unknown) as { tenant_id?: string };
     expect(evt?.tenant_id).toBe("decole");
   });
 });
