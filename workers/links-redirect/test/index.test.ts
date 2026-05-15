@@ -173,6 +173,36 @@ describe("links-redirect worker", () => {
     });
   });
 
+  it("expande token de recuperacao escopado por tenant", async () => {
+    const requestedKeys: string[] = [];
+    const res = await worker.fetch(
+      makeRequest("plano-de-voo/checkout?rid=rec-scoped"),
+      makeEnv({
+        IDENTITY_KV: {
+          get: async (key: string) => {
+            requestedKeys.push(key);
+            return key === "decole:checkout_recovery:rec-scoped"
+              ? JSON.stringify({
+                  params: {
+                    email: "scoped@example.com",
+                    name: "Scoped Lead",
+                    fbp: "fb.2.scoped",
+                  },
+                })
+              : null;
+          },
+        },
+      })
+    );
+
+    expect(res.status).toBe(302);
+    expect(requestedKeys[0]).toBe("decole:checkout_recovery:rec-scoped");
+    const url = new URL(res.headers.get("location") || "");
+    expect(url.searchParams.get("email")).toBe("scoped@example.com");
+    expect(url.searchParams.get("name")).toBe("Scoped Lead");
+    expect(url.searchParams.get("fbp")).toBe("fb.2.scoped");
+  });
+
   it("redireciona /plano-de-voo/checkout/offer/:codigo com oferta da rota", async () => {
     const res = await worker.fetch(makeRequest("plano-de-voo/checkout/offer/novo123?utm_source=ig"), makeEnv());
     const location = res.headers.get("location") || "";

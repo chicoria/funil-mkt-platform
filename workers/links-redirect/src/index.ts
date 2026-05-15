@@ -16,6 +16,7 @@ interface Env {
   LINKS_PRODUCTS?: string;
   FUNNEL_EVENTS?: QueueBinding;
   IDENTITY_KV?: KVNamespaceLike;
+  DEFAULT_TENANT_ID?: string;
 }
 
 type HandlerResult = {
@@ -55,6 +56,7 @@ const CHECKOUT_RECOVERY_PARAM_KEYS = new Set([
   "off",
   "offer",
 ]);
+const DEFAULT_TENANT_ID = "decole";
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -151,6 +153,13 @@ function firstSearchParam(params: URLSearchParams, keys: string[]): string {
   return "";
 }
 
+function checkoutRecoveryKeys(recoveryId: string, env: Env): string[] {
+  const tenantId = asTrimmedString(env.DEFAULT_TENANT_ID) || DEFAULT_TENANT_ID;
+  if (recoveryId.startsWith(`${tenantId}:checkout_recovery:`)) return [recoveryId];
+  if (recoveryId.startsWith("checkout_recovery:")) return [`${tenantId}:${recoveryId}`, recoveryId];
+  return [`${tenantId}:checkout_recovery:${recoveryId}`, `checkout_recovery:${recoveryId}`];
+}
+
 async function withCheckoutRecoveryParams(url: URL, env: Env): Promise<URL> {
   const recoveryId = firstSearchParam(url.searchParams, ["rid", "recovery_id", "recoveryId"]);
   if (!recoveryId) return url;
@@ -164,7 +173,11 @@ async function withCheckoutRecoveryParams(url: URL, env: Env): Promise<URL> {
 
   let parsed: unknown;
   try {
-    const raw = await env.IDENTITY_KV.get(`checkout_recovery:${recoveryId}`);
+    let raw = "";
+    for (const key of checkoutRecoveryKeys(recoveryId, env)) {
+      raw = (await env.IDENTITY_KV.get(key)) || "";
+      if (raw) break;
+    }
     if (!raw) return nextUrl;
     parsed = JSON.parse(raw);
   } catch {

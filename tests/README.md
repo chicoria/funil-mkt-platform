@@ -14,9 +14,11 @@ tests/
 │   ├── 05-identity-stitch.mjs
 │   ├── 06-attribution-enrichment.mjs
 │   ├── 07-deduplication.mjs
-│   └── 08-sgtm-payload.mjs
+│   ├── 08-sgtm-payload.mjs
+│   └── 09-cart-abandonment-recovery.mjs
 ├── lib/                    # Utilitários compartilhados
 │   ├── config.mjs          # loadEnv, loadCatalog, getProductTracking
+│   ├── brevo.mjs           # Brevo Transactional Email API
 │   ├── d1.mjs              # d1Query, waitForRow (wrangler CLI wrapper)
 │   ├── http.mjs            # postJson, getUrl, assertStatus
 │   ├── wait.mjs            # poll
@@ -40,6 +42,11 @@ HOTMART_WEBHOOK_TOKEN=...
 SGTM_ENDPOINT_URL=...
 GA4_MEASUREMENT_ID=...
 GA4_API_SECRET=...
+
+# Para o cenário 09 (Brevo + recuperação de carrinho)
+BREVO_API_KEY_DECOLE=...     # ou BREVO_API_KEY
+E2E_EMAIL_DOMAIN=example.test
+# Alternativa: E2E_CART_ABANDONMENT_EMAIL=qa+cart-{{ts}}@example.test
 ```
 
 Todos lidos automaticamente do `.env.local` na raiz do projeto.
@@ -59,6 +66,7 @@ node scenarios/03-purchase-approved.mjs
 # Cenários específicos
 ./run-scenarios.sh --scenario 03
 ./run-scenarios.sh --scenario 05,06
+./run-scenarios.sh --scenario 09
 
 # Por tag
 ./run-scenarios.sh --tag tracking
@@ -89,6 +97,7 @@ node scenarios/03-purchase-approved.mjs
 | 06 | attribution-enrichment | identity, tracking, sgtm | Site com fbp → hotmart → fbp recuperado e enviado ao sGTM |
 | 07 | deduplication | ingress, identity | Mesmo event_id 2x → 1 linha no D1, mesmo profile_id |
 | 08 | sgtm-payload | tracking, sgtm | Replay de evento recente valida em, meta_event_name, HTTP 200 |
+| 09 | cart-abandonment-recovery | hotmart, brevo, recovery | Webhook carrinho abandonado → log/conteúdo Brevo → link de recuperação redireciona para Hotmart com params |
 
 ## Saída
 
@@ -128,5 +137,7 @@ Após deploy:
 | `upsertEventStoreRecord` | 01, 02, 03, 07 |
 | `fromPrecheckoutForm` (ingress) | 01 |
 | `buildBeginCheckoutEvent` (links-redirect) | 02 |
-| `fromHotmartWebhook` (hotmart-ingress) | 03, 04, 05 |
-| `products.catalog.json` (chains) | 03, 04 |
+| recovery `rid` / `links-redirect` | 09 |
+| `fromHotmartWebhook` (hotmart-ingress) | 03, 04, 05, 09 |
+| `send_cart_abandonment_email` | 04, 09 |
+| `products.catalog.json` (chains) | 03, 04, 09 |
