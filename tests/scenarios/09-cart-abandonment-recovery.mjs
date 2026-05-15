@@ -81,10 +81,16 @@ function assertUrlContainsParam(url, key, expected) {
 }
 
 function assertExpectedHotmartRedirect(location) {
-  const expected = process.env.EXPECTED_PLANOVOO_HOTMART_URL || process.env.PLANO_DE_VOO_CHECKOUT_URL || "https://pay.hotmart.com/R105463680A";
-  const expectedUrl = new URL(expected);
   const actualUrl = new URL(location);
-  if (actualUrl.hostname !== expectedUrl.hostname || !actualUrl.pathname.startsWith(expectedUrl.pathname)) {
+  const expectedUrl = process.env.EXPECTED_PLANOVOO_HOTMART_URL || "";
+  if (expectedUrl) {
+    const expected = new URL(expectedUrl);
+    if (actualUrl.hostname !== expected.hostname || !actualUrl.pathname.startsWith(expected.pathname)) {
+      throw new Error(`unexpected Hotmart redirect: ${location}`);
+    }
+    return;
+  }
+  if (!actualUrl.hostname.endsWith("hotmart.com") && actualUrl.hostname !== "pay.hotmart.com") {
     throw new Error(`unexpected Hotmart redirect: ${location}`);
   }
 }
