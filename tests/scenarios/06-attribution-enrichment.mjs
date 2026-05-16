@@ -4,7 +4,7 @@
  * Sends a site event with fbp/fbc, then a hotmart event with the same email.
  * Verifies that the hotmart event's sGTM replay includes fbp/fbc from the site event.
  */
-import { loadEnv, applyEnv, requireEnv, DEFAULT_ENV_FILE } from "../lib/config.mjs";
+import { loadEnv, applyEnv, requireEnv, DEFAULT_ENV_FILE, parseScenarioArgs } from "../lib/config.mjs";
 import { waitForRow, sqlEscape, sleep } from "../lib/d1.mjs";
 import { postJson } from "../lib/http.mjs";
 import { replayApply } from "../lib/replay.mjs";
@@ -105,7 +105,7 @@ function finalize(name, steps, start) {
 }
 
 if (process.argv[1].endsWith("06-attribution-enrichment.mjs")) {
-  const result = await run();
+  const result = await run(parseScenarioArgs());
   console.log(`\n[${SCENARIO_NAME}]`);
   result.steps.forEach(printResult);
   printSummary(result);

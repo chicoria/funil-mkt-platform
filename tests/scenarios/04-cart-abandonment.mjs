@@ -4,11 +4,11 @@
  * Trigger: POST hotmart ingress
  * Verifies: event in D1, NO emit_tracking (replay planned.sgtm=false)
  */
-import { loadEnv, applyEnv, requireEnv, DEFAULT_ENV_FILE } from "../lib/config.mjs";
+import { loadEnv, applyEnv, requireEnv, DEFAULT_ENV_FILE, parseScenarioArgs } from "../lib/config.mjs";
 import { waitForRow, sqlEscape, sleep } from "../lib/d1.mjs";
 import { postJson, assertStatus } from "../lib/http.mjs";
 import { replayDryRun } from "../lib/replay.mjs";
-import { step, printResult, printSummary } from "../lib/assert.mjs";
+import { step, skipStep, printResult, printSummary } from "../lib/assert.mjs";
 
 export const SCENARIO_ID = "04";
 export const SCENARIO_NAME = "04-cart-abandonment";
@@ -68,16 +68,20 @@ export async function run(opts = {}) {
   }));
 
   // Step 3: confirm NO sGTM planned (replay dry-run should return planned.sgtm=false)
-  steps.push(await step("no_sgtm_emit_tracking", async () => {
-    const result = await replayDryRun(eventId, { envFile });
-    // planned.sgtm=false means the product/event_type config has no emit_tracking
-    // OR the catalog resolves no sGTM endpoint for this event_type
-    // Either way: no tracking destination expected
-    if (result.planned?.sgtm === true) {
-      throw new Error("planned.sgtm=true — PURCHASE_OUT_OF_SHOPPING_CART should NOT have sGTM tracking (dedup with BEGIN_CHECKOUT)");
-    }
-    return `planned.sgtm=${result.planned?.sgtm} (correct: no tracking)`;
-  }));
+  if (!opts.skipSgtm) {
+    steps.push(await step("no_sgtm_emit_tracking", async () => {
+      const result = await replayDryRun(eventId, { envFile });
+      // planned.sgtm=false means the product/event_type config has no emit_tracking
+      // OR the catalog resolves no sGTM endpoint for this event_type
+      // Either way: no tracking destination expected
+      if (result.planned?.sgtm === true) {
+        throw new Error("planned.sgtm=true — PURCHASE_OUT_OF_SHOPPING_CART should NOT have sGTM tracking (dedup with BEGIN_CHECKOUT)");
+      }
+      return `planned.sgtm=${result.planned?.sgtm} (correct: no tracking)`;
+    }));
+  } else {
+    steps.push(skipStep("no_sgtm_emit_tracking", "skipSgtm=true"));
+  }
 
   return finalize(SCENARIO_NAME, steps, start);
 }
@@ -88,7 +92,7 @@ function finalize(name, steps, start) {
 }
 
 if (process.argv[1].endsWith("04-cart-abandonment.mjs")) {
-  const result = await run();
+  const result = await run(parseScenarioArgs());
   console.log(`\n[${SCENARIO_NAME}]`);
   result.steps.forEach(printResult);
   printSummary(result);

@@ -43,6 +43,27 @@ async function brevoGet(path, params = {}) {
   return body;
 }
 
+async function brevoDelete(path) {
+  const apiKey = brevoApiKey();
+  if (!apiKey) {
+    throw new Error("missing_required_env: BREVO_API_KEY_DECOLE or BREVO_API_KEY");
+  }
+
+  const response = await fetch(`${brevoBaseUrl()}${path}`, {
+    method: "DELETE",
+    headers: {
+      "api-key": apiKey,
+      accept: "application/json",
+    },
+  });
+  if (response.status === 404) return { deleted: false, notFound: true };
+  if (!response.ok && response.status !== 204) {
+    const text = await response.text();
+    throw new Error(`brevo_delete_failed: ${response.status} ${text}`);
+  }
+  return { deleted: true, notFound: false };
+}
+
 export async function getTransactionalEmails(params = {}) {
   return brevoGet("/smtp/emails", params);
 }
@@ -50,6 +71,11 @@ export async function getTransactionalEmails(params = {}) {
 export async function getTransactionalEmailContent(uuid) {
   if (!uuid) throw new Error("missing_brevo_uuid");
   return brevoGet(`/smtp/emails/${encodeURIComponent(uuid)}`);
+}
+
+export async function deleteBrevoContact(email) {
+  if (!email) return { deleted: false, notFound: true };
+  return brevoDelete(`/contacts/${encodeURIComponent(email)}`);
 }
 
 export async function waitForTransactionalEmail(email, opts = {}) {
@@ -71,6 +97,11 @@ export async function waitForTransactionalEmail(email, opts = {}) {
     return emails.find((entry) => {
       if (entry.email !== email) return false;
       if (templateId && Number(entry.templateId) !== Number(templateId)) return false;
+      if (opts.since) {
+        const sentAt = new Date(entry.date || 0).getTime();
+        const since = new Date(opts.since).getTime();
+        if (!Number.isFinite(sentAt) || sentAt < since) return false;
+      }
       return Boolean(entry.uuid);
     }) || null;
   }, { timeout, interval, description });

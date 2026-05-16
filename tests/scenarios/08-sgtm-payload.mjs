@@ -4,7 +4,7 @@
  * Replays a recent event and validates the payload sent to sGTM
  * contains all required fields: em, client_ip_address, meta_event_name, client_id format
  */
-import { loadEnv, applyEnv, requireEnv, DEFAULT_ENV_FILE, loadCatalog, DEFAULT_CATALOG_PATH } from "../lib/config.mjs";
+import { loadEnv, applyEnv, requireEnv, DEFAULT_ENV_FILE, parseScenarioArgs } from "../lib/config.mjs";
 import { d1Query, sqlEscape } from "../lib/d1.mjs";
 import { replayApply } from "../lib/replay.mjs";
 import { step, skipStep, printResult, printSummary } from "../lib/assert.mjs";
@@ -24,6 +24,11 @@ export async function run(opts = {}) {
 
   const start = Date.now();
   const steps = [];
+
+  if (opts.skipSgtm) {
+    steps.push(skipStep("sgtm_payload_validation", "skipSgtm=true"));
+    return finalize(SCENARIO_NAME, steps, start);
+  }
 
   // Step 1: find a recent trackable event in D1
   let eventId = opts.eventId || null;
@@ -91,7 +96,7 @@ function finalize(name, steps, start) {
 }
 
 if (process.argv[1].endsWith("08-sgtm-payload.mjs")) {
-  const result = await run();
+  const result = await run(parseScenarioArgs());
   console.log(`\n[${SCENARIO_NAME}]`);
   result.steps.forEach(printResult);
   printSummary(result);

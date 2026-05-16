@@ -76,3 +76,15 @@ export function requireEnv(keys) {
     throw new Error(`missing_required_env: ${missing.join(", ")}`);
   }
 }
+
+export function parseScenarioArgs(argv = process.argv.slice(2)) {
+  const opts = {};
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === "--env-file") opts.envFile = argv[++i];
+    else if (arg === "--meta-test-event-code") opts.metaTestEventCode = argv[++i];
+    else if (arg === "--skip-sgtm") opts.skipSgtm = true;
+    else if (arg === "--verify-destinations") opts.verifyDestinations = true;
+  }
+  return opts;
+}

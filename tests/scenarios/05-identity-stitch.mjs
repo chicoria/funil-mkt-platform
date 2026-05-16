@@ -4,7 +4,7 @@
  * Verifies that a site event and a hotmart event with the same email
  * resolve to the same profile_id in identity_links
  */
-import { loadEnv, applyEnv, requireEnv, DEFAULT_ENV_FILE } from "../lib/config.mjs";
+import { loadEnv, applyEnv, requireEnv, DEFAULT_ENV_FILE, parseScenarioArgs } from "../lib/config.mjs";
 import { d1Query, waitForRow, sqlEscape, sleep } from "../lib/d1.mjs";
 import { postJson } from "../lib/http.mjs";
 import { step, assertEqual, printResult, printSummary } from "../lib/assert.mjs";
@@ -116,7 +116,7 @@ function finalize(name, steps, start) {
 }
 
 if (process.argv[1].endsWith("05-identity-stitch.mjs")) {
-  const result = await run();
+  const result = await run(parseScenarioArgs());
   console.log(`\n[${SCENARIO_NAME}]`);
   result.steps.forEach(printResult);
   printSummary(result);

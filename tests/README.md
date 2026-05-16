@@ -2,10 +2,13 @@
 
 Suite de cenários de referência para validar o fluxo de eventos do funil Cloudflare ponta a ponta.
 
+Antes de criar ou revisar novos cenários, siga os guard rails em [`SCENARIO_GUARDRAILS.md`](SCENARIO_GUARDRAILS.md).
+
 ## Estrutura
 
 ```
 tests/
+├── SCENARIO_GUARDRAILS.md  # Regras obrigatórias para novos cenários
 ├── scenarios/              # Cenários independentes (node scenarios/XX.mjs)
 │   ├── 01-generate-lead.mjs
 │   ├── 02-begin-checkout.mjs
@@ -15,10 +18,14 @@ tests/
 │   ├── 06-attribution-enrichment.mjs
 │   ├── 07-deduplication.mjs
 │   ├── 08-sgtm-payload.mjs
-│   └── 09-cart-abandonment-recovery.mjs
+│   ├── 09-cart-abandonment-recovery.mjs
+│   ├── 10-purchase-approved-email.mjs
+│   ├── 11-purchase-protest-email.mjs
+│   └── 12-purchase-refunded-email.mjs
 ├── lib/                    # Utilitários compartilhados
 │   ├── config.mjs          # loadEnv, loadCatalog, getProductTracking
 │   ├── brevo.mjs           # Brevo Transactional Email API
+│   ├── purchase-email-scenario.mjs # Cenários Hotmart → Brevo transacional
 │   ├── d1.mjs              # d1Query, waitForRow (wrangler CLI wrapper)
 │   ├── http.mjs            # postJson, getUrl, assertStatus
 │   ├── wait.mjs            # poll
@@ -47,6 +54,16 @@ GA4_API_SECRET=...
 BREVO_API_KEY_DECOLE=...     # ou BREVO_API_KEY
 E2E_EMAIL_DOMAIN=example.test
 # Alternativa: E2E_CART_ABANDONMENT_EMAIL=qa+cart-{{ts}}@example.test
+
+# Para os cenários 10-12 (emails transacionais Plano de Voo)
+HOTMART_INGRESS_URL=https://stg-api.exemplo.com
+PLANOVOO_API_BASE_URL=...
+PLANOVOO_HOOK_SECRET=...
+# Opcional: E2E_PURCHASE_EMAIL=qa+{{event}}-{{ts}}@example.test
+# Cleanup automático para Cloudflare D1/KV e contato Brevo após cada execução.
+# Para inspecionar resíduos: E2E_CLEANUP=false
+# Contato Brevo só é apagado para emails e2e.* / qa+e2e*; para forçar: E2E_DELETE_BREVO_CONTACT=true
+# A API Plano de Voo não é limpa por estes cenários; use base URL/banco isolado de staging.
 ```
 
 Todos lidos automaticamente do `.env.local` na raiz do projeto.
@@ -67,6 +84,7 @@ node scenarios/03-purchase-approved.mjs
 ./run-scenarios.sh --scenario 03
 ./run-scenarios.sh --scenario 05,06
 ./run-scenarios.sh --scenario 09
+./run-scenarios.sh --scenario 10,11,12 --include-external --env-file .env.staging
 
 # Por tag
 ./run-scenarios.sh --tag tracking
@@ -98,6 +116,11 @@ node scenarios/03-purchase-approved.mjs
 | 07 | deduplication | ingress, identity | Mesmo event_id 2x → 1 linha no D1, mesmo profile_id |
 | 08 | sgtm-payload | tracking, sgtm | Replay de evento recente valida em, meta_event_name, HTTP 200 |
 | 09 | cart-abandonment-recovery | hotmart, brevo, recovery | Webhook carrinho abandonado → log/conteúdo Brevo → link de recuperação redireciona para Hotmart com params |
+| 10 | purchase-approved-email | hotmart, brevo, purchase, planovoo, external | Webhook compra aprovada → Event Store → template Brevo 12 com link do formulário |
+| 11 | purchase-protest-email | hotmart, brevo, retention, planovoo, external | Webhook protesto → Event Store → template Brevo 14 com conteúdo de contestação |
+| 12 | purchase-refunded-email | hotmart, brevo, retention, planovoo, external | Webhook reembolso → Event Store → template Brevo 13 com conteúdo de reembolso |
+
+Os cenários marcados com `external` são opt-in: `--all` e filtros por tag os ignoram, a menos que `--include-external` seja informado. Eles exigem `HOTMART_INGRESS_URL`, `PLANOVOO_API_BASE_URL` e email descartável (`e2e.*` ou `qa+e2e*`) para evitar execução acidental contra produção.
 
 ## Saída
 
@@ -138,6 +161,8 @@ Após deploy:
 | `fromPrecheckoutForm` (ingress) | 01 |
 | `buildBeginCheckoutEvent` (links-redirect) | 02 |
 | recovery `rid` / `links-redirect` | 09 |
-| `fromHotmartWebhook` (hotmart-ingress) | 03, 04, 05, 09 |
+| `fromHotmartWebhook` (hotmart-ingress) | 03, 04, 05, 09, 10, 11, 12 |
+| `call_product_api` | 10, 11, 12 |
+| `send_template_email` | 10, 11, 12 |
 | `send_cart_abandonment_email` | 04, 09 |
-| `products.catalog.json` (chains) | 03, 04, 09 |
+| `products.catalog.json` (chains) | 03, 04, 09, 10, 11, 12 |

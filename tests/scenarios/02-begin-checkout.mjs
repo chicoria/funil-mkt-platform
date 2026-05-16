@@ -4,7 +4,7 @@
  * Trigger: GET /checkout via links-redirect
  * Verifies: 302 redirect, event in D1, client_ip captured, sGTM via replay
  */
-import { loadEnv, applyEnv, requireEnv, DEFAULT_ENV_FILE } from "../lib/config.mjs";
+import { loadEnv, applyEnv, requireEnv, DEFAULT_ENV_FILE, parseScenarioArgs } from "../lib/config.mjs";
 import { d1Query, waitForRow, sqlEscape, sleep } from "../lib/d1.mjs";
 import { getUrl } from "../lib/http.mjs";
 import { replayApply } from "../lib/replay.mjs";
@@ -100,7 +100,7 @@ function finalize(name, steps, start) {
 }
 
 if (process.argv[1].endsWith("02-begin-checkout.mjs")) {
-  const result = await run();
+  const result = await run(parseScenarioArgs());
   console.log(`\n[${SCENARIO_NAME}]`);
   result.steps.forEach(printResult);
   printSummary(result);

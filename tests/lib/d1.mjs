@@ -21,6 +21,21 @@ export function d1Query(dbName, sql, wranglerCwd = DEFAULT_WRANGLER_CWD) {
   return parsed.flatMap((entry) => entry.results || []);
 }
 
+export function d1Execute(dbName, sql, wranglerCwd = DEFAULT_WRANGLER_CWD) {
+  let raw = "";
+  try {
+    raw = execFileSync("npx", ["wrangler", "d1", "execute", dbName, "--remote", "--json", "--command", sql], {
+      cwd: wranglerCwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch (err) {
+    throw new Error(`d1_execute_failed: ${err.message}`);
+  }
+  const parsed = JSON.parse(raw);
+  return parsed?.[0]?.meta ?? {};
+}
+
 export async function waitForRow(dbName, sql, check, opts = {}) {
   const { timeout = 60000, poll = 3000, wranglerCwd = DEFAULT_WRANGLER_CWD, description = "row" } = opts;
   const deadline = Date.now() + timeout;

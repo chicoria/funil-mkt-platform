@@ -7,6 +7,7 @@
 #   ./run-scenarios.sh --tag tracking
 #   ./run-scenarios.sh --all --meta-test-event-code TEST19244
 #   ./run-scenarios.sh --all --verify-destinations
+#   ./run-scenarios.sh --scenario 10,11,12 --include-external --env-file .env.staging
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -19,6 +20,7 @@ TAG_FILTER=""
 META_TEST_EVENT_CODE=""
 VERIFY_DESTINATIONS=0
 SKIP_SGTM=0
+INCLUDE_EXTERNAL=0
 OUTPUT_JSON="${OUTPUT_JSON:-}"
 
 usage() {
@@ -34,6 +36,7 @@ Options:
   --meta-test-event-code <code> Override Meta test event code for sGTM scenarios
   --verify-destinations         Enable GA4 + Meta verification (opt-in)
   --skip-sgtm                   Skip sGTM replay steps
+  --include-external            Include live transactional-email/product-API scenarios
   --output-json <file>          Write full JSON results to file
   -h, --help                    Show help
 
@@ -57,6 +60,7 @@ while [[ $# -gt 0 ]]; do
     --meta-test-event-code) META_TEST_EVENT_CODE="${2:-}"; shift 2 ;;
     --verify-destinations) VERIFY_DESTINATIONS=1; shift ;;
     --skip-sgtm) SKIP_SGTM=1; shift ;;
+    --include-external) INCLUDE_EXTERNAL=1; shift ;;
     --output-json) OUTPUT_JSON="${2:-}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "[error] unknown arg: $1" >&2; usage; exit 1 ;;
@@ -87,6 +91,10 @@ for f in "$SCENARIOS_DIR"/[0-9]*.mjs; do
   [[ -f "$f" ]] && all_files+=("$f")
 done
 
+is_external_scenario() {
+  grep -q '"external"' "$1" 2>/dev/null
+}
+
 # Filter by scenario number or tag
 selected_files=()
 if [[ ${#SELECTED_SCENARIOS[@]} -gt 0 ]]; then
@@ -110,6 +118,25 @@ else
   selected_files=("${all_files[@]}")
 fi
 
+if [[ "$INCLUDE_EXTERNAL" -ne 1 ]]; then
+  safe_files=()
+  skipped_external=()
+  for f in "${selected_files[@]}"; do
+    if is_external_scenario "$f"; then
+      skipped_external+=("$(basename "$f")")
+    else
+      safe_files+=("$f")
+    fi
+  done
+  selected_files=()
+  if [[ ${#safe_files[@]} -gt 0 ]]; then
+    selected_files=("${safe_files[@]}")
+  fi
+  if [[ ${#skipped_external[@]} -gt 0 ]]; then
+    echo "[info] skipping external scenarios (pass --include-external): ${skipped_external[*]}"
+  fi
+fi
+
 if [[ ${#selected_files[@]} -eq 0 ]]; then
   echo "[error] no matching scenario files found" >&2
   exit 1
@@ -123,6 +150,7 @@ echo "  Scenarios : ${#selected_files[@]}"
 echo "  Env file  : $ENV_FILE"
 echo "  sGTM      : $([ "$SKIP_SGTM" -eq 1 ] && echo 'skipped' || echo 'enabled')"
 echo "  GA4/Meta  : $([ "$VERIFY_DESTINATIONS" -eq 1 ] && echo 'enabled' || echo 'opt-in (--verify-destinations)')"
+echo "  External  : $([ "$INCLUDE_EXTERNAL" -eq 1 ] && echo 'included' || echo 'excluded')"
 [[ -n "$META_TEST_EVENT_CODE" ]] && echo "  Meta code : $META_TEST_EVENT_CODE"
 echo ""
 
@@ -171,8 +199,12 @@ echo ""
 echo "══════════════════════════════════════════════════════════════"
 echo "  RESULTS"
 echo "══════════════════════════════════════════════════════════════"
-for name in "${passed_names[@]}"; do echo "  ✓  $name"; done
-for name in "${failed_names[@]}"; do echo "  ✗  $name"; done
+if [[ ${#passed_names[@]} -gt 0 ]]; then
+  for name in "${passed_names[@]}"; do echo "  ✓  $name"; done
+fi
+if [[ ${#failed_names[@]} -gt 0 ]]; then
+  for name in "${failed_names[@]}"; do echo "  ✗  $name"; done
+fi
 
 echo ""
 echo "  Total: $total | Passed: $passed | Failed: $failed"

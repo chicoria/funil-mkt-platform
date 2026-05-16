@@ -3,6 +3,9 @@ main = "src/index.ts"
 compatibility_date = "2026-04-22"
 workers_dev = true
 
+[vars]
+PLANOVOO_API_BASE_URL = "https://plano.decolesuacarreiraesg.com.br"
+
 [[queues.consumers]]
 queue = "decole-q-funnel-events"
 max_batch_size = 25

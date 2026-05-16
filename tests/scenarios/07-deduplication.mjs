@@ -3,7 +3,7 @@
  * Scenario 07: Deduplication
  * Sends the same event_id twice and verifies D1 has only one row (ON CONFLICT)
  */
-import { loadEnv, applyEnv, requireEnv, DEFAULT_ENV_FILE } from "../lib/config.mjs";
+import { loadEnv, applyEnv, requireEnv, DEFAULT_ENV_FILE, parseScenarioArgs } from "../lib/config.mjs";
 import { d1Query, waitForRow, sqlEscape, sleep } from "../lib/d1.mjs";
 import { postJson } from "../lib/http.mjs";
 import { step, assertEqual, printResult, printSummary } from "../lib/assert.mjs";
@@ -118,7 +118,7 @@ function finalize(name, steps, start) {
 }
 
 if (process.argv[1].endsWith("07-deduplication.mjs")) {
-  const result = await run();
+  const result = await run(parseScenarioArgs());
   console.log(`\n[${SCENARIO_NAME}]`);
   result.steps.forEach(printResult);
   printSummary(result);

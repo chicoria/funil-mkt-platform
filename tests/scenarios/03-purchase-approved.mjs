@@ -4,7 +4,7 @@
  * Trigger: POST hotmart ingress with PURCHASE_APPROVED
  * Verifies: event in D1, identity resolved, attribution enriched, sGTM via replay
  */
-import { loadEnv, applyEnv, requireEnv, DEFAULT_ENV_FILE } from "../lib/config.mjs";
+import { loadEnv, applyEnv, requireEnv, DEFAULT_ENV_FILE, parseScenarioArgs } from "../lib/config.mjs";
 import { waitForRow, sqlEscape, sleep } from "../lib/d1.mjs";
 import { postJson, assertStatus } from "../lib/http.mjs";
 import { replayApply } from "../lib/replay.mjs";
@@ -107,7 +107,7 @@ function finalize(name, steps, start) {
 }
 
 if (process.argv[1].endsWith("03-purchase-approved.mjs")) {
-  const result = await run();
+  const result = await run(parseScenarioArgs());
   console.log(`\n[${SCENARIO_NAME}]`);
   result.steps.forEach(printResult);
   printSummary(result);

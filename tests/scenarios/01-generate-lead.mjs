@@ -4,7 +4,7 @@
  * Trigger: POST /funnel/precheckout
  * Verifies: event in D1, identity_links created, client_ip captured in payload
  */
-import { loadEnv, applyEnv, requireEnv, DEFAULT_ENV_FILE } from "../lib/config.mjs";
+import { loadEnv, applyEnv, requireEnv, DEFAULT_ENV_FILE, parseScenarioArgs } from "../lib/config.mjs";
 import { d1Query, waitForRow, sqlEscape } from "../lib/d1.mjs";
 import { postJson, assertStatus } from "../lib/http.mjs";
 import { step, skipStep, assertContains, assertPayloadJson, printResult, printSummary } from "../lib/assert.mjs";
@@ -89,7 +89,7 @@ function finalize(name, steps, start) {
 
 // Run standalone
 if (process.argv[1].endsWith("01-generate-lead.mjs")) {
-  const result = await run();
+  const result = await run(parseScenarioArgs());
   console.log(`\n[${SCENARIO_NAME}]`);
   result.steps.forEach(printResult);
   printSummary(result);
