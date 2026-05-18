@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-18 ~20:06 WEST por Codex — Slice 2.11A.8-prep IN_PROGRESS
-> **Fase atual:** Fase 2 — Refactor (4/9 slices completos)
-> **Próxima ação:** executar `2.11A.8-prep` — Refactor api-funnel-ingress
+> **Última atualização:** 2026-05-18 ~20:13 WEST por Codex — Slice 2.11A.8-prep DONE
+> **Fase atual:** Fase 2 — Refactor (5/9 slices completos)
+> **Próxima ação:** criar/executar `2.11B.2` — Refatorar workspace sGTM em PREVIEW
 
 ---
 
@@ -42,10 +42,10 @@
 | Fase 0 — Preparação | 4/4 | ✅ Completa |
 | Fase 0.5 — Testes de regressão | 7/7 | ✅ Completa |
 | Fase 1 — Popular secrets + bindings | 1/1 | ✅ Completa |
-| Fase 2 — Refactor | 4/9 | ⏳ Em andamento |
+| Fase 2 — Refactor | 5/9 | ⏳ Em andamento |
 | Fase 3 — Deploys disruptivos | 0/6 | ⏸️ Não iniciada |
 | Fase 4 — Validação cruzada + limpeza | 0/5 | ⏸️ Não iniciada |
-| **Total** | **16/32** | |
+| **Total** | **17/32** | |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
@@ -53,19 +53,21 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Slice em progresso
 
-**2.11A.8-prep** — Refactor api-funnel-ingress ⏳
-- **File:** [`slices/2.11A/8-prep-refactor-funnel-ingress.md`](./slices/2.11A/8-prep-refactor-funnel-ingress.md)
-- **Started:** 2026-05-18 20:06 WEST por Codex
-- **Escopo:** CORS por `tenants.{id}.allowedOrigins`, tenant sem fallback silencioso e app webhooks por `integrations.*.appWebhooks`.
+(nenhum)
 
 ## Último slice concluído
+
+**2.11A.8-prep** — Refactor api-funnel-ingress ✅
+- **File:** [`slices/2.11A/8-prep-refactor-funnel-ingress.md`](./slices/2.11A/8-prep-refactor-funnel-ingress.md)
+- **Commit:** `d8dbef7`
+- **Entregáveis:** `api-funnel-ingress` resolve tenant por hostname ou `payload.tenant_id` conhecido, CORS por `tenants.{id}.allowedOrigins`, app webhooks por `tenants.{id}.integrations.*.appWebhooks[]`, HMAC via `resolveSecret()` e sem runtime `ALLOWED_ORIGINS`/`DEFAULT_TENANT_ID`/`APP_EVENTS_HMAC`.
+
+## Referência histórica recente
 
 **2.11A.7-prep** — Refactor api-hotmart-ingress ✅
 - **File:** [`slices/2.11A/7-prep-refactor-hotmart-ingress.md`](./slices/2.11A/7-prep-refactor-hotmart-ingress.md)
 - **Commit:** `fe125e4`
 - **Entregáveis:** `api-hotmart-ingress` resolve tenant por hostname, produto por `hotmart.urlSlugs`, token por `tenants.{id}.credentials.hotmart_token_env` via `resolveSecret()`, rejeita tenant/slug/token inválidos sem fallback DECOLE, e remove `DEFAULT_TENANT_ID`/`HOTMART_WEBHOOK_TOKEN` do runtime.
-
-## Referência histórica recente
 
 **2.11A.5** — Refactor integrações restantes do dispatcher ✅
 - **File:** [`slices/2.11A/5-refactor-integrations.md`](./slices/2.11A/5-refactor-integrations.md)
@@ -119,7 +121,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - [x] **2.11A.4** ✅ — Refactor handlers Brevo (ctx.credentials) → [`slices/2.11A/4-refactor-brevo-handlers.md`](./slices/2.11A/4-refactor-brevo-handlers.md) **(DONE 2026-05-18)** — commit `e44766e`
 - [x] **2.11A.5** ✅ — Refactor integrações restantes do dispatcher (`call_product_api`, links/replyTo) → [`slices/2.11A/5-refactor-integrations.md`](./slices/2.11A/5-refactor-integrations.md) **(DONE 2026-05-18)** — commit `66002a9`; `forward_n8n`/`isPlanovooProductCode` deferidos para 2.11A.9
 - [x] **2.11A.7-prep** ✅ — Refactor api-hotmart-ingress (inverter ordem + lookup catalog + remove fallback) → [`slices/2.11A/7-prep-refactor-hotmart-ingress.md`](./slices/2.11A/7-prep-refactor-hotmart-ingress.md) **(DONE 2026-05-18)** — commit `fe125e4`
-- [ ] **2.11A.8-prep** ⏳ — Refactor api-funnel-ingress (CORS catalog + remove fallbacks + appWebhooks) → [`slices/2.11A/8-prep-refactor-funnel-ingress.md`](./slices/2.11A/8-prep-refactor-funnel-ingress.md) **(IN_PROGRESS 2026-05-18)**
+- [x] **2.11A.8-prep** ✅ — Refactor api-funnel-ingress (CORS catalog + remove fallbacks + appWebhooks) → [`slices/2.11A/8-prep-refactor-funnel-ingress.md`](./slices/2.11A/8-prep-refactor-funnel-ingress.md) **(DONE 2026-05-18)** — commit `d8dbef7`
 - [ ] **2.11B.2** — Refatorar workspace sGTM em PREVIEW (lookup tables, variáveis dinâmicas) → `slices/2.11B/2-refactor-sgtm-workspace-preview.md` (a criar)
 - [ ] **2.11B.3** — Validar workspace sGTM em preview com tenant fake superare-test → `slices/2.11B/3-validate-preview-superare-fake.md` (a criar)
 - [ ] **2.11C.1** — links-redirect refactor (bundle catálogo + lookup routes/contacts) → `slices/2.11C/1-refactor-links-redirect.md` (a criar)
@@ -161,7 +163,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 | Recurso | Estado atual | Última verificação |
 |---|---|---|
 | Cloudflare Secrets Store `default_secrets_store` | ✅ **15/15 secrets** criados (ID `23bdc9c2e8ca470d82352c53ec8d2e67`) | 2026-05-18 |
-| Catálogo `config/products.catalog.json` schemaVersion | **5** (v5 aditivo — `tenants.decole.credentials`, `DECOLE_PLANOVOO.product_api` e `workerViews.api-hotmart-ingress` repontados para secrets `_DECOLE`; v4 mantido onde ainda há fallback) | 2026-05-18 |
+| Catálogo `config/products.catalog.json` schemaVersion | **5** (v5 aditivo — `tenants.decole.credentials`, `DECOLE_PLANOVOO.product_api` e `workerViews` dos ingress Hotmart/Funnel repontados para secrets `_DECOLE`; v4 mantido onde ainda há fallback) | 2026-05-18 |
 | Workers deployed (prod) | api-funnel-ingress, api-hotmart-ingress, funnel-dispatcher, links-redirect, dashboard-sync — **wrangler.toml com bindings Secrets Store, mas SEM redeploy ainda** (Fase 3) | 2026-05-18 |
 | D1 `ga4_daily_metrics` | **Schema v2: coluna `tenant_id` adicionada** (migration 2.11D.1 — roda no bootstrap) | 2026-05-18 |
 | D1 `meta_daily_metrics` | **Schema v2: coluna `tenant_id` adicionada** (migration 2.11D.1) | 2026-05-18 |
@@ -197,10 +199,10 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 **Para o próximo agente:**
 
-1. Confirmar recovery point (`git status --short`, `git log --oneline -10`) e ler este STATUS + satélite 2.11A.
-2. Criar `plans/slices/2.11A/8-prep-refactor-funnel-ingress.md` a partir de `SLICE-TEMPLATE.md`.
-3. Marcar 2.11A.8-prep como IN_PROGRESS.
-4. Refatorar `api-funnel-ingress` para CORS/origens e app webhooks por catálogo, removendo fallbacks silenciosos.
+1. Confirmar recovery point (`git status --short`, `git log --oneline -10`) e ler este STATUS + satélite 2.11B.
+2. Criar `plans/slices/2.11B/2-refactor-sgtm-workspace-preview.md` a partir de `SLICE-TEMPLATE.md`.
+3. Marcar 2.11B.2 como IN_PROGRESS.
+4. Refatorar workspace sGTM em PREVIEW para lookup tables/variáveis dinâmicas por tenant, sem publicar produção.
 
 ---
 
@@ -219,3 +221,4 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - **2026-05-18 ~16:08 (Codex):** 2.11A.4 DONE. Handlers Brevo usam `ctx.credentials`, Secrets Store bindings e isolamento cross-tenant. 14/32.
 - **2026-05-18 ~18:03 (Codex):** 2.11A.5 DONE. `call_product_api`, links de carrinho e `replyToEmail` sem acoplamento runtime DECOLE; `forward_n8n`/`isPlanovooProductCode` deferidos para 2.11A.9. 15/32.
 - **2026-05-18 ~20:02 (Codex):** 2.11A.7-prep DONE. `api-hotmart-ingress` resolve tenant/produto/token por catálogo e Secrets Store, sem fallback `DEFAULT_TENANT_ID`/`HOTMART_WEBHOOK_TOKEN`. 16/32.
+- **2026-05-18 ~20:13 (Codex):** 2.11A.8-prep DONE. `api-funnel-ingress` resolve tenant/CORS/app webhooks por catálogo, sem `ALLOWED_ORIGINS`/`DEFAULT_TENANT_ID`/`APP_EVENTS_HMAC` no runtime. 17/32.

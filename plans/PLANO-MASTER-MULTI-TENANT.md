@@ -1,7 +1,7 @@
 # Plano Master — Multi-Tenant
 
 > **Ponto de entrada autoritativo** para toda mudança no `funil-mkt-platform` que envolva multi-tenancy.
-> **Status:** Em execução — 16/32 slices concluídos · Fases 0, 0.5 e 1 completas · Fase 2 em andamento (4/9) · Próximo: 2.11A.8-prep (atualizado em 2026-05-18 ~20:02 WEST).
+> **Status:** Em execução — 17/32 slices concluídos · Fases 0, 0.5 e 1 completas · Fase 2 em andamento (5/9) · Próximo: 2.11B.2 (atualizado em 2026-05-18 ~20:13 WEST).
 > **Source of truth de progresso:** [`STATUS-2.11.md`](./STATUS-2.11.md)
 
 ---
@@ -403,20 +403,13 @@ Fase 4 ── validação cruzada + limpeza
 
 ## Próxima ação concreta
 
-Para o primeiro agente a executar este plano:
+Para o próximo agente:
 
-1. **Confirmar com humano** que execução pode iniciar (validação humana — G.10)
-2. **Ler** `STATUS-2.11.md` para confirmar estado atual (deve estar "Pré-execução, nenhum slice iniciado")
-3. **Criar slice files da Fase 0** (4 arquivos) seguindo template `SLICE-TEMPLATE.md`:
-   - `slices/2.11A/0-secrets-store-setup.md` (exemplo modelado no satélite 1)
-   - `slices/2.11A/1-catalog-v5-additive.md`
-   - `slices/2.11B/1-audit-sgtm-current.md`
-   - `slices/2.11D/1-d1-migration-tenant-id.md`
-4. **Atualizar STATUS-2.11.md** para refletir slices criados
-5. **Confirmar com humano** qual slice começar primeiro (recomendado: 2.11A.0)
-6. **Pegar slice** (mudar status para IN_PROGRESS, registrar Started + agent ID)
-7. **Executar conforme slice file**
-8. **Ao final:** atualizar slice (DONE + commit + execução) + STATUS (progresso + próximo) + estado externo se aplicável
+1. **Ler** `STATUS-2.11.md` para confirmar o recovery point atual.
+2. **Criar** `plans/slices/2.11B/2-refactor-sgtm-workspace-preview.md` seguindo `SLICE-TEMPLATE.md`.
+3. **Marcar** 2.11B.2 como IN_PROGRESS no slice e em `STATUS-2.11.md`.
+4. **Refatorar** o workspace sGTM em PREVIEW para lookup tables/variáveis dinâmicas por tenant, sem publicar produção.
+5. **Validar** conforme o slice e registrar G.12 antes de marcar DONE.
 
 ---
 
@@ -425,3 +418,4 @@ Para o primeiro agente a executar este plano:
 - **2026-05-18:** Plano master criado. Aprovação inicial pelo humano. Pré-execução.
 - **2026-05-18 ~18:03 WEST:** 2.11A.5 concluído. `funnel-dispatcher` agora resolve `call_product_api`, links de carrinho e `replyToEmail` sem fallback runtime hardcoded para DECOLE; próximo slice é `2.11A.7-prep`.
 - **2026-05-18 ~20:02 WEST:** 2.11A.7-prep concluído. `api-hotmart-ingress` agora resolve tenant/produto/token via catálogo e Secrets Store, sem fallback runtime hardcoded para DECOLE; próximo slice é `2.11A.8-prep`.
+- **2026-05-18 ~20:13 WEST:** 2.11A.8-prep concluído. `api-funnel-ingress` agora resolve tenant, CORS e app webhooks por catálogo, sem `ALLOWED_ORIGINS`/`DEFAULT_TENANT_ID`/`APP_EVENTS_HMAC` no runtime; próximo slice é `2.11B.2`.

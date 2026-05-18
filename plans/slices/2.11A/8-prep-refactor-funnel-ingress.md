@@ -7,10 +7,10 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | IN_PROGRESS |
+| Estado | DONE |
 | Started | 2026-05-18 20:06 WEST por Codex |
-| Completed | — |
-| Commit final | — |
+| Completed | 2026-05-18 20:13 WEST por Codex |
+| Commit final | `d8dbef7` |
 | PR | — |
 | Janela de smoke | N/A — Fase 2 sem deploy |
 
@@ -88,7 +88,27 @@ Validação pós-rollback: testes do `api-funnel-ingress` voltam ao estado anter
 
 ## Revisão G.12 (Code + Architecture + Tests) — preenchido pelo revisor antes de DONE
 
-Pendente.
+### 2026-05-18 20:13 WEST by Codex — auto-revisão
+
+**Código TypeScript**
+- [x] Strict mode respeitado; `npm run typecheck` verde
+- [x] Erros tratados explicitamente: `unknown_tenant`, `origin_not_allowed`, `unauthorized`, `secret_misconfigured`, `queue_not_configured`
+- [x] `resolveSecret()` usado para app webhooks com `requiresHmac`
+- [x] Runtime do worker sem referências hardcoded a tenant/produto/slug/origem/env legado
+
+**Arquitetura**
+- [x] Tenant resolvido por hostname ou `payload.tenant_id` conhecido, sem default silencioso
+- [x] CORS resolvido por `tenants.{id}.allowedOrigins`
+- [x] App webhooks resolvidos por `tenants.{id}.integrations.*.appWebhooks[]`
+- [x] `wrangler.toml` não usa mais `ALLOWED_ORIGINS`/`DEFAULT_TENANT_ID`
+
+**Testes**
+- [x] Red verificável: 6 falhas antes da implementação
+- [x] Happy path, preflight, CORS cross-tenant, payload fallback, fail-fast e app webhook catalog-aware cobertos
+- [x] Isolamento entre tenants coberto com fixture `CATALOG_JSON`
+- [x] Sem `it.only`/`describe.skip`
+
+**Resultado:** APROVADO
 
 ---
 
@@ -126,6 +146,13 @@ Pendente.
   - `git diff --check` ✅
   - `rg -n 'DECOLE|PLANOVOO|ESG|SUPERARE|decolesuacarreiraesg|planovoo|plano-de-voo|APP_EVENTS_HMAC|ALLOWED_ORIGINS|DEFAULT_TENANT_ID' workers/api-funnel-ingress/src` ✅ — 0 matches
 - Próximo passo planejado: commit de implementação e revisão G.12 antes de fechar o slice.
+
+### 2026-05-18 20:13 WEST by Codex
+
+- O que foi tentado: commit de implementação e revisão G.12.
+- O que funcionou: commit `d8dbef7` criado com código, testes, catálogo, wrangler e slice em progresso; revisão G.12 aprovada.
+- O que falhou: nada.
+- Próximo passo planejado: fechar `STATUS-2.11.md` e `PLANO-MASTER-MULTI-TENANT.md`.
 
 ## Gotchas / lições aprendidas
 
