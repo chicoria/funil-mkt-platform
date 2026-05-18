@@ -6,6 +6,56 @@ workers_dev = true
 [vars]
 PLANOVOO_API_BASE_URL = "https://plano.decolesuacarreiraesg.com.br"
 
+# ── Cloudflare Secrets Store bindings (Slice 2.11A.2) ──────────────────────
+# store_id: default_secrets_store (23bdc9c2e8ca470d82352c53ec8d2e67)
+# Workers ainda lêem per-worker secrets como fallback (helper wrapper).
+# Fallbacks removidos na Fase 4 (slice 2.11A.9).
+
+[[secrets_store_secrets]]
+binding = "BREVO_API_KEY_DECOLE"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "brevo_api_key_decole"
+
+[[secrets_store_secrets]]
+binding = "HOTMART_WEBHOOK_TOKEN_DECOLE"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "hotmart_webhook_token_decole"
+
+[[secrets_store_secrets]]
+binding = "SGTM_ENDPOINT_URL_DECOLE"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "sgtm_endpoint_url_decole"
+
+[[secrets_store_secrets]]
+binding = "GA4_MEASUREMENT_ID_DECOLE"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "ga4_measurement_id_decole"
+
+[[secrets_store_secrets]]
+binding = "GA4_API_SECRET_DECOLE"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "ga4_api_secret_decole"
+
+[[secrets_store_secrets]]
+binding = "META_CAPI_ACCESS_TOKEN_DECOLE"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "meta_capi_access_token_decole"
+
+[[secrets_store_secrets]]
+binding = "META_PIXEL_ID_DECOLE_ESG"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "meta_pixel_id_decole_esg"
+
+[[secrets_store_secrets]]
+binding = "META_PIXEL_ID_DECOLE_PLANOVOO"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "meta_pixel_id_decole_planovoo"
+
+[[secrets_store_secrets]]
+binding = "PLANOVOO_API_BASE_URL_DECOLE"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "planovoo_api_base_url_decole"
+
 [[queues.consumers]]
 queue = "decole-q-funnel-events"
 max_batch_size = 25

@@ -7,5 +7,31 @@ binding = "EVENT_STORE_DB"
 database_name = "decole-d1-event-store"
 database_id = "f5c19aac-2bdc-4fe4-b560-e1c49199ff4c"
 
+# ── Cloudflare Secrets Store bindings (Slice 2.11A.2) ──────────────────────
+[[secrets_store_secrets]]
+binding = "GA4_SERVICE_ACCOUNT_KEY_DECOLE"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "ga4_service_account_key_decole"
+
+[[secrets_store_secrets]]
+binding = "GA4_PROPERTY_ID_DECOLE"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "ga4_property_id_decole"
+
+[[secrets_store_secrets]]
+binding = "META_ACCESS_TOKEN_DECOLE"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "meta_access_token_decole"
+
+[[secrets_store_secrets]]
+binding = "META_AD_ACCOUNT_ID_DECOLE_ESG"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "meta_ad_account_id_decole_esg"
+
+[[secrets_store_secrets]]
+binding = "META_AD_ACCOUNT_ID_DECOLE_PLANOVOO"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "meta_ad_account_id_decole_planovoo"
+
 [triggers]
 crons = ["0 4 * * *"]

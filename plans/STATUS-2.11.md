@@ -41,11 +41,11 @@
 |---|---|---|
 | Fase 0 — Preparação | 4/4 | ✅ Completa |
 | Fase 0.5 — Testes de regressão | 7/7 | ✅ Completa |
-| Fase 1 — Popular secrets + bindings | 0/1 | ⏸️ Não iniciada |
+| Fase 1 — Popular secrets + bindings | 1/1 | ✅ Completa |
 | Fase 2 — Refactor | 0/9 | ⏸️ Não iniciada |
 | Fase 3 — Deploys disruptivos | 0/6 | ⏸️ Não iniciada |
 | Fase 4 — Validação cruzada + limpeza | 0/5 | ⏸️ Não iniciada |
-| **Total** | **11/32** | |
+| **Total** | **12/32** | |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
@@ -53,7 +53,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Slice em progresso
 
-(nenhum — Fase 0 e Fase 0.5 completas em 2026-05-18; aguardando validação humana para iniciar Fase 1)
+(nenhum — Fase 0, Fase 0.5 e Fase 1 completas; aguardando validação humana para iniciar Fase 2)
 
 ## Último slice concluído
 
@@ -87,7 +87,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - [x] **2.11T.6** ✅ — ci-multitenant-gates.yml (5 gates: typecheck, unit, agnostic, catalog, secrets) → [`slices/2.11T/6-ci-e2e-action.md`](./slices/2.11T/6-ci-e2e-action.md) **(DONE 2026-05-18)**
 
 ### Fase 1 — Popular secrets + bindings
-- [ ] **2.11A.2** — Popular secrets _DECOLE no Store + bindings em wrangler.toml dos 5 workers → `slices/2.11A/2-populate-secrets-bindings.md` (a criar)
+- [x] **2.11A.2** ✅ — Popular secrets _DECOLE no Store + bindings wrangler.toml → [`slices/2.11A/2-populate-secrets-bindings.md`](./slices/2.11A/2-populate-secrets-bindings.md) **(DONE 2026-05-18)** — 14/14 criados; 3 pendentes (n8n_webhook_url, planovoo_hook_secret, app_events_hmac)
 
 ### Fase 2 — Refactor (testes verdes, sem deploy)
 - [ ] **2.11A.3** — Refactor resolveTrackingConfig (sGTM/GA4/MetaCAPI do tenant) → `slices/2.11A/3-refactor-tracking-config.md` (a criar)
