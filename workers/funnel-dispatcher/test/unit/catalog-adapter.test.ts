@@ -190,3 +190,70 @@ describe("bundled products.catalog.json (multi-tenant shape — Slice 2.6B)", ()
     expect(eventConfig?.chain).toContain("send_template_email");
   });
 });
+
+// ─── schema v5 — novos campos ──────────────────────────────────────────────────
+// Helper local: o catálogo bundled é ParsedCatalog (tipagem do adapter) mas
+// os campos v5 novos não estão na interface ainda (Fase 2). Acessamos via
+// cast direto para validar que o JSON foi bumped corretamente para v5.
+
+const v5Raw = bundledCatalogJson as Record<string, unknown>;
+const v5Tenants = v5Raw.tenants as Record<string, Record<string, unknown>>;
+const v5Decole = v5Tenants?.decole ?? {};
+const v5Products = v5Decole.products as Record<string, Record<string, unknown>> ?? {};
+
+describe("catalog-adapter bundled catalog — schema v5 fields (Slice 2.11T.1)", () => {
+  it("schemaVersion is 5", () => {
+    expect(v5Raw.schemaVersion).toBe(5);
+  });
+
+  it("decole tenant has allowedOrigins (v5)", () => {
+    const origins = v5Decole.allowedOrigins as string[];
+    expect(Array.isArray(origins)).toBe(true);
+    expect(origins).toContain("https://decolesuacarreiraesg.com.br");
+  });
+
+  it("decole tenant has tenant-level tracking: sgtm, ga4, metaCapi (v5)", () => {
+    const tracking = v5Decole.tracking as Record<string, Record<string, string>>;
+    expect(tracking?.sgtm?.endpointEnvVar).toBe("SGTM_ENDPOINT_URL_DECOLE");
+    expect(tracking?.ga4?.measurementIdEnvVar).toBe("GA4_MEASUREMENT_ID_DECOLE");
+    expect(tracking?.ga4?.apiSecretEnvVar).toBe("GA4_API_SECRET_DECOLE");
+    expect(tracking?.metaCapi?.accessTokenEnv).toBe("META_CAPI_ACCESS_TOKEN_DECOLE");
+  });
+
+  it("decole tenant has integrations.planovoo.appWebhooks (v5)", () => {
+    const integrations = v5Decole.integrations as Record<string, Record<string, unknown>>;
+    const webhooks = integrations?.planovoo?.appWebhooks as Array<Record<string, unknown>>;
+    expect(Array.isArray(webhooks)).toBe(true);
+    expect(webhooks[0]?.path).toBe("/webhooks/v1/planovoo/app/event");
+    expect(webhooks[0]?.requiresHmac).toBe(true);
+  });
+
+  it("DECOLE_ESG_MENTORIA has hotmart.urlSlugs (v5)", () => {
+    const esg = v5Products.DECOLE_ESG_MENTORIA;
+    const slugs = (esg?.hotmart as Record<string, string[]>)?.urlSlugs;
+    expect(Array.isArray(slugs)).toBe(true);
+    expect(slugs).toContain("decole-esg");
+  });
+
+  it("DECOLE_PLANOVOO has hotmart.urlSlugs with all legacy slug variants (v5)", () => {
+    const plano = v5Products.DECOLE_PLANOVOO;
+    const slugs = (plano?.hotmart as Record<string, string[]>)?.urlSlugs;
+    expect(slugs).toContain("planodevoo");
+    expect(slugs).toContain("planovoo");
+    expect(slugs).toContain("plano-de-voo");
+  });
+
+  it("DECOLE_PLANOVOO has n8nForward.enrichPayload (v5)", () => {
+    const plano = v5Products.DECOLE_PLANOVOO;
+    const n8nForward = plano?.n8nForward as Record<string, unknown>;
+    expect(n8nForward?.enrichPayload).toBe(true);
+  });
+
+  it("v4 fields still present after v5 additions (backward compat)", () => {
+    const credentials = v5Decole.credentials as Record<string, string>;
+    expect(credentials?.brevo_api_key_env).toBe("BREVO_API_KEY");
+    const esgTracking = v5Products.DECOLE_ESG_MENTORIA?.tracking as Record<string, Record<string, string>>;
+    expect(esgTracking?.sgtm?.endpointEnvVar).toBeDefined();
+    expect(esgTracking?.ga4?.measurementIdEnvVar).toBeDefined();
+  });
+});

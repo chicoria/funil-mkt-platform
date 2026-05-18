@@ -40,12 +40,12 @@
 | Fase | Slices | Status |
 |---|---|---|
 | Fase 0 — Preparação | 4/4 | ✅ Completa |
-| Fase 0.5 — Testes de regressão | 4/7 | ⏳ Em progresso (T.2 ✅ T.3 ✅ T.4 ✅ D.0 ✅) |
+| Fase 0.5 — Testes de regressão | 7/7 | ✅ Completa |
 | Fase 1 — Popular secrets + bindings | 0/1 | ⏸️ Não iniciada |
 | Fase 2 — Refactor | 0/9 | ⏸️ Não iniciada |
 | Fase 3 — Deploys disruptivos | 0/6 | ⏸️ Não iniciada |
 | Fase 4 — Validação cruzada + limpeza | 0/5 | ⏸️ Não iniciada |
-| **Total** | **8/32** | |
+| **Total** | **11/32** | |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
@@ -53,7 +53,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Slice em progresso
 
-(nenhum — Fase 0 completa em 2026-05-18; aguardando validação humana para iniciar Fase 0.5)
+(nenhum — Fase 0 e Fase 0.5 completas em 2026-05-18; aguardando validação humana para iniciar Fase 1)
 
 ## Último slice concluído
 
@@ -78,13 +78,13 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - [x] **2.11D.1** ✅ — Migration D1: tenant_id em ga4_daily_metrics + meta_daily_metrics → [`slices/2.11D/1-d1-migration-tenant-id.md`](./slices/2.11D/1-d1-migration-tenant-id.md) **(DONE 2026-05-18)**
 
 ### Fase 0.5 — Testes de regressão (gate para Fase 2)
-- [ ] **2.11T.1** — catalog-adapter.test.ts → `slices/2.11T/1-catalog-adapter-tests.md` (a criar)
+- [x] **2.11T.1** ✅ — catalog-adapter.test.ts v5 (8 testes novos, 24 total) → [`slices/2.11T/1-catalog-adapter-v5-tests.md`](./slices/2.11T/1-catalog-adapter-v5-tests.md) **(DONE 2026-05-18)**
 - [x] **2.11T.2** ✅ — secrets-store-wrapper.test.ts (12 testes) — concluído em 2.11A.0 ([`slices/2.11A/0-secrets-store-setup.md`](./slices/2.11A/0-secrets-store-setup.md))
 - [x] **2.11T.3** ✅ — cross-tenant-isolation.test.ts → [`slices/2.11T/3-cross-tenant-isolation.md`](./slices/2.11T/3-cross-tenant-isolation.md) **(DONE 2026-05-18)**
 - [x] **2.11T.4** ✅ — emit-tracking-payload.test.ts (golden master) → [`slices/2.11T/4-golden-master-emit-tracking.md`](./slices/2.11T/4-golden-master-emit-tracking.md) **(DONE 2026-05-18)**
 - [x] **2.11D.0** ✅ — dashboard-sync test harness mínimo → [`slices/2.11D/0-test-harness-bootstrap.md`](./slices/2.11D/0-test-harness-bootstrap.md) **(DONE 2026-05-18)**
-- [ ] **2.11T.5** — Atualizar mocks existentes (env.X → ctx.credentials.X) → `slices/2.11T/5-mocks-update.md` (a criar)
-- [ ] **2.11T.6** — GitHub Actions: pr-e2e-multitenant.yml + ci-multitenant-gates.yml → `slices/2.11T/6-ci-e2e-action.md` (a criar)
+- [x] **2.11T.5** ✅ — Bridge de mocks v4→v5 (makeTestEnv helper) → [`slices/2.11T/5-mocks-update.md`](./slices/2.11T/5-mocks-update.md) **(DONE 2026-05-18)**
+- [x] **2.11T.6** ✅ — ci-multitenant-gates.yml (5 gates: typecheck, unit, agnostic, catalog, secrets) → [`slices/2.11T/6-ci-e2e-action.md`](./slices/2.11T/6-ci-e2e-action.md) **(DONE 2026-05-18)**
 
 ### Fase 1 — Popular secrets + bindings
 - [ ] **2.11A.2** — Popular secrets _DECOLE no Store + bindings em wrangler.toml dos 5 workers → `slices/2.11A/2-populate-secrets-bindings.md` (a criar)

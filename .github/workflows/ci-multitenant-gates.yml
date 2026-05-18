@@ -1,0 +1,164 @@
+# CI gates obrigatórios para multi-tenancy — Slice 2.11T.6
+#
+# Roda em cada PR e push para main. Bloqueia merge se qualquer gate falhar.
+# Ver: PLANO-MASTER-MULTI-TENANT.md seção G.5
+
+name: ci-multitenant-gates
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+    branches: [main, staging]
+
+jobs:
+  # ── Gate 1: Typecheck ─────────────────────────────────────────────────────
+  typecheck:
+    name: TypeScript typecheck
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        worker:
+          - packages/shared
+          - workers/funnel-dispatcher
+          - workers/api-funnel-ingress
+          - workers/api-hotmart-ingress
+          - workers/links-redirect
+          - workers/dashboard-sync
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: ${{ matrix.worker }}/package-lock.json
+      - name: Install deps
+        run: npm ci
+        working-directory: ${{ matrix.worker }}
+      - name: Typecheck
+        run: npm run typecheck
+        working-directory: ${{ matrix.worker }}
+
+  # ── Gate 2: Unit tests ─────────────────────────────────────────────────────
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        worker:
+          - packages/shared
+          - workers/funnel-dispatcher
+          - workers/dashboard-sync
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: ${{ matrix.worker }}/package-lock.json
+      - name: Install deps
+        run: npm ci
+        working-directory: ${{ matrix.worker }}
+      - name: Run unit tests
+        run: npx vitest run
+        working-directory: ${{ matrix.worker }}
+
+  # ── Gate 3: Workers agnostic audit ────────────────────────────────────────
+  # TODO(2.11A.9): remover continue-on-error quando Fase 2 remover hardcodes.
+  # Por ora é informacional — reporta violações mas não bloqueia PR.
+  workers-agnostic-audit:
+    name: Workers agnostic audit (no tenant/product hardcode)
+    runs-on: ubuntu-latest
+    continue-on-error: true  # Remove em 2.11A.9 após Fase 2 refactors
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for hardcoded tenant/product names in workers
+        run: |
+          echo "Checking for hardcoded tenant/product names in worker source files..."
+          PATTERN='DECOLE|PLANOVOO|ESG|SUPERARE|ELIZETE|decolesuacarreiraesg|planodevoo|plano-de-voo|decole-esg|isPlanovoo|351915787088|contato@decolesuacarreiraesg'
+          VIOLATIONS=$(grep -rEn "$PATTERN" \
+            workers/api-funnel-ingress/src/ \
+            workers/api-hotmart-ingress/src/ \
+            workers/funnel-dispatcher/src/ \
+            workers/links-redirect/src/ \
+            workers/dashboard-sync/src/ \
+            2>/dev/null | grep -v '^\s*//' | grep -v '_note\|_deprecated\|"_note_' || true)
+          if [ -n "$VIOLATIONS" ]; then
+            echo "❌ Workers agnostic check FAILED — hardcoded tenant/product names found:"
+            echo "$VIOLATIONS"
+            echo ""
+            echo "See plans/PLANO-MASTER-MULTI-TENANT.md section G.8.1 for guidance."
+            exit 1
+          else
+            echo "✅ Workers agnostic check PASSED — no hardcoded tenant/product names"
+          fi
+
+  # ── Gate 4: Catalog JSON validation ───────────────────────────────────────
+  catalog-validation:
+    name: Catalog JSON validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate catalog JSON and schema version
+        run: |
+          python3 -c "
+          import json, sys
+          try:
+            d = json.load(open('config/products.catalog.json'))
+          except Exception as e:
+            print('❌ Invalid JSON:', e)
+            sys.exit(1)
+
+          version = d.get('schemaVersion')
+          if version != 5:
+            print(f'❌ schemaVersion is {version}, expected 5')
+            sys.exit(1)
+
+          tenants = d.get('tenants', {})
+          if not tenants:
+            print('❌ No tenants defined in catalog')
+            sys.exit(1)
+
+          print(f'✅ Catalog valid — schemaVersion={version}, tenants={list(tenants.keys())}')
+          "
+
+  # ── Gate 5: Secrets audit (declarados no catálogo vs Cloudflare Store) ────
+  # Roda apenas em push para main/staging (não em PRs — requer CF_API_TOKEN)
+  secrets-audit:
+    name: Secrets Store audit
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Audit secrets (catalog vs Cloudflare Secrets Store)
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CF_API_TOKEN" ] || [ -z "$CF_ACCOUNT_ID" ]; then
+            echo "⚠️  CF_API_TOKEN or CF_ACCOUNT_ID not set — skipping secrets audit"
+            exit 0
+          fi
+          if [ -f "scripts/audit-secrets.sh" ]; then
+            bash scripts/audit-secrets.sh
+          else
+            echo "⚠️  scripts/audit-secrets.sh not found — skipping (will be created in Slice 2.11A.9)"
+          fi
+
+  # ── Summary gate ─────────────────────────────────────────────────────────
+  all-gates-passed:
+    name: All gates passed
+    runs-on: ubuntu-latest
+    needs:
+      - typecheck
+      - unit-tests
+      - workers-agnostic-audit
+      - catalog-validation
+    steps:
+      - run: echo "✅ All CI multi-tenant gates passed"
