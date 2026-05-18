@@ -1,4 +1,5 @@
 import { FunnelEvent } from "../../../../packages/shared/src/funnel-event";
+import { resolveSecret, type SecretValue } from "../../../../packages/shared/src/secrets-store-wrapper";
 import bundledCatalogJson from "../../../../config/products.catalog.json";
 import {
   DispatcherEnv,
@@ -104,6 +105,7 @@ interface CatalogProductConfig {
   };
   tracking?: {
     productCode?: string;
+    differentiation?: Record<string, string>;
     sgtm?: {
       endpointUrl?: string;
       endpointEnvVar?: string;
@@ -129,6 +131,24 @@ interface CatalogProductConfig {
   funnelEventArchitecture?: {
     events?: CatalogEventConfig[];
   };
+}
+
+interface CatalogTenantTrackingConfig {
+  sgtm?: {
+    endpointEnvVar?: string;
+  };
+  ga4?: {
+    measurementId?: string;
+    measurementIdEnvVar?: string;
+    apiSecretEnvVar?: string;
+  };
+  metaCapi?: {
+    accessTokenEnv?: string;
+  };
+}
+
+interface CatalogTenantWithTracking extends CatalogTenantConfig {
+  tracking?: CatalogTenantTrackingConfig;
 }
 
 const bundledCatalog = bundledCatalogJson as ParsedCatalog;
@@ -166,6 +186,36 @@ function asString(value: unknown): string {
 function envString(env: DispatcherEnv, key: string | undefined): string {
   if (!key) return "";
   return asString(env[key]);
+}
+
+async function secretEnvString(
+  env: DispatcherEnv,
+  key: string | undefined,
+  context: { field: string; tenantId: string; productCode: string }
+): Promise<string> {
+  const normalizedKey = asString(key);
+  if (!normalizedKey) return "";
+
+  const binding = env[normalizedKey] as SecretValue;
+  if (binding === undefined || binding === null || binding === "") return "";
+
+  try {
+    return await resolveSecret(binding, normalizedKey);
+  } catch (err) {
+    console.log(
+      JSON.stringify({
+        stage: "handler_warn",
+        handler: "emit_tracking",
+        reason: "secret_resolution_failed",
+        field: context.field,
+        secret_name: normalizedKey,
+        tenant_id: context.tenantId,
+        product_code: context.productCode,
+        error: err instanceof Error ? err.message : String(err),
+      })
+    );
+    return "";
+  }
 }
 
 function asAbsoluteHttpUrl(value: unknown): string {
@@ -643,28 +693,69 @@ function getCatalogProduct(catalog: ParsedCatalog, event: FunnelEvent): CatalogP
   return resolveCatalogProduct(catalog, event)?.product as CatalogProductConfig | undefined;
 }
 
-function resolveTrackingConfig(event: FunnelEvent, env: DispatcherEnv): TrackingDestinationConfig {
-  const product = getCatalogProduct(getCatalog(env), event);
+async function resolveTrackingConfig(event: FunnelEvent, env: DispatcherEnv): Promise<TrackingDestinationConfig> {
+  const catalog = getCatalog(env);
+  const tenantId = resolveEventTenantId(event, catalog);
+  const resolvedProduct = resolveCatalogProduct(catalog, event);
+  const product = resolvedProduct?.product as CatalogProductConfig | undefined;
   const tracking = product?.tracking;
   const fallbackMeta = product?.meta;
+  const tenant = catalog.tenants?.[tenantId] as CatalogTenantWithTracking | undefined;
+  const tenantTracking = tenant?.tracking;
+  const hasTenantCatalog = Boolean(catalog.tenants && Object.keys(catalog.tenants).length > 0);
+  const allowLegacyFallback = !hasTenantCatalog || Boolean(product);
+  const secretContext = {
+    tenantId,
+    productCode: resolvedProduct?.product_code || event.product_code,
+  };
+
+  const tenantSgtmEndpointUrl = await secretEnvString(
+    env,
+    tenantTracking?.sgtm?.endpointEnvVar,
+    { ...secretContext, field: "tenant.tracking.sgtm.endpointEnvVar" }
+  );
+  const tenantGa4MeasurementId =
+    await secretEnvString(
+      env,
+      tenantTracking?.ga4?.measurementIdEnvVar,
+      { ...secretContext, field: "tenant.tracking.ga4.measurementIdEnvVar" }
+    ) || asString(tenantTracking?.ga4?.measurementId);
+  const tenantGa4ApiSecret = await secretEnvString(
+    env,
+    tenantTracking?.ga4?.apiSecretEnvVar,
+    { ...secretContext, field: "tenant.tracking.ga4.apiSecretEnvVar" }
+  );
   const sgtmEndpointUrl =
-    envString(env, tracking?.sgtm?.endpointEnvVar) ||
-    asString(tracking?.sgtm?.endpointUrl) ||
-    asString(env.SGTM_ENDPOINT_URL);
+    tenantSgtmEndpointUrl ||
+    (allowLegacyFallback
+      ? await secretEnvString(env, tracking?.sgtm?.endpointEnvVar, { ...secretContext, field: "product.tracking.sgtm.endpointEnvVar" }) ||
+        asString(tracking?.sgtm?.endpointUrl) ||
+        await secretEnvString(env, "SGTM_ENDPOINT_URL", { ...secretContext, field: "legacy.SGTM_ENDPOINT_URL" })
+      : "");
   const ga4MeasurementId =
-    envString(env, tracking?.ga4?.measurementIdEnvVar) ||
-    asString(tracking?.ga4?.measurementId) ||
-    asString(env.GA4_MEASUREMENT_ID);
+    tenantGa4MeasurementId ||
+    (allowLegacyFallback
+      ? await secretEnvString(env, tracking?.ga4?.measurementIdEnvVar, { ...secretContext, field: "product.tracking.ga4.measurementIdEnvVar" }) ||
+        asString(tracking?.ga4?.measurementId) ||
+        await secretEnvString(env, "GA4_MEASUREMENT_ID", { ...secretContext, field: "legacy.GA4_MEASUREMENT_ID" })
+      : "");
   const ga4ApiSecret =
-    envString(env, tracking?.ga4?.apiSecretEnvVar) ||
-    asString(env.GA4_API_SECRET);
+    tenantGa4ApiSecret ||
+    (allowLegacyFallback
+      ? await secretEnvString(env, tracking?.ga4?.apiSecretEnvVar, { ...secretContext, field: "product.tracking.ga4.apiSecretEnvVar" }) ||
+        await secretEnvString(env, "GA4_API_SECRET", { ...secretContext, field: "legacy.GA4_API_SECRET" })
+      : "");
   const metaTestEventCode =
-    envString(env, tracking?.metaPixel?.testEventCodeEnvVar) ||
-    envString(env, fallbackMeta?.testEventCodeEnvVar) ||
-    asString(env.META_TEST_EVENT_CODE);
+    (allowLegacyFallback
+      ? await secretEnvString(env, tracking?.metaPixel?.testEventCodeEnvVar, { ...secretContext, field: "product.tracking.metaPixel.testEventCodeEnvVar" }) ||
+        await secretEnvString(env, fallbackMeta?.testEventCodeEnvVar, { ...secretContext, field: "product.meta.testEventCodeEnvVar" }) ||
+        await secretEnvString(env, "META_TEST_EVENT_CODE", { ...secretContext, field: "legacy.META_TEST_EVENT_CODE" })
+      : "");
   const productDimensionValue =
+    asString(tracking?.differentiation?.produto) ||
     asString(tracking?.ga4?.differentiationKeys?.produto) ||
     asString(tracking?.productCode) ||
+    asString(resolvedProduct?.product_code) ||
     event.product_code;
 
   return { sgtmEndpointUrl, ga4MeasurementId, ga4ApiSecret, metaTestEventCode, productDimensionValue };
@@ -1477,7 +1568,7 @@ async function updateBrevoFunnel(event: FunnelEvent, env: DispatcherEnv): Promis
 
 async function emitTracking(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
   const payload = event.payload || {};
-  const tracking = resolveTrackingConfig(event, env);
+  const tracking = await resolveTrackingConfig(event, env);
   const currency =
     asString(payload.currency) ||
     asString(payload.currency_code) ||

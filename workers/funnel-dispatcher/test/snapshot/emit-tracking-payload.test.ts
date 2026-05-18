@@ -50,39 +50,41 @@ const GA4_MEASUREMENT_ID = "G-GOLDEN-TEST";
 const GA4_API_SECRET = "golden-secret";
 
 const TRACKING_CATALOG = JSON.stringify({
-  products: {
-    DECOLE_ESG_MENTORIA: {
+  tenants: {
+    decole: {
       tracking: {
-        productCode: "DECOLE_ESG_MENTORIA",
-        sgtm: { endpointEnvVar: "SGTM_ENDPOINT_URL" },
+        sgtm: { endpointEnvVar: "SGTM_ENDPOINT_URL_DECOLE" },
         ga4: {
-          measurementIdEnvVar: "GA4_MEASUREMENT_ID",
-          apiSecretEnvVar: "GA4_API_SECRET",
-          differentiationKeys: { produto: "DECOLE_ESG_MENTORIA" },
+          measurementIdEnvVar: "GA4_MEASUREMENT_ID_DECOLE",
+          apiSecretEnvVar: "GA4_API_SECRET_DECOLE",
         },
+        metaCapi: { accessTokenEnv: "META_CAPI_ACCESS_TOKEN_DECOLE" },
       },
-      funnelEventArchitecture: {
-        events: [
-          { eventType: "PURCHASE_APPROVED", chain: ["emit_tracking"] },
-          { eventType: "BEGIN_CHECKOUT", chain: ["emit_tracking"] },
-        ],
-      },
-    },
-    DECOLE_PLANOVOO: {
-      aliases: ["PLANOVOO"],
-      tracking: {
-        productCode: "DECOLE_PLANOVOO",
-        sgtm: { endpointEnvVar: "SGTM_ENDPOINT_URL" },
-        ga4: {
-          measurementIdEnvVar: "GA4_MEASUREMENT_ID",
-          apiSecretEnvVar: "GA4_API_SECRET",
-          differentiationKeys: { produto: "DECOLE_PLANOVOO" },
+      products: {
+        DECOLE_ESG_MENTORIA: {
+          tracking: {
+            productCode: "DECOLE_ESG_MENTORIA",
+            differentiation: { produto: "DECOLE_ESG_MENTORIA" },
+          },
+          funnelEventArchitecture: {
+            events: [
+              { eventType: "PURCHASE_APPROVED", chain: ["emit_tracking"] },
+              { eventType: "BEGIN_CHECKOUT", chain: ["emit_tracking"] },
+            ],
+          },
         },
-      },
-      funnelEventArchitecture: {
-        events: [
-          { eventType: "PURCHASE_APPROVED", chain: ["emit_tracking"] },
-        ],
+        DECOLE_PLANOVOO: {
+          aliases: ["PLANOVOO"],
+          tracking: {
+            productCode: "DECOLE_PLANOVOO",
+            differentiation: { produto: "DECOLE_PLANOVOO" },
+          },
+          funnelEventArchitecture: {
+            events: [
+              { eventType: "PURCHASE_APPROVED", chain: ["emit_tracking"] },
+            ],
+          },
+        },
       },
     },
   },
@@ -111,9 +113,9 @@ async function captureEmitTrackingPayload(eventBody: Record<string, unknown>): P
 
   const env = makeEnv({
     CATALOG_JSON: TRACKING_CATALOG,
-    SGTM_ENDPOINT_URL: SGTM_ENDPOINT,
-    GA4_MEASUREMENT_ID: GA4_MEASUREMENT_ID,
-    GA4_API_SECRET: GA4_API_SECRET,
+    SGTM_ENDPOINT_URL_DECOLE: SGTM_ENDPOINT,
+    GA4_MEASUREMENT_ID_DECOLE: GA4_MEASUREMENT_ID,
+    GA4_API_SECRET_DECOLE: GA4_API_SECRET,
   });
 
   await worker.queue({ messages: [{ body: eventBody }] }, env);
@@ -136,9 +138,9 @@ describe("emit_tracking — golden master payload structure (PURCHASE_APPROVED E
 
     const env = makeEnv({
       CATALOG_JSON: TRACKING_CATALOG,
-      SGTM_ENDPOINT_URL: SGTM_ENDPOINT,
-      GA4_MEASUREMENT_ID: GA4_MEASUREMENT_ID,
-      GA4_API_SECRET: GA4_API_SECRET,
+      SGTM_ENDPOINT_URL_DECOLE: SGTM_ENDPOINT,
+      GA4_MEASUREMENT_ID_DECOLE: GA4_MEASUREMENT_ID,
+      GA4_API_SECRET_DECOLE: GA4_API_SECRET,
     });
 
     await worker.queue({ messages: [{ body: {

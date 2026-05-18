@@ -1027,46 +1027,48 @@ describe("funnel-dispatcher", () => {
     vi.unstubAllGlobals();
   });
 
-  it("resolve tracking por produto e envia para sgtm", async () => {
+  it("resolve tracking por tenant e envia para sgtm preservando diferenciação por produto", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
     });
     vi.stubGlobal("fetch", fetchMock);
 
     const env = makeEnv({
-      SGTM_ENDPOINT_URL_DECOLE_ESG: "https://sgtm.example.com/decole-esg",
-      SGTM_ENDPOINT_URL_PLANOVOO: "https://sgtm.example.com/planovoo",
-      GA4_MEASUREMENT_ID: "G-TEST123",
-      GA4_API_SECRET: "test-api-secret",
+      SGTM_ENDPOINT_URL_DECOLE: "https://sgtm.example.com/decole",
+      GA4_MEASUREMENT_ID_DECOLE: "G-DECOLE-TEST123",
+      GA4_API_SECRET_DECOLE: "decole-api-secret",
       CATALOG_JSON: JSON.stringify({
-        products: {
-          DECOLE_ESG_MENTORIA: {
+        tenants: {
+          decole: {
             tracking: {
-              productCode: "DECOLE_ESG_MENTORIA",
-              sgtm: { endpointEnvVar: "SGTM_ENDPOINT_URL_DECOLE_ESG" },
+              sgtm: { endpointEnvVar: "SGTM_ENDPOINT_URL_DECOLE" },
               ga4: {
-                measurementIdEnvVar: "GA4_MEASUREMENT_ID",
-                apiSecretEnvVar: "GA4_API_SECRET",
-                differentiationKeys: { produto: "DECOLE_ESG_MENTORIA" },
+                measurementId: "G-DECOLE-FALLBACK",
+                measurementIdEnvVar: "GA4_MEASUREMENT_ID_DECOLE",
+                apiSecretEnvVar: "GA4_API_SECRET_DECOLE",
               },
+              metaCapi: { accessTokenEnv: "META_CAPI_ACCESS_TOKEN_DECOLE" },
             },
-            funnelEventArchitecture: {
-              events: [{ eventType: "PURCHASE_APPROVED", chain: ["emit_tracking"] }, { eventType: "PURCHASE_OUT_OF_SHOPPING_CART", chain: ["emit_tracking"] }],
-            },
-          },
-          DECOLE_PLANOVOO: {
-            aliases: ["PLANOVOO"],
-            tracking: {
-              productCode: "DECOLE_PLANOVOO",
-              sgtm: { endpointEnvVar: "SGTM_ENDPOINT_URL_PLANOVOO" },
-              ga4: {
-                measurementIdEnvVar: "GA4_MEASUREMENT_ID",
-                apiSecretEnvVar: "GA4_API_SECRET",
-                differentiationKeys: { produto: "DECOLE_PLANOVOO" },
+            products: {
+              DECOLE_ESG_MENTORIA: {
+                tracking: {
+                  productCode: "DECOLE_ESG_MENTORIA",
+                  differentiation: { produto: "DECOLE_ESG_MENTORIA" },
+                },
+                funnelEventArchitecture: {
+                  events: [{ eventType: "PURCHASE_APPROVED", chain: ["emit_tracking"] }, { eventType: "PURCHASE_OUT_OF_SHOPPING_CART", chain: ["emit_tracking"] }],
+                },
               },
-            },
-            funnelEventArchitecture: {
-              events: [{ eventType: "PURCHASE_APPROVED", chain: ["emit_tracking"] }],
+              DECOLE_PLANOVOO: {
+                aliases: ["PLANOVOO"],
+                tracking: {
+                  productCode: "DECOLE_PLANOVOO",
+                  differentiation: { produto: "DECOLE_PLANOVOO" },
+                },
+                funnelEventArchitecture: {
+                  events: [{ eventType: "PURCHASE_APPROVED", chain: ["emit_tracking"] }],
+                },
+              },
             },
           },
         },
@@ -1097,10 +1099,10 @@ describe("funnel-dispatcher", () => {
       env
     );
 
-    const sgtmEsgCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/decole-esg/mp/collect"));
+    const sgtmEsgCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/decole/mp/collect"));
     expect(sgtmEsgCall).toBeTruthy();
-    expect(String(sgtmEsgCall?.[0])).toContain("measurement_id=G-TEST123");
-    expect(String(sgtmEsgCall?.[0])).toContain("api_secret=test-api-secret");
+    expect(String(sgtmEsgCall?.[0])).toContain("measurement_id=G-DECOLE-TEST123");
+    expect(String(sgtmEsgCall?.[0])).toContain("api_secret=decole-api-secret");
     const sgtmEsgBody = JSON.parse(String((sgtmEsgCall?.[1] as RequestInit)?.body || "{}")) as Record<string, unknown>;
     const esgParams = (sgtmEsgBody.events as Array<{ name: string; params: Record<string, unknown> }>)[0];
     expect(esgParams.name).toBe("purchase");
@@ -1110,6 +1112,7 @@ describe("funnel-dispatcher", () => {
     expect(esgParams.params.value).toBe(1500);
     expect(esgParams.params.produto).toBe("DECOLE_ESG_MENTORIA");
 
+    fetchMock.mock.calls.length = 0;
     await worker.queue(
       {
         messages: [
@@ -1128,7 +1131,7 @@ describe("funnel-dispatcher", () => {
       env
     );
 
-    const sgtmPlanovooCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/planovoo/mp/collect"));
+    const sgtmPlanovooCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/decole/mp/collect"));
     expect(sgtmPlanovooCall).toBeTruthy();
     const sgtmPlanovooBody = JSON.parse(String((sgtmPlanovooCall?.[1] as RequestInit)?.body || "{}")) as Record<string, unknown>;
     const planovooParams = (sgtmPlanovooBody.events as Array<{ name: string; params: Record<string, unknown> }>)[0];
@@ -1155,13 +1158,76 @@ describe("funnel-dispatcher", () => {
       env
     );
 
-    const sgtmCartCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/decole-esg/mp/collect"));
+    const sgtmCartCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/decole/mp/collect"));
     expect(sgtmCartCall).toBeTruthy();
     const sgtmCartBody = JSON.parse(String((sgtmCartCall?.[1] as RequestInit)?.body || "{}")) as Record<string, unknown>;
     const cartParams = (sgtmCartBody.events as Array<{ name: string; params: Record<string, unknown> }>)[0];
     expect(cartParams.name).toBe("begin_checkout");
     expect(cartParams.params.produto).toBe("DECOLE_ESG_MENTORIA");
     expect(cartParams.params.product_code).toBe("DECOLE_ESG_MENTORIA");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("resolve tracking por tenant usando bindings do Secrets Store", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const env = makeEnv({
+      SGTM_ENDPOINT_URL_TEST_BINDING: { get: vi.fn(async () => "https://sgtm-binding.example.com") },
+      GA4_MEASUREMENT_ID_TEST_BINDING: { get: vi.fn(async () => "G-BINDING-123") },
+      GA4_API_SECRET_TEST_BINDING: { get: vi.fn(async () => "binding-secret") },
+      CATALOG_JSON: JSON.stringify({
+        tenants: {
+          testtenant: {
+            tracking: {
+              sgtm: { endpointEnvVar: "SGTM_ENDPOINT_URL_TEST_BINDING" },
+              ga4: {
+                measurementIdEnvVar: "GA4_MEASUREMENT_ID_TEST_BINDING",
+                apiSecretEnvVar: "GA4_API_SECRET_TEST_BINDING",
+              },
+            },
+            products: {
+              TEST_PRODUCT: {
+                tracking: {
+                  productCode: "TEST_PRODUCT",
+                  differentiation: { produto: "TEST_PRODUCT" },
+                },
+                funnelEventArchitecture: {
+                  events: [{ eventType: "PURCHASE_APPROVED", chain: ["emit_tracking"] }],
+                },
+              },
+            },
+          },
+        },
+      }),
+    });
+
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: {
+              event_id: "evt-track-binding",
+              event_type: "PURCHASE_APPROVED",
+              tenant_id: "testtenant",
+              product_code: "TEST_PRODUCT",
+              source: "hotmart",
+              occurred_at: "2026-04-24T12:00:00.000Z",
+              payload: { value: 100, currency: "BRL" },
+            },
+          },
+        ],
+      },
+      env
+    );
+
+    const sgtmCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("sgtm-binding.example.com/mp/collect"));
+    expect(sgtmCall).toBeTruthy();
+    expect(String(sgtmCall?.[0])).toContain("measurement_id=G-BINDING-123");
+    expect(String(sgtmCall?.[0])).toContain("api_secret=binding-secret");
 
     vi.unstubAllGlobals();
   });

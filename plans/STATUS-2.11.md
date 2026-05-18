@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-18 ~15:35 WEST por Codex — cabeçalho sincronizado com progresso real (12/32)
-> **Fase atual:** Fase 2 — Refactor (0/9 slices completos), aguardando validação humana para iniciar
-> **Próxima ação:** validação humana para Fase 2; depois criar/iniciar `2.11A.3` — Refactor `resolveTrackingConfig` (sGTM/GA4/Meta CAPI por tenant)
+> **Última atualização:** 2026-05-18 ~15:41 WEST por Codex — Slice 2.11A.3 IN_PROGRESS
+> **Fase atual:** Fase 2 — Refactor (0/9 slices completos; 2.11A.3 em progresso)
+> **Próxima ação:** concluir `2.11A.3` — Refactor `resolveTrackingConfig` (sGTM/GA4/Meta CAPI por tenant)
 
 ---
 
@@ -53,7 +53,10 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Slice em progresso
 
-(nenhum — Fase 0 ✅, Fase 0.5 ✅, Fase 1 ✅ completas; aguardando validação humana para Fase 2)
+**2.11A.3** — Refactor `resolveTrackingConfig` (sGTM/GA4/Meta CAPI do tenant) ⏳
+- **File:** [`slices/2.11A/3-refactor-tracking-config.md`](./slices/2.11A/3-refactor-tracking-config.md)
+- **Started:** 2026-05-18 15:41 WEST by Codex
+- **Escopo:** `funnel-dispatcher` sem deploy; preservar golden master de `emit_tracking`
 
 ## Último slice concluído
 
@@ -97,7 +100,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - [x] **2.11A.2** ✅ — Popular secrets _DECOLE no Store + bindings wrangler.toml → [`slices/2.11A/2-populate-secrets-bindings.md`](./slices/2.11A/2-populate-secrets-bindings.md) **(DONE 2026-05-18)** — **15/15 criados** ✅ (n8n + app_events_hmac suprimidos — código morto; planovoo_hook_secret restaurado do VPS)
 
 ### Fase 2 — Refactor (testes verdes, sem deploy)
-- [ ] **2.11A.3** — Refactor resolveTrackingConfig (sGTM/GA4/MetaCAPI do tenant) → `slices/2.11A/3-refactor-tracking-config.md` (a criar)
+- [ ] **2.11A.3** ⏳ — Refactor resolveTrackingConfig (sGTM/GA4/MetaCAPI do tenant) → [`slices/2.11A/3-refactor-tracking-config.md`](./slices/2.11A/3-refactor-tracking-config.md) **(IN_PROGRESS 2026-05-18)**
 - [ ] **2.11A.4** — Refactor handlers Brevo (ctx.credentials) → `slices/2.11A/4-refactor-brevo-handlers.md` (a criar)
 - [ ] **2.11A.5** — Refactor forward_n8n + call_product_api + LINKS_BASE_URL + isPlanovooProductCode + replyToEmail → `slices/2.11A/5-refactor-integrations.md` (a criar)
 - [ ] **2.11A.7-prep** — Refactor api-hotmart-ingress (inverter ordem + lookup catalog + remove fallback) → `slices/2.11A/7-prep-refactor-hotmart-ingress.md` (a criar)
@@ -203,3 +206,4 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - **2026-05-18 ~08:10 (Claude Code):** Fase 0.5 em progresso: 2.11T.3 (cross-tenant isolation, 7 testes), 2.11T.4 (golden master emit_tracking, 11 testes), 2.11D.0 (dashboard-sync test harness, 8 testes). 8/32.
 - **2026-05-18 ~08:20 (Claude Code):** Fase 0.5 completa: 2.11T.1 (catalog-adapter v5), 2.11T.5 (makeTestEnv bridge), 2.11T.6 (ci-multitenant-gates.yml). 11/32.
 - **2026-05-18 ~10:30 (Claude Code + chicoria):** 2.11A.2 DONE (Fase 1). 15/15 secrets no Cloudflare Secrets Store. Descobertas: `forward_n8n` e `APP_EVENTS_HMAC` são dead code (suprimidos, cleanup em 2.11A.9). `PLANOVOO_HOOK_SECRET` restaurado do VPS pelo humano. 12/32.
+- **2026-05-18 ~15:41 (Codex):** Humano aprovou avanço da Fase 2. Criado slice 2.11A.3. IN_PROGRESS.

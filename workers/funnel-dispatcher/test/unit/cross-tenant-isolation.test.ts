@@ -59,6 +59,12 @@ function makeEnv(overrides: Record<string, unknown> = {}): Record<string, unknow
   };
 }
 
+function makeFetchMock() {
+  return vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  });
+}
+
 /**
  * Catálogo v5 com 2 tenants com credenciais e endpoints completamente distintos.
  * DECOLE usa BREVO_API_KEY_DECOLE e sgtm-decole.example.com.
@@ -74,6 +80,15 @@ const MULTI_TENANT_CATALOG = JSON.stringify({
         hotmart_token_env: "HOTMART_TOKEN_DECOLE",
         replyToEmail: "contato@decole.com.br",
       },
+      tracking: {
+        sgtm: { endpointEnvVar: "SGTM_ENDPOINT_URL_DECOLE" },
+        ga4: {
+          measurementId: "G-DECOLE-123",
+          measurementIdEnvVar: "GA4_MEASUREMENT_ID_DECOLE",
+          apiSecretEnvVar: "GA4_API_SECRET_DECOLE",
+        },
+        metaCapi: { accessTokenEnv: "META_CAPI_ACCESS_TOKEN_DECOLE" },
+      },
       products: {
         DECOLE_ESG_MENTORIA: {
           brevo: {
@@ -85,13 +100,8 @@ const MULTI_TENANT_CATALOG = JSON.stringify({
             },
           },
           tracking: {
-            sgtm: { endpointEnvVar: "SGTM_ENDPOINT_URL_DECOLE" },
-            ga4: {
-              measurementId: "G-DECOLE-123",
-              measurementIdEnvVar: "GA4_MEASUREMENT_ID_DECOLE",
-              apiSecretEnvVar: "GA4_API_SECRET_DECOLE",
-              differentiationKeys: { produto: "DECOLE_ESG_MENTORIA" },
-            },
+            productCode: "DECOLE_ESG_MENTORIA",
+            differentiation: { produto: "DECOLE_ESG_MENTORIA" },
           },
           funnelEventArchitecture: {
             events: [
@@ -110,6 +120,15 @@ const MULTI_TENANT_CATALOG = JSON.stringify({
         hotmart_token_env: "HOTMART_TOKEN_SUPERARE",
         replyToEmail: "contato@superare.com.br",
       },
+      tracking: {
+        sgtm: { endpointEnvVar: "SGTM_ENDPOINT_URL_SUPERARE" },
+        ga4: {
+          measurementId: "G-SUPERARE-456",
+          measurementIdEnvVar: "GA4_MEASUREMENT_ID_SUPERARE",
+          apiSecretEnvVar: "GA4_API_SECRET_SUPERARE",
+        },
+        metaCapi: { accessTokenEnv: "META_CAPI_ACCESS_TOKEN_SUPERARE" },
+      },
       products: {
         SUPERARE_CURSO_X: {
           brevo: {
@@ -121,13 +140,8 @@ const MULTI_TENANT_CATALOG = JSON.stringify({
             },
           },
           tracking: {
-            sgtm: { endpointEnvVar: "SGTM_ENDPOINT_URL_SUPERARE" },
-            ga4: {
-              measurementId: "G-SUPERARE-456",
-              measurementIdEnvVar: "GA4_MEASUREMENT_ID_SUPERARE",
-              apiSecretEnvVar: "GA4_API_SECRET_SUPERARE",
-              differentiationKeys: { produto: "SUPERARE_CURSO_X" },
-            },
+            productCode: "SUPERARE_CURSO_X",
+            differentiation: { produto: "SUPERARE_CURSO_X" },
           },
           funnelEventArchitecture: {
             events: [
@@ -152,7 +166,7 @@ describe("cross-tenant isolation — sGTM e GA4 measurement_id por tenant", () =
   afterEach(() => { vi.unstubAllGlobals(); });
 
   it("PURCHASE_APPROVED de DECOLE usa measurement_id e sGTM de DECOLE, nunca de SUPERARE", async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    const fetchMock = makeFetchMock();
     vi.stubGlobal("fetch", fetchMock);
 
     const env = makeEnv({
@@ -192,7 +206,7 @@ describe("cross-tenant isolation — sGTM e GA4 measurement_id por tenant", () =
   });
 
   it("PURCHASE_APPROVED de SUPERARE usa measurement_id e sGTM de SUPERARE, nunca de DECOLE", async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    const fetchMock = makeFetchMock();
     vi.stubGlobal("fetch", fetchMock);
 
     const env = makeEnv({
@@ -234,7 +248,7 @@ describe("cross-tenant isolation — sGTM endpoint", () => {
   afterEach(() => { vi.unstubAllGlobals(); });
 
   it("PURCHASE_APPROVED de DECOLE envia para sgtm-decole.example.com, nunca sgtm-superare.example.com", async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    const fetchMock = makeFetchMock();
     vi.stubGlobal("fetch", fetchMock);
 
     const env = makeEnv({
@@ -269,7 +283,7 @@ describe("cross-tenant isolation — sGTM endpoint", () => {
   });
 
   it("PURCHASE_APPROVED de SUPERARE envia para sgtm-superare.example.com, nunca sgtm-decole.example.com", async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    const fetchMock = makeFetchMock();
     vi.stubGlobal("fetch", fetchMock);
 
     const env = makeEnv({
@@ -306,7 +320,7 @@ describe("cross-tenant isolation — produto invisível entre tenants", () => {
   afterEach(() => { vi.unstubAllGlobals(); });
 
   it("produto de DECOLE (DECOLE_ESG_MENTORIA) não gera chamada Brevo quando processado em tenant SUPERARE", async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    const fetchMock = makeFetchMock();
     vi.stubGlobal("fetch", fetchMock);
 
     const env = makeEnv({
@@ -339,7 +353,7 @@ describe("cross-tenant isolation — tenant desconhecido", () => {
   afterEach(() => { vi.unstubAllGlobals(); });
 
   it("evento com tenant_id desconhecido não processa via tenant DECOLE (não vaza credentials)", async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    const fetchMock = makeFetchMock();
     vi.stubGlobal("fetch", fetchMock);
 
     const env = makeEnv({
