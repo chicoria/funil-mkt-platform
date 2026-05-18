@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-18 por humano (chicoria@gmail.com) — criação inicial pós-aprovação do PLANO-MASTER
-> **Fase atual:** Pré-execução (nenhum slice iniciado)
-> **Próxima ação:** confirmar com humano que execução pode iniciar; depois criar slice files da Fase 0 e iniciar 2.11A.0
+> **Última atualização:** 2026-05-18 ~01:58 por Claude Code (agent) — Slice 2.11A.0 DONE
+> **Fase atual:** Fase 0 — Preparação (1/4 slices completos)
+> **Próxima ação:** validação humana do 2.11A.0; depois iniciar próximo slice da Fase 0 (recomendado: 2.11A.1 — catálogo v5 aditivo)
 
 ---
 
@@ -39,13 +39,13 @@
 
 | Fase | Slices | Status |
 |---|---|---|
-| Fase 0 — Preparação | 0/4 | ⏸️ Não iniciada |
+| Fase 0 — Preparação | 1/4 | ⏳ Em progresso (2.11A.0 ✅ DONE) |
 | Fase 0.5 — Testes de regressão | 0/7 | ⏸️ Não iniciada |
 | Fase 1 — Popular secrets + bindings | 0/1 | ⏸️ Não iniciada |
 | Fase 2 — Refactor | 0/9 | ⏸️ Não iniciada |
 | Fase 3 — Deploys disruptivos | 0/6 | ⏸️ Não iniciada |
 | Fase 4 — Validação cruzada + limpeza | 0/5 | ⏸️ Não iniciada |
-| **Total** | **0/32** | |
+| **Total** | **1/32** | |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
@@ -53,14 +53,26 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Slice em progresso
 
-(nenhum — execução não iniciou)
+(nenhum — 2.11A.0 fechado em 2026-05-18 ~01:58; aguardando validação humana antes de iniciar próximo)
+
+## Último slice concluído
+
+**2.11A.0** — Cloudflare Secrets Store: setup + helper wrapper ✅
+- **File:** [`slices/2.11A/0-secrets-store-setup.md`](./slices/2.11A/0-secrets-store-setup.md)
+- **Completed:** 2026-05-18 ~01:58 by Claude Code
+- **Entregáveis:**
+  - `packages/shared/src/secrets-store-wrapper.ts` (78 linhas)
+  - `packages/shared/test/unit/secrets-store-wrapper.test.ts` (7 testes verdes)
+  - Cloudflare Secrets Store `default_secrets_store` (ID `23bdc9c2e8ca470d82352c53ec8d2e67`) confirmado e vazio, pronto para popular na Fase 1
+- **Decisões tomadas (delta vs plano):**
+  - **1 Secrets Store global** em vez de 2 separados (limite beta de 1 store por account). Diferenciação prod/staging via sufixo `_STG` no nome do secret. Satélite 1 seção 10.2 atualizada.
 
 ---
 
 ## Queue priorizada (Fase 0 primeiro)
 
 ### Fase 0 — Preparação (paralelizáveis)
-- [ ] **2.11A.0** — Cloudflare Secrets Store: setup + helper wrapper → `slices/2.11A/0-secrets-store-setup.md` (a criar)
+- [x] **2.11A.0** ✅ — Cloudflare Secrets Store: setup + helper wrapper → [`slices/2.11A/0-secrets-store-setup.md`](./slices/2.11A/0-secrets-store-setup.md) **(DONE 2026-05-18)**
 - [ ] **2.11A.1** — Catálogo v5: campos novos + catalog-adapter com fallback → `slices/2.11A/1-catalog-v5-additive.md` (a criar)
 - [ ] **2.11B.1** — Auditar sGTM DECOLE (inventário baseline) → `slices/2.11B/1-audit-sgtm-current.md` (a criar)
 - [ ] **2.11D.1** — Migration D1: tenant_id em ga4_daily_metrics + meta_daily_metrics → `slices/2.11D/1-d1-migration-tenant-id.md` (a criar)
@@ -113,7 +125,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Decisões tomadas durante execução (delta vs plano original)
 
-(nenhuma — execução ainda não iniciou)
+- **2026-05-18 (slice 2.11A.0):** **1 Secrets Store global em vez de 2 separados.** Cloudflare Secrets Store em beta tem limite de 1 store por account (erro `maximum_stores_exceeded`). Usar `default_secrets_store` (ID `23bdc9c2e8ca470d82352c53ec8d2e67`) como hub único. Staging diferenciado por sufixo `_STG` no nome do secret. Satélite 1 seção 10.2 atualizada. Reversão possível se Cloudflare aumentar limite no GA.
 
 ---
 
@@ -121,8 +133,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 | Recurso | Estado atual | Última verificação |
 |---|---|---|
-| Cloudflare Secrets Store `funilmkt-prod-secrets` | Não existe | 2026-05-18 |
-| Cloudflare Secrets Store `funilmkt-staging-secrets` | Não existe | 2026-05-18 |
+| Cloudflare Secrets Store `default_secrets_store` (único permitido pelo limite beta) | ✅ Existe, vazio (ID `23bdc9c2e8ca470d82352c53ec8d2e67`) — confirmado em 2026-05-18 via GET /secrets | 2026-05-18 |
 | Catálogo `config/products.catalog.json` schemaVersion | 4 (pré-multi-tenant evolution) | 2026-05-18 |
 | Workers deployed (prod) | api-funnel-ingress, api-hotmart-ingress, funnel-dispatcher, links-redirect, dashboard-sync (todos pré-2.11) | 2026-05-18 |
 | D1 `ga4_daily_metrics` | Sem coluna `tenant_id` | 2026-05-18 |
@@ -175,3 +186,5 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 ## Histórico de mudanças neste STATUS
 
 - **2026-05-18 (humano chicoria@gmail.com):** Criação inicial. Estado: pré-execução. Aguarda confirmação humana para iniciar Fase 0.
+- **2026-05-18 ~01:15 (Claude Code):** Humano aprovou início da execução. Criado slice file `slices/2.11A/0-secrets-store-setup.md`. Status 2.11A.0 = IN_PROGRESS.
+- **2026-05-18 ~01:58 (Claude Code):** Slice 2.11A.0 fechado como DONE. Entregáveis: `packages/shared/src/secrets-store-wrapper.ts` (78 linhas, 7 testes verdes), Cloudflare Secrets Store confirmado (`default_secrets_store`). Decisão tomada: 1 store global em vez de 2 (limite beta). Progresso global: 1/32.

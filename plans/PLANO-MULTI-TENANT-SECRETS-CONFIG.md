@@ -370,7 +370,7 @@ Esse script vira `scripts/audit-workers-agnostic.sh`, parte de 2.11A.9 (Fase 4) 
 
 | Secret | Runtime | Storage / fonte de verdade | Justificativa |
 |---|---|---|---|
-| `BREVO_API_KEY_{TENANT}`, `HOTMART_WEBHOOK_TOKEN_{TENANT}`, `N8N_WEBHOOK_URL_{TENANT}`, `META_PIXEL_ID_{TENANT}_{PRODUCT}`, `SGTM_ENDPOINT_URL_{TENANT}`, `PLANOVOO_API_BASE_URL_{TENANT}`, `PLANOVOO_HOOK_SECRET_{TENANT}`, `META_CAPI_ACCESS_TOKEN_{TENANT}`, `GA4_MEASUREMENT_ID_{TENANT}`, `GA4_API_SECRET_{TENANT}`, `APP_EVENTS_HMAC_{TENANT}` (consumidos pelos 5 workers) | Cloudflare Workers | **Cloudflare Secrets Store (account-level)** | Cada secret existe 1× e é binding em N workers. Rotação em 1 lugar propaga. Audit log nativo. |
+| `BREVO_API_KEY_{TENANT}`, `HOTMART_WEBHOOK_TOKEN_{TENANT}`, `N8N_WEBHOOK_URL_{TENANT}`, `META_PIXEL_ID_{TENANT}_{PRODUCT}`, `SGTM_ENDPOINT_URL_{TENANT}`, `PLANOVOO_API_BASE_URL_{TENANT}`, `PLANOVOO_HOOK_SECRET_{TENANT}`, `META_CAPI_ACCESS_TOKEN_{TENANT}`, `GA4_MEASUREMENT_ID_{TENANT}`, `GA4_API_SECRET_{TENANT}`, `APP_EVENTS_HMAC_{TENANT}` (consumidos pelos 5 workers) | Cloudflare Workers | **Cloudflare Secrets Store** (`default_secrets_store`, ID `23bdc9c2e8ca470d82352c53ec8d2e67` — beta com limite de 1 store por account; staging diferenciado por sufixo `_STG` — ver seção 10.2) | Cada secret existe 1× e é binding em N workers. Rotação em 1 lugar propaga. Audit log nativo. |
 | `GA4_SERVICE_ACCOUNT_KEY_{TENANT}`, `GA4_PROPERTY_ID_{TENANT}`, `META_ACCESS_TOKEN_{TENANT}`, `META_AD_ACCOUNT_ID_{TENANT}_{PRODUCT}` (consumidos por dashboard-sync) | Cloudflare Workers | **Cloudflare Secrets Store** | Mesma justificativa |
 | GA4 measurement_id, api_secret, Meta CAPI access_token, Pixel IDs (consumidos pelo **container sGTM**) | Cloud Run | Lookup tables internas do workspace GTM (encriptadas pelo Google) | Já é nativo do GTM. Ver satélite 2 (seção 4) |
 | Secrets para smoke tests E2E e script audit-secrets (consumidos por **GitHub Actions**) | GitHub Actions | **Cloudflare Secrets Store via API** (com CF_API_TOKEN bootstrap em GitHub Secrets) | Reduz GitHub Secrets de N para 2 |
@@ -427,12 +427,16 @@ Overlay (`config/environments/staging.json`) usa estrutura `tenants.{id}.*`:
 }
 ```
 
-### 10.2 Secrets Store — 2 stores separados (prod + staging)
+### 10.2 Secrets Store — 1 store global com sufixo `_STG` para staging
 
-- `funilmkt-prod-secrets` (store_id A): contém `BREVO_API_KEY_DECOLE`, etc.
-- `funilmkt-staging-secrets` (store_id B): contém `BREVO_API_KEY_DECOLE_STG`, etc.
-- **Convenção:** secrets staging carregam sufixo `_STG` no nome
-- **API tokens separados:** read-only-prod e read-only-staging
+> ⚠️ **Decisão revisada em 2026-05-18 (slice 2.11A.0):** o plano original propunha 2 stores separados (prod + staging), mas **Cloudflare Secrets Store em beta tem limite de 1 store por account** (erro `maximum_stores_exceeded`). Usamos o `default_secrets_store` (criado automaticamente; nome fixo, não renomeável) como único hub.
+
+- **Store:** `default_secrets_store` (ID `23bdc9c2e8ca470d82352c53ec8d2e67`)
+- **Convenção:** secrets de prod sem sufixo (`BREVO_API_KEY_DECOLE`); secrets de staging com sufixo `_STG` (`BREVO_API_KEY_DECOLE_STG`)
+- **Workers prod** bindam aos secrets sem sufixo (via wrangler.toml padrão)
+- **Workers staging** bindam aos `_STG` (via `[env.staging]` no wrangler.toml apontando `secret_name` diferente)
+- **Isolamento via API tokens fine-grained:** criar 2 tokens distintos com policies restringindo `secret_name patterns` (`*_STG` para staging-read-only; demais para prod-read-only). A confirmar suporte exato da Cloudflare a esse tipo de scoping.
+- **Reversão futura:** se Cloudflare aumentar limite no GA, slice futuro pode migrar para 2 stores separados (não bloqueia 2.11).
 
 ### 10.3 sGTM staging — container separado
 
