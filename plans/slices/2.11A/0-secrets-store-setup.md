@@ -9,7 +9,7 @@
 |---|---|
 | Estado | DONE |
 | Started | 2026-05-18 ~01:15 por Claude Code (agent) |
-| Completed | 2026-05-18 ~01:58 por Claude Code (agent) |
+| Completed | 2026-05-18 ~02:15 por Claude Code (agent) — pós-revisão G.12 |
 | Commit final | `e835fe1` |
 | PR | (commit direto na main, sem PR — bootstrap) |
 | Janela de smoke | N/A (não-disruptivo) |
@@ -162,6 +162,13 @@ Validação pós-rollback: `curl GET /secrets_store/stores` não lista `funilmkt
 - `npx vitest run` (suite completa de packages/shared) → 35/35 passed (sem regressão) ✅
 - `npx tsc --noEmit` → 0 erros nos arquivos novos (erros pré-existentes em `transactional-email.test.ts` são alheios)
 
+### 2026-05-18 ~02:10 by Claude Code
+
+- Revisão real G.12 executada por agente especialista separado (resultado: APROVADO COM RESSALVAS)
+- 2 bloqueadores corrigidos: tipo `get()` → `Promise<string | null>` + wrap contextual de erro de rede
+- 5 ressalvas aplicadas: documentação de race condition + TTL + @internal + 5 testes novos + assimetria documentada
+- Suite completa: 40/40 passed (packages/shared); wrapper passou de 7 para 12 testes
+
 ### 2026-05-18 ~01:58 by Claude Code
 
 - Tentativa de criar Secrets Store `funilmkt-prod-secrets` via Cloudflare API → erro `maximum_stores_exceeded` (code 1003)
@@ -173,9 +180,15 @@ Validação pós-rollback: `curl GET /secrets_store/stores` não lista `funilmkt
 
 ## Revisão G.12 (Code + Architecture + Tests)
 
-> Este é um slice de Fase 0 (fundação, não-disruptivo) — auto-revisão é aceita conforme exceção em G.12.
-
 ### 2026-05-18 ~02:00 by Claude Code (auto-revisão — Fase 0, exceção G.12)
+
+> ⚠️ **Substituída por revisão real abaixo.** Esta auto-revisão foi inválida — circular (revisor = implementador). Mantida apenas como registro histórico.
+
+**Resultado original:** APROVADO ← INVÁLIDO
+
+---
+
+### 2026-05-18 ~02:10 by Agente Especialista Separado (revisão real G.12)
 
 **Código TypeScript**
 - [x] Strict mode respeitado — sem `any`, sem `!` não justificado
@@ -202,11 +215,27 @@ Validação pós-rollback: `curl GET /secrets_store/stores` não lista `funilmkt
 - [x] Decisão tomada documentada (1 store global em vez de 2 — limite beta)
 - [x] Gotchas registrados (limite do Secrets Store, `default_secrets_store` não renomeável, cache sem TTL)
 
-**Resultado:** APROVADO
+**Resultado da revisão real:** APROVADO COM RESSALVAS — 2 bloqueadores + 5 ressalvas
 
-Ressalvas menores (não bloqueantes — registrar no backlog):
-1. **Cache sem TTL:** se um secret for rotacionado sem redeploy, isolates ativos continuarão servindo valor antigo. Aceitável com a política "rotação acompanha redeploy". Se necessário no futuro, adicionar TTL opcional (ex: `resolveSecret(binding, name, { ttlMs: 60_000 })`).
-2. **`clearSecretCache()` é global** (limpa todo o cache, não por secret específico). Para N workers com N secrets, um redeploy limpa tudo — comportamento correto e desejado.
+**Bloqueadores identificados e corrigidos antes de fechar o slice:**
+
+1. **[CORRIGIDO] Tipo `get()` incorreto** — retornava `Promise<string>` em vez de `Promise<string | null>` (API real Cloudflare retorna `null` quando secret não existe no store). Corrigido na interface `SecretsStoreBinding`. Teste adicionado: "throws when binding returns null".
+
+2. **[CORRIGIDO] Sem tratamento contextual de erro de rede** — quando `binding.get()` rejeita, o erro borbulhava sem identificar qual secret falhou. Adicionado `try/catch` com mensagem `${name} fetch failed — ${err.message}`. Teste adicionado: "throws with contextual message when binding.get() rejects".
+
+**Ressalvas não-bloqueantes (aplicadas como melhorias):**
+
+3. **[DOCUMENTADO] Race condition de concorrência** — requests concorrentes para o mesmo secret não-cached resultam em múltiplos `binding.get()`. Documentado em JSDoc + teste de documentação de comportamento atual adicionado ("concurrent calls... known limitation").
+
+4. **[DOCUMENTADO] Cache sem TTL para rotação sem redeploy** — adicionado ao JSDoc da função e da constante de cache. Instrução explícita: chamada a `clearSecretCache()` necessária para rotação em-place.
+
+5. **[APLICADO] `clearSecretCache` marcado `@internal`** no JSDoc com aviso sobre impacto em hot paths.
+
+6. **[TESTES ADICIONADOS]** 5 testes novos: null binding, dois nomes independentes no cache, concorrência com `Promise.all`, clearCache com múltiplos entries, binding rejeitando com erro de rede. Total passou de 7 para 12 testes.
+
+7. **[DOCUMENTADO] Assimetria de cache** (string legada não é cacheada, binding é) — adicionada ao JSDoc da função `resolveSecret`.
+
+**Resultado final após correções:** APROVADO
 
 ## Gotchas / lições aprendidas
 
