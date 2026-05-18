@@ -23,6 +23,10 @@ binding = "HOTMART_WEBHOOK_TOKEN_DECOLE"
 store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
 secret_name = "hotmart_webhook_token_decole"
 
+# APP_EVENTS_HMAC suprimido: verifyAppSignature() é dead code —
+# app Plano de Voo nunca envia eventos para este endpoint.
+# Remover em 2.11A.9 junto com /webhooks/v1/planovoo/app/event e verifyAppSignature().
+
 [observability]
 enabled = true
 head_sampling_rate = 1

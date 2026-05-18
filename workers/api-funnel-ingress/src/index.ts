@@ -9,6 +9,9 @@ interface QueueBinding {
 
 interface Env {
   FUNNEL_EVENTS?: QueueBinding;
+  /** @deprecated APP_EVENTS_HMAC nunca foi usado pelo app Plano de Voo —
+   *  o endpoint /webhooks/v1/planovoo/app/event nunca recebe chamadas da app.
+   *  Remover em 2.11A.9 (Fase 4) junto com verifyAppSignature() e a rota. */
   APP_EVENTS_HMAC?: string;
   ALLOWED_ORIGINS?: string;
   DEFAULT_TENANT_ID?: string;
@@ -110,6 +113,7 @@ async function parseBody(request: Request): Promise<Record<string, unknown>> {
   return {};
 }
 
+/** @deprecated Nunca chamado pelo app Plano de Voo. Remover em 2.11A.9. */
 function verifyAppSignature(request: Request, env: Env): boolean {
   const required = asString(env.APP_EVENTS_HMAC);
   if (!required) return true;
@@ -189,6 +193,8 @@ export default {
       return withCors(jsonResponse({ ok: true, event_id: event.event_id, event_type: event.event_type }, 202), request, env);
     }
 
+    // @deprecated: app Plano de Voo nunca chama este endpoint (não envia eventos ao funil).
+    // APP_EVENTS_HMAC, verifyAppSignature() e esta rota programados para remoção em 2.11A.9.
     if (pathname === "/webhooks/v1/planovoo/app/event") {
       if (!verifyAppSignature(request, env)) {
         logIngress({ stage: "blocked", pathname, error: "unauthorized", status: 401 });
