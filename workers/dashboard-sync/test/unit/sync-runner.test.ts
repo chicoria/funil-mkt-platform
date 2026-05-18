@@ -101,14 +101,13 @@ describe("dashboard-sync — health check", () => {
 // ─── ?tenant= validation ──────────────────────────────────────────────────────
 
 describe("dashboard-sync — validação de ?tenant=", () => {
-  // TODO(2.11D.2): ativar quando refactor multi-tenant for implementado.
-  // O worker atual ignora ?tenant= (não existe validação de tenant ainda).
-  // O teste abaixo define o comportamento DESEJADO e serve de TDD Red para 2.11D.2.
-  it.skip("?tenant= com valor desconhecido deve retornar 400 (TODO: habilitar em 2.11D.2)", async () => {
+  it("?tenant= com valor desconhecido deve retornar 400", async () => {
     const env = makeEnv();
     const req = new Request("https://worker.example.com/sync?secret=test-secret&tenant=unknown_tenant_xyz&date=2026-05-01&part=ga4");
     const res = await worker.fetch(req, env as any);
     expect(res.status).toBe(400);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body.error).toContain("unknown_tenant_xyz");
   });
 });
 
