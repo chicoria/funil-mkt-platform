@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-18 por Claude Sonnet 4.6 — Slice 2.11C.1 IN_PROGRESS
-> **Fase atual:** Fase 2 — Refactor (7/9 slices completos)
-> **Próxima ação:** executar refactor links-redirect (catálogo + lookup)
+> **Última atualização:** 2026-05-18 por Claude Sonnet 4.6 — Slice 2.11C.1 DONE
+> **Fase atual:** Fase 2 — Refactor (8/9 slices completos)
+> **Próxima ação:** executar `2.11D.2` — dashboard-sync refactor runSync (último slice da Fase 2)
 
 ---
 
@@ -42,10 +42,10 @@
 | Fase 0 — Preparação | 4/4 | ✅ Completa |
 | Fase 0.5 — Testes de regressão | 7/7 | ✅ Completa |
 | Fase 1 — Popular secrets + bindings | 1/1 | ✅ Completa |
-| Fase 2 — Refactor | 7/9 | ⏳ Em andamento |
+| Fase 2 — Refactor | 8/9 | ⏳ Em andamento |
 | Fase 3 — Deploys disruptivos | 0/6 | ⏸️ Não iniciada |
 | Fase 4 — Validação cruzada + limpeza | 0/5 | ⏸️ Não iniciada |
-| **Total** | **19/32** | |
+| **Total** | **20/32** | |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
@@ -53,11 +53,16 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Slice em progresso
 
-**2.11C.1** — Refatorar links-redirect (catálogo + lookup) ⏳
-- **File:** [`slices/2.11C/1-refactor-links-redirect.md`](./slices/2.11C/1-refactor-links-redirect.md)
-- **Iniciado:** 2026-05-18 por Claude Sonnet 4.6
+(nenhum)
 
 ## Último slice concluído
+
+**2.11C.1** — Refatorar links-redirect (catálogo + lookup) ✅
+- **File:** [`slices/2.11C/1-refactor-links-redirect.md`](./slices/2.11C/1-refactor-links-redirect.md)
+- **Commit:** `92bb29a`
+- **Entregáveis:** `workers/links-redirect` agnóstico — resolve tenant do hostname (fail-fast 404), rotas e contatos do catálogo; exporta `resolveCheckoutByCatalog` e `resolveContact`; remove `DEFAULT_TENANT_ID`/`ELIZETE_*`/`LINKS_PRODUCTS`; 28/28 testes verdes; grep 0 matches em `src/`.
+
+## Referência histórica recente
 
 **2.11B.3** — Validar workspace sGTM em preview com tenant fake superare-test ✅
 - **File:** [`slices/2.11B/3-validate-preview-superare-fake.md`](./slices/2.11B/3-validate-preview-superare-fake.md)
@@ -137,7 +142,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - [x] **2.11A.8-prep** ✅ — Refactor api-funnel-ingress (CORS catalog + remove fallbacks + appWebhooks) → [`slices/2.11A/8-prep-refactor-funnel-ingress.md`](./slices/2.11A/8-prep-refactor-funnel-ingress.md) **(DONE 2026-05-18)** — commit `d8dbef7`
 - [x] **2.11B.2** ✅ — Refatorar workspace sGTM em PREVIEW (lookup tables, variáveis dinâmicas) → [`slices/2.11B/2-refactor-sgtm-workspace-preview.md`](./slices/2.11B/2-refactor-sgtm-workspace-preview.md) **(DONE 2026-05-18)** — commit `e115f92`
 - [x] **2.11B.3** ✅ — Validar workspace sGTM em preview com tenant fake superare-test → [`slices/2.11B/3-validate-preview-superare-fake.md`](./slices/2.11B/3-validate-preview-superare-fake.md) **(DONE 2026-05-18)**
-- [ ] **2.11C.1** — links-redirect refactor (bundle catálogo + lookup routes/contacts) → `slices/2.11C/1-refactor-links-redirect.md` (a criar)
+- [x] **2.11C.1** ✅ — links-redirect refactor (bundle catálogo + lookup routes/contacts) → [`slices/2.11C/1-refactor-links-redirect.md`](./slices/2.11C/1-refactor-links-redirect.md) **(DONE 2026-05-18)** — commit `92bb29a`
 - [ ] **2.11D.2** — dashboard-sync refactor runSync (loops aninhados, ?tenant=) → `slices/2.11D/2-refactor-sync-runner.md` (a criar)
 
 ### Fase 3 — Deploys disruptivos (janela 48h cada)
@@ -237,3 +242,4 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - **2026-05-18 ~20:17 (Codex):** 2.11B.2 IN_PROGRESS. Slice criada para refactor sGTM em PREVIEW; próxima ação é verificar acesso Tag Manager API e exportar workspace.
 - **2026-05-18 ~20:29 (Codex):** 2.11B.2 DONE. Workspace sGTM preview `workspaceId=24` preparado com Host/produto/lookup tables, tag Meta dinâmica e GA4 dinâmico; `quick_preview` sem erro; sem publish produção. 18/32.
 - **2026-05-18 (Claude Sonnet 4.6):** 2.11B.3 DONE. Workspace 24 validado com 5 lookup tables completas para DECOLE e `superare-test`; 2 entradas faltantes (`Meta CAPI Token` e `Meta Test Event Code`) adicionadas; isolamento cross-tenant verificado por script (0 vazamentos); quick_preview sem compilerError; preview server Cloud Run ativo. 19/32.
+- **2026-05-18 (Claude Sonnet 4.6):** 2.11C.1 DONE. `links-redirect` agnóstico — resolve tenant do hostname, rotas/contatos do catálogo, fail-fast 404 para tenant desconhecido; remove todos os hardcodes DECOLE/ELIZETE; 28/28 testes verdes; grep 0 matches em src/. 20/32.

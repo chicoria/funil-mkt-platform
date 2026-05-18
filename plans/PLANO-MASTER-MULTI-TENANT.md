@@ -1,7 +1,7 @@
 # Plano Master — Multi-Tenant
 
 > **Ponto de entrada autoritativo** para toda mudança no `funil-mkt-platform` que envolva multi-tenancy.
-> **Status:** Em execução — 19/32 slices concluídos · Fases 0, 0.5 e 1 completas · Fase 2 em andamento (7/9) · Próximo: 2.11C.1 ou 2.11D.2 (paralelos) (atualizado em 2026-05-18 por Claude Sonnet 4.6).
+> **Status:** Em execução — 20/32 slices concluídos · Fases 0, 0.5 e 1 completas · Fase 2 em andamento (8/9) · Próximo: 2.11D.2 — último slice da Fase 2 (atualizado em 2026-05-18 por Claude Sonnet 4.6).
 > **Source of truth de progresso:** [`STATUS-2.11.md`](./STATUS-2.11.md)
 
 ---
@@ -419,3 +419,4 @@ Para o próximo agente:
 - **2026-05-18 ~20:13 WEST:** 2.11A.8-prep concluído. `api-funnel-ingress` agora resolve tenant, CORS e app webhooks por catálogo, sem `ALLOWED_ORIGINS`/`DEFAULT_TENANT_ID`/`APP_EVENTS_HMAC` no runtime; próximo slice é `2.11B.2`.
 - **2026-05-18 ~20:29 WEST:** 2.11B.2 concluído. Workspace sGTM preview `codex-2.11B.2-multitenant-preview` (`workspaceId=24`) preparado com lookups por tenant/produto e tags GA4/Meta dinâmicas, sem publish produção; próximo slice é `2.11B.3`.
 - **2026-05-18:** 2.11B.3 concluído. Workspace 24 validado com 5 lookup tables completas para DECOLE e tenant fake `superare-test`; isolamento cross-tenant confirmado (0 vazamentos); 2 entradas placeholder faltantes corrigidas; próximo: `2.11C.1` ou `2.11D.2`.
+- **2026-05-18:** 2.11C.1 concluído. `links-redirect` agnóstico — resolve tenant do hostname, rotas e contatos do catálogo; remove todos os hardcodes DECOLE/ELIZETE; 28/28 testes verdes; grep 0 matches; próximo: `2.11D.2`.

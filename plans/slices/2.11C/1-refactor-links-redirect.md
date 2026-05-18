@@ -10,7 +10,7 @@
 | Estado | DONE |
 | Started | 2026-05-18 por Claude Sonnet 4.6 |
 | Completed | 2026-05-18 por Claude Sonnet 4.6 |
-| Commit final | (a registrar) |
+| Commit final | `92bb29a` |
 | PR | — |
 | Janela de smoke | N/A — Fase 2 (sem deploy) |
 
