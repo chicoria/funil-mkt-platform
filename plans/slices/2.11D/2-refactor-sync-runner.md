@@ -130,39 +130,57 @@ git revert <commit_hash>
 # Sem wrangler deploy — Fase 2
 ```
 
-## Revisão G.12 — preenchido antes de DONE
+## Revisão G.12
 
-### 2026-05-18 by Claude Sonnet 4.6 — auto-revisão
+### 2026-05-18 by Claude Sonnet 4.6 — revisor externo (agente separado do implementador)
 
 **REVISÃO G.12**
 
 **Código TypeScript**
-- [x] Strict mode; 0 `any` não justificado
-- [x] 0 referências hardcoded a DECOLE, PLANOVOO, ESG, productMap em `src/`
-- [x] Interfaces explícitas em `types.ts` — sem `any` em fronteiras de módulo
+- [x] Strict mode respeitado — nenhum `any` não justificado encontrado
+- [x] `[key: string]: unknown` em `DashboardSyncEnv` — justificado (bindings dinâmicos do Secrets Store); cast seguro via `readEnvString` com `typeof val === "string"` — aceitável
+- [x] Cast `env as Record<string, unknown>` em `sync-runner.ts` (linhas 57, 76) — necessário para passar `DashboardSyncEnv` às funções de catalog; seguro porque `DashboardSyncEnv` já é `{ [key: string]: unknown }` via index signature
+- [x] Nomes expressivos; sem abreviações opacas
+- [x] Erros tratados com fail-fast e mensagens claras (`tenant_not_found:${tenantFilter}`)
+- [x] `grep -rE "DECOLE|PLANOVOO|ESG|productMap" workers/dashboard-sync/src/` → **0 matches** confirmados ao vivo
+- [!] `index.ts` linha 176: `"decole-dashboard-sync worker"` — string de identificação com nome de tenant hardcoded. Não é lógica de roteamento nem de negócio, mas é uma inconsistência semântica menor
+- [!] `index.ts` linhas 55–56: `DEFAULT 'decole'` no SQL de migration — é retrocompatibilidade intencional para linhas pré-existentes sem `tenant_id`, documentada no slice; aceitável como decisão pontual de migração
 
 **Arquitetura (SoC)**
-- [x] `catalog.ts`: puro, sem IO — só transforma catalog+env em config objects
-- [x] `ga4.ts`: só sabe de GA4 API e `ga4_daily_metrics` — não lê catálogo
-- [x] `meta.ts`: só sabe de Meta API e `meta_daily_metrics` — não lê catálogo
-- [x] `sync-runner.ts`: orquestra loop de tenants/produtos sem conhecer env var names
-- [x] `index.ts`: só faz HTTP/Cron/auth/locking — não importa `ga4.ts` nem `meta.ts` diretamente
-- [x] grep audit: 0 matches em `src/`
+- [x] `catalog.ts`: puro, sem IO — funções recebem `catalog` + `env` (Record), não Env completo; sem imports de `ga4`, `meta` ou `index`
+- [x] `ga4.ts`: recebe `TenantGa4Config` e `D1Database` — não lê catálogo, não conhece env var names
+- [x] `meta.ts`: recebe `ProductMetaConfig` e `D1Database` — não lê catálogo, não conhece env var names
+- [x] `sync-runner.ts`: recebe `catalog` + `env` genérico; delega resolução de config ao `catalog.ts`; sem env var names hardcoded; sem referências diretas a GA4 ou Meta além dos imports de função
+- [x] `index.ts`: importa apenas `sync-runner` + `types`; sem imports diretos de `ga4.ts` ou `meta.ts`; sem `productMap`; sem referência de tenant/produto em lógica de roteamento
+- [x] Loose coupling verificado: todas as funções de sync recebem config objects, não Env completo
+- [x] Isolamento cross-tenant: `resolveTenantList` com `tenant_not_found` fail-fast; D1 INSERT inclui `tenant_id` explícito em ambos `ga4.ts` e `meta.ts`
+- [x] O mesmo código serviria um tenant `acme` com apenas config de catálogo — confirmado pelo `miniCatalog` com tenant `acme` nos testes
 
 **Testes**
-- [x] TDD Red verificável: `catalog.test.ts` falhou antes da implementação
-- [x] `catalog.test.ts`: 16 testes (happy path + null paths + isolamento)
-- [x] `sync-runner.test.ts`: `?tenant=unknown` → 400 habilitado + 8 testes passando
-- [x] Mocks isolados (D1 stub por test, sem state compartilhado)
+- [x] 24/24 passed confirmado ao vivo: `npx vitest run` → `Test Files 2 passed (2), Tests 24 passed (24)`
+- [x] Sem `it.only` ou `describe.skip` — grep confirmou 0 matches
+- [x] `catalog.test.ts`: 16 testes cobrindo happy path, null paths por campo ausente, caso de tenant inexistente, e parcialmente isolamento de tenant (tenant `acme` sem config retorna null/empty)
+- [x] `sync-runner.test.ts`: `?tenant=unknown` → 400 habilitado e passando; mocks D1 isolados por test via `makeD1Stub()`
+- [!] Teste do slice "Catalog com 2 tenants → runSync chama syncGa4 2x" previsto no slice **não foi implementado** em `sync-runner.test.ts` — o arquivo testa o handler HTTP (index.ts), não `runSync` diretamente. O loop multi-tenant é exercitado indiretamente via index, mas sem mock de `syncTenantGa4` que confirme número de chamadas. Ressalva de cobertura
+- [!] Sem teste explícito de cross-tenant isolation no sentido "tenant A não lê dados de tenant B no D1" — o isolamento é garantido estruturalmente pelo `tenant_id` no bind SQL, mas não há teste que verifique o `tenant_id` correto foi passado ao D1 em caso de multi-tenant
 
 **Slice file**
-- [x] Execução preenchida; decisões documentadas; gotchas registrados
+- [x] Seção `Execução` preenchida (append-only, 3 entradas)
+- [x] `Decisões tomadas` documentadas com delta vs plano original
+- [x] `Gotchas` registrados (tinybench, `DashboardSyncEnv` index signature, `resolveTenantList` separado)
+- [x] Critério de aceite executável preenchido (smoke checklist com resultados reais)
+- [x] Estado DONE com commit hash registrado
 
 Código: ✅ OK
 Arquitetura: ✅ OK
-Testes: ✅ OK
+Testes: ⚠️ Ressalvas (ver abaixo)
 
-**Resultado:** APROVADO
+**Resultado:** APROVADO COM RESSALVAS
+
+Ressalvas a resolver no próximo slice ou backlog:
+1. **Teste de contagem de chamadas multi-tenant ausente**: o slice prometeu "Catalog com 2 tenants → runSync chama syncGa4 2x" mas o teste não existe em `sync-runner.test.ts`. Adicionar teste unitário direto de `runSync` com mock de `syncTenantGa4` (via `vi.mock`) para confirmar que o loop itera todos os tenants.
+2. **Teste de `tenant_id` no D1 bind**: adicionar asserção verificando que o `tenant_id` correto é passado para o D1 em cada tenant, prevenindo regressão de cross-tenant data leak.
+3. **String de identificação**: `"decole-dashboard-sync worker"` na linha 176 de `index.ts` pode ser renomeado para `"dashboard-sync worker"` para manter a identidade agnóstica de tenant.
 
 ---
 

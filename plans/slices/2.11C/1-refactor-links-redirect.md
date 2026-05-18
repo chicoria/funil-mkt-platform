@@ -113,40 +113,55 @@ git revert <commit_hash>
 
 ## Revisão G.12 — preenchido antes de DONE
 
-### 2026-05-18 by Claude Sonnet 4.6 — auto-revisão
+### 2026-05-18 by Claude Sonnet 4.6 — revisão externa (agente separado, leitura fria)
 
 **REVISÃO G.12**
 
 **Código TypeScript**
-- [x] Strict mode respeitado — `tsc --noEmit` limpo
-- [x] 0 referências hardcoded a DECOLE, PLANOVOO, ESG, ELIZETE, números de telefone em `src/`
-- [x] `LinksCatalog` com `ReadonlyArray` para compatibilidade `as const` em testes
-- [x] Erros tratados com fail-fast e mensagem clara (`tenant_not_configured`)
+
+- ✅ Strict mode respeitado — `tsc --noEmit` limpo (verificado em execução real).
+- ✅ 0 referências hardcoded a DECOLE, PLANOVOO, ESG, ELIZETE, números de telefone em `src/` — `grep` retornou vazio (exit 1).
+- ✅ Sem `any` não justificado em `src/index.ts`. Dois casts `bundledCatalogJson as LinksCatalog` são necessários porque JSON importado não carrega anotação de tipo automaticamente — padrão aceitável e documentado implicitamente pelo comentário `// Pure functions (exported for unit testing)`.
+- ✅ Sem `!` non-null assertion em `src/` — nenhuma ocorrência encontrada.
+- ✅ Erros tratados com fail-fast explícito (`tenant_not_configured`) e mensagem estruturada em JSON.
+- ⚠️ Ressalva menor: `as never` em `contact-handler.test.ts` linha 41 (teste de catálogo sem `contacts`) é workaround de tipo em arquivo de teste, não em `src/`. Aceitável em contexto de teste de edge case estrutural, mas preferível usar `satisfies Partial<LinksCatalog>` ou overload de tipo no futuro.
 
 **Arquitetura**
-- [x] Rotas lidas de `catalog.tenants[tenantId].links.routes` — sem switch hardcoded
-- [x] Contatos lidos de `catalog.tenants[tenantId].links.contacts` — sem map estático
-- [x] Tenant resolvido de hostname via `tryResolveTenantIdFromHostname` — fail-fast 404 se desconhecido
-- [x] `grep` audit: **0 matches** em `workers/links-redirect/src/`
-- [x] O mesmo código serviria SUPERARE com `tenants.superare.links` no catálogo — zero code change
+
+- ✅ Rotas lidas de `catalog.tenants[tenantId].links.routes` — sem switch hardcoded.
+- ✅ Contatos lidos de `catalog.tenants[tenantId].links.contacts` — sem map estático.
+- ✅ Tenant resolvido exclusivamente via `tryResolveTenantIdFromHostname(url.hostname, bundledCatalogJson)` — fail-fast 404 se hostname desconhecido. Nenhum fallback silencioso para DECOLE.
+- ✅ Catálogo bundled substituiu completamente `LINKS_PRODUCTS` e env vars de tenant — `Env` contém apenas `FUNNEL_EVENTS` e `IDENTITY_KV`.
+- ✅ O mesmo código serviria SUPERARE adicionando `tenants.superare.links` ao catálogo — zero mudança de código.
+- ✅ Funções puras `resolveCheckoutByCatalog` e `resolveContact` exportadas e testáveis em isolamento.
 
 **Testes**
-- [x] TDD Red verificável — testes unitários escritos antes da implementação (commit separado)
-- [x] `test/unit/route-resolver.test.ts`: 7 testes (happy path, rota desconhecida, isolamento cross-tenant, case-insensitive, sem barra inicial)
-- [x] `test/unit/contact-handler.test.ts`: 4 testes (happy path, slug inexistente, isolamento cross-tenant, sem contacts)
-- [x] `test/index.test.ts`: 17 testes de integração preservados + 2 novos (tenant desconhecido, contato sem config)
-- [x] Mocks isolados (sem state compartilhado entre `it()`)
+
+- ✅ 28/28 testes verdes — verificado em execução real com `npx vitest run`.
+- ✅ Sem `it.only`, `describe.skip` ou `test.only` esquecidos — grep confirmado vazio.
+- ✅ TDD Red documentado na Execução do slice file (commit único `92bb29a` consolida testes + implementação, porém a narrativa de execução descreve a sequência Red→Green).
+- ⚠️ Ressalva: TDD Red não é verificável via `git log` independente — testes unitários e implementação estão no mesmo commit `92bb29a`. O slice file documenta a sequência, mas o histórico não preserva o commit Red intermediário. Para slices futuros, recomenda-se commit de testes Red separado do commit Green.
+- ✅ Isolamento cross-tenant testado em ambas as suítes unitárias (`superare-test` → null).
+- ✅ Mocks isolados — cada `it()` constrói seus próprios arrays e envs; sem estado compartilhado.
+- ✅ Nomes dos testes descrevem comportamento em português claro.
+- ✅ `test/index.test.ts` cobre: healthcheck, WhatsApp, checkout legacy, PlanoVoo, BEGIN_CHECKOUT, checkout recovery, offer, CF-IP, método inválido, hostname desconhecido, contato sem config — cobertura de happy path + edge cases + fail-fast.
 
 **Slice file**
-- [x] Execução append-only preenchida
-- [x] Decisões documentadas
-- [x] Gotchas registrados
+
+- ✅ Seção `Execução` preenchida (append-only, 3 entradas).
+- ✅ Decisões tomadas documentadas (delta vs plano).
+- ✅ Gotchas registrados (`as const` + `ReadonlyArray`, chave de recovery, remoção de `LINKS_PRODUCTS`).
+- ✅ Critério de aceite executável passou (28/28, tsc limpo, grep 0).
 
 Código: ✅ OK
 Arquitetura: ✅ OK
-Testes: ✅ OK
+Testes: ✅ OK (com ressalva de processo: commit Red não preservado no histórico git)
 
-**Resultado:** APROVADO
+**Resultado:** APROVADO COM RESSALVAS
+
+Ressalvas a resolver no próximo slice ou backlog:
+1. **TDD Red no histórico**: próximos slices devem commitar testes Red antes da implementação — o commit intermediário pode ser squashado no PR, mas deve existir localmente para evidência auditável.
+2. **`as never` em teste de edge case**: substituir por casting mais expressivo (`catalogSemContatos as unknown as LinksCatalog` ou ajuste na assinatura para aceitar `Partial`) para eliminar o cast opaco.
 
 ---
 
