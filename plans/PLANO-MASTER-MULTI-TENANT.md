@@ -38,6 +38,7 @@ O `funil-mkt-platform` evoluiu para suportar multi-tenancy (Slices 2.0–2.10 do
 | **PLANO-SGTM-PLATAFORMA-COMPARTILHADO** | [`PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md`](./PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md) | 1 sGTM compartilhado, custom domains, lookup tables, roadmap de backoffice | **2.11B** |
 | **PLANO-LINKS-REDIRECT-MULTI-TENANT** | [`PLANO-LINKS-REDIRECT-MULTI-TENANT.md`](./PLANO-LINKS-REDIRECT-MULTI-TENANT.md) | Remove hardcode de paths, contatos WhatsApp, URLs Hotmart do `links-redirect` | **2.11C** |
 | **PLANO-DASHBOARD-SYNC-MULTI-TENANT** | [`PLANO-DASHBOARD-SYNC-MULTI-TENANT.md`](./PLANO-DASHBOARD-SYNC-MULTI-TENANT.md) | dashboard-sync itera catálogo, tenant_id em D1, cron multi-tenant | **2.11D** |
+| **PLANO-MKT-DASHBOARD-MULTI-TENANT** | [`PLANO-MKT-DASHBOARD-MULTI-TENANT.md`](./PLANO-MKT-DASHBOARD-MULTI-TENANT.md) | Rename decole-dashboard→mkt-dashboard; queries com tenant_id; auth por tenant via Secrets Store | **2.11E** |
 | **PLANO-STAGING-FUNIL-LANDING-PLANOVOO** | [`PLANO-STAGING-FUNIL-LANDING-PLANOVOO.md`](./PLANO-STAGING-FUNIL-LANDING-PLANOVOO.md) | Ambiente de staging isolado (revisão cirúrgica posterior — ver satélite 1 seção 10) | follow-up |
 | **PLANO-1-SEPARACAO-RESPONSABILIDADES** | [`completed/PLANO-1-SEPARACAO-RESPONSABILIDADES.md`](./completed/PLANO-1-SEPARACAO-RESPONSABILIDADES.md) | ✅ Concluído 2026-05-14 — APIs de hooks no Plano de Voo com HMAC | (arquivado) |
 
@@ -361,6 +362,10 @@ Cada bloco é commit isolado com testes verdes localmente. **Sem deploy.**
 [A] 2.11A.8  Deploy api-funnel-ingress + smoke CORS browser
 [C] 2.11C.2  Deploy links-redirect + smoke todas URLs conhecidas
 [D] 2.11D.3  Deploy dashboard-sync + backfill sanity check
+[E] 2.11E.1  Rename decole-dashboard → mkt-dashboard (pasta + git + código)
+[E] 2.11E.2  lib/d1.ts: tenant_id em todas as queries
+[E] 2.11E.3  API routes: repasse ?tenant= ao worker
+[E] 2.11E.4  Deploy mkt-dashboard + smoke DECOLE
 ```
 
 ### FASE 4 — Validação cruzada + limpeza (após Fase 3 estável por 72h)
@@ -372,6 +377,8 @@ Cada bloco é commit isolado com testes verdes localmente. **Sem deploy.**
 [B] 2.11B.5  Documentar runbook onboarding tenant em RUNBOOK-ONBOARDING-TENANT.md
 [C] 2.11C.3  links-redirect remove env vars antigas + validar grep
 [D] 2.11D.4  dashboard-sync remove fallbacks + secrets antigos
+[E] 2.11E.5  Auth por tenant: ADMIN_SECRET_{TENANT} + login com seleção de tenant
+[E] 2.11E.6  Smoke auth cross-tenant + remover ADMIN_SECRET global
 ```
 
 ### Resumo de dependências
@@ -390,9 +397,13 @@ Fase 2 ─┬─ [A: refactors dispatcher/ingress] ──┐
         ├─ [C: refatorar links-redirect]       │
         └─ [D: refactor runSync]               │
                                                ▼
-Fase 3 ── deploys disruptivos
-                                               ▼
-Fase 4 ── validação cruzada + limpeza
+Fase 3 ─┬─ [A/B/C/D: deploys disruptivos workers] ──┐
+        └─ [E: rename mkt-dashboard + queries]      │
+                                                    ▼
+Fase 4 ─┬─ [Z/A/B/C/D: validação cruzada + limpeza] ──┐
+        └─ [E: auth por tenant]                        │
+                                                       ▼
+        Bloqueador SUPERARE liberado
 ```
 
 **Critical path:** ~3.5-4 semanas com paralelismo. Fase 0.5 adiciona ~3-5 dias bloqueante.
@@ -421,3 +432,4 @@ Para o próximo agente / humano:
 - **2026-05-18:** 2.11B.3 concluído. Workspace 24 validado com 5 lookup tables completas para DECOLE e tenant fake `superare-test`; isolamento cross-tenant confirmado (0 vazamentos); 2 entradas placeholder faltantes corrigidas; próximo: `2.11C.1` ou `2.11D.2`.
 - **2026-05-18:** 2.11C.1 concluído. `links-redirect` agnóstico — resolve tenant do hostname, rotas e contatos do catálogo; remove todos os hardcodes DECOLE/ELIZETE; 28/28 testes verdes; grep 0 matches.
 - **2026-05-18:** 2.11D.2 concluído. `dashboard-sync` dividido em 5 módulos SoC (types/catalog/ga4/meta/sync-runner); runSync itera catálogo; ?tenant= fail-fast 400; 24/24 testes verdes; grep 0 matches. **Fase 2 completa (9/9).** Próximo: validação humana G.10 → Fase 3.
+- **2026-05-18:** Satélite 2.11E criado — `PLANO-MKT-DASHBOARD-MULTI-TENANT.md`. Rename total `decole-dashboard→mkt-dashboard` (Frente A, Fase 3) + auth por tenant via `ADMIN_SECRET_{TENANT}` no Secrets Store (Frente B, Fase 4). 6 novos slices (2.11E.1–6) adicionados ao plano.

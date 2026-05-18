@@ -159,6 +159,10 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - [ ] **2.11A.8** — Deploy api-funnel-ingress + smoke CORS browser → `slices/2.11A/8-deploy-funnel-ingress.md` (a criar)
 - [ ] **2.11C.2** — Deploy links-redirect + smoke todas URLs conhecidas → `slices/2.11C/2-deploy-links-redirect.md` (a criar)
 - [ ] **2.11D.3** — Deploy dashboard-sync + backfill sanity check → `slices/2.11D/3-deploy-dashboard-sync.md` (a criar)
+- [ ] **2.11E.1** — Rename total decole-dashboard → mkt-dashboard (pasta, git, package.json, wrangler.toml, strings) → `slices/2.11E/1-rename-mkt-dashboard.md` (a criar)
+- [ ] **2.11E.2** — `lib/d1.ts`: tenant_id em todas as queries → `slices/2.11E/2-d1-queries-tenant-id.md` (a criar)
+- [ ] **2.11E.3** — API routes: repasse `?tenant=` ao worker + seletor transitório → `slices/2.11E/3-api-tenant-passthrough.md` (a criar)
+- [ ] **2.11E.4** — Deploy mkt-dashboard + smoke DECOLE → `slices/2.11E/4-deploy-mkt-dashboard.md` (a criar)
 
 ### Fase 4 — Validação cruzada + limpeza
 - [ ] **2.11Z.1** — Smoke E2E cross-slice com tenant fake superare-test → `slices/2.11Z/1-cross-tenant-e2e-validation.md` (a criar)
@@ -166,6 +170,8 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - [ ] **2.11B.5** — Documentar runbook onboarding tenant em RUNBOOK-ONBOARDING-TENANT.md → `slices/2.11B/5-runbook-onboarding.md` (a criar)
 - [ ] **2.11C.3** — links-redirect remove env vars antigas + validar grep → `slices/2.11C/3-cleanup-links-redirect.md` (a criar)
 - [ ] **2.11D.4** — dashboard-sync remove fallbacks + secrets antigos → `slices/2.11D/4-cleanup-dashboard-sync.md` (a criar)
+- [ ] **2.11E.5** — Auth por tenant: `ADMIN_SECRET_{TENANT}` + login com seleção de tenant → `slices/2.11E/5-auth-per-tenant.md` (a criar)
+- [ ] **2.11E.6** — Smoke auth cross-tenant + remover `ADMIN_SECRET` global → `slices/2.11E/6-cleanup-auth.md` (a criar)
 
 ---
 
