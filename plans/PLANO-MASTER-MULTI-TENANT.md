@@ -1,7 +1,7 @@
 # Plano Master — Multi-Tenant
 
 > **Ponto de entrada autoritativo** para toda mudança no `funil-mkt-platform` que envolva multi-tenancy.
-> **Status:** Em execução — 18/32 slices concluídos · Fases 0, 0.5 e 1 completas · Fase 2 em andamento (6/9) · Próximo: 2.11B.3 (atualizado em 2026-05-18 ~20:29 WEST).
+> **Status:** Em execução — 19/32 slices concluídos · Fases 0, 0.5 e 1 completas · Fase 2 em andamento (7/9) · Próximo: 2.11C.1 ou 2.11D.2 (paralelos) (atualizado em 2026-05-18 por Claude Sonnet 4.6).
 > **Source of truth de progresso:** [`STATUS-2.11.md`](./STATUS-2.11.md)
 
 ---
@@ -406,10 +406,8 @@ Fase 4 ── validação cruzada + limpeza
 Para o próximo agente:
 
 1. **Ler** `STATUS-2.11.md` para confirmar o recovery point atual.
-2. **Criar** `plans/slices/2.11B/3-validate-preview-superare-fake.md` seguindo `SLICE-TEMPLATE.md`.
-3. **Marcar** 2.11B.3 como IN_PROGRESS no slice e em `STATUS-2.11.md`.
-4. **Validar** o workspace sGTM preview `workspaceId=24` com tenant fake `superare-test`, sem publicar produção.
-5. **Registrar** evidências de preview e G.12 antes de marcar DONE.
+2. **Executar** `2.11C.1` (links-redirect refactor) ou `2.11D.2` (dashboard-sync runSync) — são independentes e podem rodar em paralelo.
+3. Após ambos DONE, a Fase 2 estará completa (9/9) e a Fase 3 pode ser iniciada.
 
 ---
 
@@ -420,3 +418,4 @@ Para o próximo agente:
 - **2026-05-18 ~20:02 WEST:** 2.11A.7-prep concluído. `api-hotmart-ingress` agora resolve tenant/produto/token via catálogo e Secrets Store, sem fallback runtime hardcoded para DECOLE; próximo slice é `2.11A.8-prep`.
 - **2026-05-18 ~20:13 WEST:** 2.11A.8-prep concluído. `api-funnel-ingress` agora resolve tenant, CORS e app webhooks por catálogo, sem `ALLOWED_ORIGINS`/`DEFAULT_TENANT_ID`/`APP_EVENTS_HMAC` no runtime; próximo slice é `2.11B.2`.
 - **2026-05-18 ~20:29 WEST:** 2.11B.2 concluído. Workspace sGTM preview `codex-2.11B.2-multitenant-preview` (`workspaceId=24`) preparado com lookups por tenant/produto e tags GA4/Meta dinâmicas, sem publish produção; próximo slice é `2.11B.3`.
+- **2026-05-18:** 2.11B.3 concluído. Workspace 24 validado com 5 lookup tables completas para DECOLE e tenant fake `superare-test`; isolamento cross-tenant confirmado (0 vazamentos); 2 entradas placeholder faltantes corrigidas; próximo: `2.11C.1` ou `2.11D.2`.
