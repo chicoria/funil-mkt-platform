@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 4,
-  "updatedAt": "2026-05-14",
-  "description": "Catálogo central multi-tenant — tenants.{id}.products.{code} declara cada produto.",
+  "schemaVersion": 5,
+  "updatedAt": "2026-05-18",
+  "description": "Catálogo central multi-tenant — tenants.{id}.products.{code} declara cada produto. Schema v5 adiciona tracking/integrations/dashboard/links/allowedOrigins por tenant e urlSlugs/n8nForward/links/dashboard por produto (aditivo — campos v4 mantidos para compatibilidade durante Fase 2).",
   "global": {
     "hotmart": {
       "auth": {
@@ -23,6 +23,7 @@
       }
     },
     "n8n": {
+      "_deprecated": "Slice 2.11A.1 (2026-05-18) — workers devem ler via tenants.{id}.integrations.n8n a partir da Fase 2. Este campo global será removido no slice 2.11A.9.",
       "baseUrl": "https://n8n.decolesuacarreiraesg.com.br"
     },
     "brevo": {
@@ -53,6 +54,86 @@
         "hotmart_token_env": "HOTMART_WEBHOOK_TOKEN",
         "replyToEmail": "contato@decolesuacarreiraesg.com.br"
       },
+      "_v5_note": "Campos abaixo são novos no schema v5 (2026-05-18). Campos v4 dentro de products.*.tracking foram mantidos para compatibilidade. Serão removidos na Fase 2 após refactor dos workers.",
+      "allowedOrigins": [
+        "https://decolesuacarreiraesg.com.br"
+      ],
+      "tracking": {
+        "gtm": {
+          "containerPublicId": "GTM-58CQ9K7X"
+        },
+        "sgtm": {
+          "endpointEnvVar": "SGTM_ENDPOINT_URL_DECOLE",
+          "_note": "Consolida SGTM_ENDPOINT_URL_DECOLE_ESG e SGTM_ENDPOINT_URL_PLANOVOO — ambos apontam para o mesmo container (confirmado em 2026-05-18)"
+        },
+        "ga4": {
+          "measurementId": "G-BQQB6X5XN1",
+          "measurementIdEnvVar": "GA4_MEASUREMENT_ID_DECOLE",
+          "apiSecretEnvVar": "GA4_API_SECRET_DECOLE"
+        },
+        "metaCapi": {
+          "accessTokenEnv": "META_CAPI_ACCESS_TOKEN_DECOLE"
+        }
+      },
+      "integrations": {
+        "n8n": {
+          "baseUrl": "https://n8n.decolesuacarreiraesg.com.br",
+          "webhookUrlEnv": "N8N_WEBHOOK_URL_DECOLE",
+          "disableForwardEnv": "N8N_DISABLE_FORWARD_DECOLE"
+        },
+        "planovoo": {
+          "_note": "Integração exclusiva do tenant DECOLE — ver PLANO-MASTER seção 10.7",
+          "baseUrlEnv": "PLANOVOO_API_BASE_URL_DECOLE",
+          "hookSecretEnv": "PLANOVOO_HOOK_SECRET_DECOLE",
+          "scope": ["DECOLE_PLANOVOO"],
+          "appWebhooks": [
+            {
+              "path": "/webhooks/v1/planovoo/app/event",
+              "productCode": "DECOLE_PLANOVOO",
+              "requiresHmac": true
+            }
+          ]
+        }
+      },
+      "dashboard": {
+        "ga4": {
+          "propertyIdEnv": "GA4_PROPERTY_ID_DECOLE",
+          "serviceAccountKeyEnv": "GA4_SERVICE_ACCOUNT_KEY_DECOLE"
+        },
+        "metaAds": {
+          "accessTokenEnv": "META_ACCESS_TOKEN_DECOLE"
+        }
+      },
+      "links": {
+        "linksDomain": "links.decolesuacarreiraesg.com.br",
+        "routes": [
+          {
+            "path": "/decole-esg/checkout",
+            "type": "checkout",
+            "productCode": "DECOLE_ESG_MENTORIA"
+          },
+          {
+            "path": "/plano-de-voo/checkout",
+            "type": "checkout",
+            "productCode": "DECOLE_PLANOVOO"
+          },
+          {
+            "path": "/checkout",
+            "type": "checkout",
+            "productCode": "DECOLE_ESG_MENTORIA",
+            "legacy": true,
+            "deprecated": true,
+            "_note": "Rota legada sem prefixo de produto — manter até confirmar zero tráfego (30 dias)"
+          }
+        ],
+        "contacts": {
+          "elizete-wp": {
+            "type": "whatsapp",
+            "number": "351915787088",
+            "defaultText": "Olá Elizete, estou no site do decolesuacarreiraesg.com.br e tenho uma dúvida. :)"
+          }
+        }
+      },
       "products": {
         "DECOLE_ESG_MENTORIA": {
           "name": "DECOLE sua Carreira ESG",
@@ -65,7 +146,17 @@
             "productId": "5083704",
             "productName": "DECOLE sua Carreira ESG",
             "checkoutCode": "K98068530F",
-            "defaultOfferCode": "3j6lto4t"
+            "defaultOfferCode": "3j6lto4t",
+            "urlSlugs": ["decole-esg"]
+          },
+          "links": {
+            "checkoutBaseUrl": "https://pay.hotmart.com/K98068530F?off=3j6lto4t",
+            "offerPathTemplate": "/decole-esg/checkout/offer/{offerCode}"
+          },
+          "dashboard": {
+            "metaAds": {
+              "adAccountIdEnv": "META_AD_ACCOUNT_ID_DECOLE_ESG"
+            }
           },
           "brevo": {
             "opsModel": {
@@ -491,6 +582,7 @@
             "pixelIdEnvVar": "META_PIXEL_ID_DECOLE_ESG"
           },
           "tracking": {
+            "_note_productCode": "Campo 'productCode' aqui é redundante com a chave do mapa — mantido para compatibilidade com código v4. Remover no slice 2.11A.9 junto com demais campos v4 de tracking.",
             "productCode": "DECOLE_ESG_MENTORIA",
             "sgtm": {
               "endpointEnvVar": "SGTM_ENDPOINT_URL_DECOLE_ESG"
@@ -664,7 +756,21 @@
             "productId": "7592718",
             "productName": "DECOLE - Plano de Voo",
             "checkoutCode": "R105463680A",
-            "defaultOfferCode": "f3yweqek"
+            "defaultOfferCode": "f3yweqek",
+            "urlSlugs": ["planodevoo", "planovoo", "plano-de-voo"]
+          },
+          "links": {
+            "checkoutBaseUrl": "https://pay.hotmart.com/R105463680A?off=f3yweqek",
+            "offerPathTemplate": "/plano-de-voo/checkout/offer/{offerCode}"
+          },
+          "dashboard": {
+            "metaAds": {
+              "adAccountIdEnv": "META_AD_ACCOUNT_ID_DECOLE_PLANOVOO"
+            }
+          },
+          "n8nForward": {
+            "enrichPayload": true,
+            "_note": "Enriquece payload Hotmart para formato esperado pelo n8n do Plano de Voo (substitui isPlanovooProductCode hardcoded no dispatcher)"
           },
           "brevo": {
             "opsModel": {
@@ -1294,6 +1400,7 @@
             "pixelIdEnvVar": "META_PIXEL_ID_PLANOVOO"
           },
           "tracking": {
+            "_note_productCode": "Campo 'productCode' aqui é redundante com a chave do mapa — mantido para compatibilidade com código v4. Remover no slice 2.11A.9 junto com demais campos v4 de tracking.",
             "productCode": "DECOLE_PLANOVOO",
             "sgtm": {
               "endpointEnvVar": "SGTM_ENDPOINT_URL_PLANOVOO"
