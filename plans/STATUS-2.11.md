@@ -39,13 +39,13 @@
 
 | Fase | Slices | Status |
 |---|---|---|
-| Fase 0 — Preparação | 1/4 | ⏳ Em progresso (2.11A.0 ✅ DONE) |
+| Fase 0 — Preparação | 4/4 | ✅ Completa (2.11A.0 ✅ 2.11A.1 ✅ 2.11B.1 ✅ 2.11D.1 ✅) |
 | Fase 0.5 — Testes de regressão | 0/7 | ⏸️ Não iniciada |
 | Fase 1 — Popular secrets + bindings | 0/1 | ⏸️ Não iniciada |
 | Fase 2 — Refactor | 0/9 | ⏸️ Não iniciada |
 | Fase 3 — Deploys disruptivos | 0/6 | ⏸️ Não iniciada |
 | Fase 4 — Validação cruzada + limpeza | 0/5 | ⏸️ Não iniciada |
-| **Total** | **1/32** | |
+| **Total** | **4/32** | |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
@@ -53,7 +53,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Slice em progresso
 
-(nenhum — 2.11A.0 fechado em 2026-05-18 ~01:58; aguardando validação humana antes de iniciar próximo)
+(nenhum — Fase 0 completa em 2026-05-18; aguardando validação humana para iniciar Fase 0.5)
 
 ## Último slice concluído
 
@@ -73,9 +73,9 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ### Fase 0 — Preparação (paralelizáveis)
 - [x] **2.11A.0** ✅ — Cloudflare Secrets Store: setup + helper wrapper → [`slices/2.11A/0-secrets-store-setup.md`](./slices/2.11A/0-secrets-store-setup.md) **(DONE 2026-05-18)**
-- [ ] **2.11A.1** — Catálogo v5: campos novos + catalog-adapter com fallback → `slices/2.11A/1-catalog-v5-additive.md` (a criar)
-- [ ] **2.11B.1** — Auditar sGTM DECOLE (inventário baseline) → `slices/2.11B/1-audit-sgtm-current.md` (a criar)
-- [ ] **2.11D.1** — Migration D1: tenant_id em ga4_daily_metrics + meta_daily_metrics → `slices/2.11D/1-d1-migration-tenant-id.md` (a criar)
+- [x] **2.11A.1** ✅ — Catálogo v5: campos novos + helpers de leitura → [`slices/2.11A/1-catalog-v5-additive.md`](./slices/2.11A/1-catalog-v5-additive.md) **(DONE 2026-05-18)**
+- [x] **2.11B.1** ✅ — Auditar sGTM DECOLE (inventário baseline) → [`slices/2.11B/1-audit-sgtm-current.md`](./slices/2.11B/1-audit-sgtm-current.md) **(DONE 2026-05-18)**
+- [x] **2.11D.1** ✅ — Migration D1: tenant_id em ga4_daily_metrics + meta_daily_metrics → [`slices/2.11D/1-d1-migration-tenant-id.md`](./slices/2.11D/1-d1-migration-tenant-id.md) **(DONE 2026-05-18)**
 
 ### Fase 0.5 — Testes de regressão (gate para Fase 2)
 - [ ] **2.11T.1** — catalog-adapter.test.ts → `slices/2.11T/1-catalog-adapter-tests.md` (a criar)

@@ -379,6 +379,64 @@ async function ensureSyncControlSchema(db: D1Database): Promise<void> {
     .run();
 }
 
+/**
+ * Migração idempotente: adiciona tenant_id a ga4_daily_metrics e
+ * meta_daily_metrics. Usa o padrão __funilmkt_schema_migrations.
+ * Slice 2.11D.1 — 2026-05-18.
+ */
+async function applyDashboardMigrationsOnce(db: D1Database): Promise<void> {
+  // 1. Garantir tabela de controle de migrations
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS __funilmkt_schema_migrations (
+         id TEXT PRIMARY KEY,
+         applied_at TEXT NOT NULL
+       )`
+    )
+    .run();
+
+  const MIGRATION_ID = "dashboard_sync_v1_tenant_id_2026_05_18";
+  const row = await db
+    .prepare(`SELECT id FROM __funilmkt_schema_migrations WHERE id = ? LIMIT 1`)
+    .bind(MIGRATION_ID)
+    .first<{ id?: string }>();
+
+  if (row?.id) return; // Já aplicado — idempotente.
+
+  const now = new Date().toISOString();
+
+  // 2. Adicionar tenant_id às tabelas de métricas (DEFAULT 'decole' preserva dados históricos)
+  await db.prepare(`ALTER TABLE ga4_daily_metrics ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'decole'`).run();
+  await db.prepare(`ALTER TABLE meta_daily_metrics ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'decole'`).run();
+
+  // 3. Recriar índices únicos com tenant_id (DROP + CREATE porque SQLite não suporta ALTER INDEX)
+  await db.prepare(`DROP INDEX IF EXISTS idx_ga4_daily_unique`).run();
+  await db
+    .prepare(
+      `CREATE UNIQUE INDEX idx_ga4_daily_unique
+       ON ga4_daily_metrics(tenant_id, date, product_code, event_name)`
+    )
+    .run();
+
+  await db.prepare(`DROP INDEX IF EXISTS idx_meta_daily_unique`).run();
+  await db
+    .prepare(
+      `CREATE UNIQUE INDEX idx_meta_daily_unique
+       ON meta_daily_metrics(tenant_id, date, product_code)`
+    )
+    .run();
+
+  // 4. Registrar migration como aplicada
+  await db
+    .prepare(`INSERT INTO __funilmkt_schema_migrations (id, applied_at) VALUES (?, ?)`)
+    .bind(MIGRATION_ID, now)
+    .run();
+
+  console.log(
+    JSON.stringify({ stage: "migration_applied", migration: MIGRATION_ID, applied_at: now })
+  );
+}
+
 function asJson(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
@@ -479,6 +537,7 @@ export default {
   // Cron: runs daily at 4h UTC — syncs yesterday's data
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     await ensureSyncControlSchema(env.EVENT_STORE_DB);
+    await applyDashboardMigrationsOnce(env.EVENT_STORE_DB);
     const yesterday = new Date();
     yesterday.setUTCDate(yesterday.getUTCDate() - 1);
     ctx.waitUntil(
@@ -495,6 +554,7 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     await ensureSyncControlSchema(env.EVENT_STORE_DB);
+    await applyDashboardMigrationsOnce(env.EVENT_STORE_DB);
 
     if (url.pathname === "/sync/status") {
       if (!isAuthorized(request, env, url)) return new Response("Unauthorized", { status: 401 });
