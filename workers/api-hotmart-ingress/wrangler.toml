@@ -10,9 +10,6 @@ routes = [
   # "api.superare.com.br/webhooks/v1/*/hotmart/*"
 ]
 
-[vars]
-DEFAULT_TENANT_ID = "decole"
-
 # ── Cloudflare Secrets Store bindings (Slice 2.11A.2) ──────────────────────
 [[secrets_store_secrets]]
 binding = "HOTMART_WEBHOOK_TOKEN_DECOLE"

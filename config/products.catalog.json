@@ -1562,7 +1562,7 @@
     "api-hotmart-ingress": {
       "description": "Recebe webhooks Hotmart, normaliza para FunnelEvent e publica na queue canônica.",
       "secrets": [
-        "HOTMART_WEBHOOK_TOKEN"
+        "HOTMART_WEBHOOK_TOKEN_DECOLE"
       ]
     },
     "api-funnel-ingress": {

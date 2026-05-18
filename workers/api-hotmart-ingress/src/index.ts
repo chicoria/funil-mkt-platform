@@ -1,5 +1,7 @@
 import { fromHotmartWebhook } from "../../../packages/shared/src/event-normalizer";
-import { resolveTenantIdFromHostname } from "../../../packages/shared/src/tenant-from-hostname";
+import { resolveSecret, type SecretValue } from "../../../packages/shared/src/secrets-store-wrapper";
+import { tryResolveTenantIdFromHostname } from "../../../packages/shared/src/tenant-from-hostname";
+import { findProductByHotmartSlug, type CatalogV5 } from "../../../packages/shared/src/catalog-v5";
 import bundledCatalog from "../../../config/products.catalog.json";
 
 interface QueueBinding {
@@ -8,8 +10,16 @@ interface QueueBinding {
 
 interface Env {
   FUNNEL_EVENTS?: QueueBinding;
-  HOTMART_WEBHOOK_TOKEN?: string;
-  DEFAULT_TENANT_ID?: string;
+  CATALOG_JSON?: string;
+  [key: string]: unknown;
+}
+
+interface TenantCredentialsConfig {
+  hotmart_token_env?: string;
+}
+
+interface TenantWithCredentials {
+  credentials?: TenantCredentialsConfig;
 }
 
 function asString(value: unknown): string {
@@ -26,6 +36,20 @@ function jsonResponse(body: unknown, status: number): Response {
 
 function logIngress(data: Record<string, unknown>): void {
   console.log(JSON.stringify({ worker: "api-hotmart-ingress", ...data }));
+}
+
+function getCatalog(env: Env): CatalogV5 {
+  const raw = asString(env.CATALOG_JSON);
+  if (!raw) return bundledCatalog as CatalogV5;
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as CatalogV5;
+    }
+  } catch {
+    logIngress({ stage: "warn", error: "catalog_json_invalid" });
+  }
+  return bundledCatalog as CatalogV5;
 }
 
 function parsePath(pathname: string): { ok: boolean; productSlug: string; operation: string } {
@@ -50,16 +74,17 @@ function tokenFromRequest(request: Request): string[] {
   ].filter(Boolean);
 }
 
-function isAuthorized(request: Request, env: Env): boolean {
-  const required = asString(env.HOTMART_WEBHOOK_TOKEN);
-  if (!required) return true;
+function isAuthorized(request: Request, required: string): boolean {
   return tokenFromRequest(request).some((candidate) => candidate === required);
 }
 
-function productCodeFromSlug(slug: string): string {
-  if (slug === "decole-esg") return "DECOLE_ESG_MENTORIA";
-  if (slug === "planodevoo" || slug === "planovoo" || slug === "plano-de-voo") return "DECOLE_PLANOVOO";
-  return slug.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
+async function resolveTenantHotmartToken(env: Env, catalog: CatalogV5, tenantId: string): Promise<string> {
+  const tenant = catalog.tenants?.[tenantId] as TenantWithCredentials | undefined;
+  const tokenEnv = asString(tenant?.credentials?.hotmart_token_env);
+  if (!tokenEnv) {
+    throw new Error(`missing tenant.credentials.hotmart_token_env for tenant ${tenantId}`);
+  }
+  return resolveSecret(env[tokenEnv] as SecretValue, tokenEnv);
 }
 
 async function parseBody(request: Request): Promise<Record<string, unknown>> {
@@ -93,13 +118,75 @@ export default {
       return jsonResponse({ ok: false, error: "not_found" }, 404);
     }
 
-    if (!isAuthorized(request, env)) {
-      logIngress({ stage: "blocked", pathname, product_slug: parsed.productSlug, error: "unauthorized", status: 401 });
+    const hostname = new URL(request.url).hostname;
+    const catalog = getCatalog(env);
+    const tenantId = tryResolveTenantIdFromHostname(hostname, catalog);
+    if (!tenantId) {
+      logIngress({
+        stage: "blocked",
+        pathname,
+        hostname,
+        product_slug: parsed.productSlug,
+        error: "unknown_tenant",
+        status: 400,
+      });
+      return jsonResponse({ ok: false, error: "unknown_tenant" }, 400);
+    }
+
+    const productCode = findProductByHotmartSlug(catalog, tenantId, parsed.productSlug);
+    if (!productCode) {
+      logIngress({
+        stage: "blocked",
+        pathname,
+        hostname,
+        tenant_id: tenantId,
+        product_slug: parsed.productSlug,
+        error: "unknown_product_slug",
+        status: 404,
+      });
+      return jsonResponse({ ok: false, error: "unknown_product_slug" }, 404);
+    }
+
+    let requiredToken: string;
+    try {
+      requiredToken = await resolveTenantHotmartToken(env, catalog, tenantId);
+    } catch (err) {
+      logIngress({
+        stage: "error",
+        pathname,
+        hostname,
+        tenant_id: tenantId,
+        product_slug: parsed.productSlug,
+        error: "secret_misconfigured",
+        detail: err instanceof Error ? err.message : String(err),
+        status: 500,
+      });
+      return jsonResponse({ ok: false, error: "secret_misconfigured" }, 500);
+    }
+
+    if (!isAuthorized(request, requiredToken)) {
+      logIngress({
+        stage: "blocked",
+        pathname,
+        hostname,
+        tenant_id: tenantId,
+        product_slug: parsed.productSlug,
+        error: "unauthorized",
+        status: 401,
+      });
       return jsonResponse({ ok: false, error: "unauthorized" }, 401);
     }
 
     if (!env.FUNNEL_EVENTS) {
-      logIngress({ stage: "error", pathname, product_slug: parsed.productSlug, error: "queue_not_configured", status: 500 });
+      logIngress({
+        stage: "error",
+        pathname,
+        hostname,
+        tenant_id: tenantId,
+        product_slug: parsed.productSlug,
+        error: "queue_not_configured",
+        status: 500,
+      });
       return jsonResponse({ ok: false, error: "queue_not_configured" }, 500);
     }
 
@@ -112,11 +199,9 @@ export default {
       asString(raw.event) || asString(raw.event_name) || asString(raw.type) || asString(raw.name) || fallbackEventType;
     raw.event = incomingEvent;
 
-    const normalized = fromHotmartWebhook(raw, productCodeFromSlug(parsed.productSlug));
-    const hostname = new URL(request.url).hostname;
+    const normalized = fromHotmartWebhook(raw, productCode);
     // Intencional: hotmart é S2S com HMAC; não honramos tenant_id do payload (Hotmart não envia).
     // Diverge de api-funnel-ingress, que aceita payload.tenant_id como fallback para LPs em preview.
-    const tenantId = resolveTenantIdFromHostname(hostname, bundledCatalog, env.DEFAULT_TENANT_ID || "decole");
     normalized.tenant_id = tenantId;
     await env.FUNNEL_EVENTS.send(normalized);
     logIngress({
