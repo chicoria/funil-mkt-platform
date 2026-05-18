@@ -311,6 +311,56 @@ describe("callProductApi", () => {
     expect(url).toBe("https://staging.planovoo.test/api/hooks/purchase");
   });
 
+  it("prefers tenant-specific product API env vars over divergent legacy names", async () => {
+    const fetchMock = mockFetch({ token: "t" });
+    const ctx = makeCtx({
+      envOverrides: {
+        PLANOVOO_API_BASE_URL: "https://legacy.planovoo.test/",
+        PLANOVOO_API_BASE_URL_DECOLE: "https://tenant.planovoo.test/",
+        PLANOVOO_HOOK_SECRET_DECOLE: "tenant-secret",
+      },
+    });
+    const config: ProductApiConfig = {
+      ...purchaseApiConfig,
+      url: undefined,
+      url_env: "PLANOVOO_API_BASE_URL_DECOLE",
+      hmac_secret_env: "PLANOVOO_HOOK_SECRET_DECOLE",
+      path: "/api/hooks/purchase",
+    };
+
+    await callProductApi(ctx, config, fetchMock);
+
+    const [url] = getFetchCall(fetchMock, 0);
+    expect(url).toBe("https://tenant.planovoo.test/api/hooks/purchase");
+  });
+
+  it("resolves URL and HMAC secret from Secrets Store bindings", async () => {
+    const fetchMock = mockFetch({ token: "t" });
+    const baseUrlBinding = { get: vi.fn(async () => "https://binding.planovoo.test/") };
+    const hmacBinding = { get: vi.fn(async () => "binding-secret") };
+    const ctx = makeCtx({
+      envOverrides: {
+        PLANOVOO_API_BASE_URL_DECOLE: baseUrlBinding,
+        PLANOVOO_HOOK_SECRET_DECOLE: hmacBinding,
+      },
+    });
+    const config: ProductApiConfig = {
+      ...purchaseApiConfig,
+      url: undefined,
+      url_env: "PLANOVOO_API_BASE_URL_DECOLE",
+      hmac_secret_env: "PLANOVOO_HOOK_SECRET_DECOLE",
+      path: "/api/hooks/purchase",
+    };
+
+    await callProductApi(ctx, config, fetchMock);
+
+    const [url, init] = getFetchCall(fetchMock, 0);
+    expect(url).toBe("https://binding.planovoo.test/api/hooks/purchase");
+    expect((init.headers as Record<string, string>)["x-signature"]).toMatch(/^sha256=[0-9a-f]{64}$/);
+    expect(baseUrlBinding.get).toHaveBeenCalledTimes(1);
+    expect(hmacBinding.get).toHaveBeenCalledTimes(1);
+  });
+
   it("throws when neither URL nor configured URL env var is available", async () => {
     const fetchMock = mockFetch({ token: "t" });
     const ctx = makeCtx();

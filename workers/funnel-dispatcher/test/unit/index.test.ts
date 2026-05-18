@@ -578,6 +578,7 @@ describe("funnel-dispatcher", () => {
 
     const env = makeEnv({
       BREVO_API_KEY: "set",
+      LINKS_BASE_URL: "https://links.decolesuacarreiraesg.com.br",
       CATALOG_JSON: JSON.stringify({
         products: {
 	          DECOLE_PLANOVOO: {
@@ -642,6 +643,144 @@ describe("funnel-dispatcher", () => {
     vi.unstubAllGlobals();
   });
 
+  it("gera link de carrinho abandonado usando linksDomain do tenant", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const env = makeEnv({
+      BREVO_API_KEY_DECOLE: "xkeysib-decole",
+      HOTMART_TOKEN_DECOLE: "hotmart-decole-token",
+      CATALOG_JSON: JSON.stringify({
+        tenants: {
+          decole: {
+            links: {
+              linksDomain: "links.decole.test",
+            },
+            credentials: {
+              brevo_api_key_env: "BREVO_API_KEY_DECOLE",
+              hotmart_token_env: "HOTMART_TOKEN_DECOLE",
+            },
+            products: {
+              DECOLE_PLANOVOO: {
+                name: "DECOLE - Plano de Voo",
+                links: {
+                  checkoutPath: "/plano-de-voo/checkout",
+                  checkoutBaseUrl: "https://pay.hotmart.com/R105463680A?off=f3yweqek",
+                },
+                funnelEventArchitecture: {
+                  events: [
+                    {
+                      eventType: "PURCHASE_OUT_OF_SHOPPING_CART",
+                      chain: ["send_cart_abandonment_email"],
+                      brevoConfig: { cartAbandonmentTemplateId: "11" },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      }),
+    });
+
+    await worker.queue({
+      messages: [{
+        body: {
+          event_id: "evt-cart-tenant-links-1",
+          event_type: "PURCHASE_OUT_OF_SHOPPING_CART",
+          tenant_id: "decole",
+          product_code: "DECOLE_PLANOVOO",
+          source: "hotmart",
+          occurred_at: new Date().toISOString(),
+          lead: { email: "qa.cart.tenant@example.com" },
+          payload: {},
+        },
+      }],
+    }, env);
+
+    const emailCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/smtp/email"));
+    expect(emailCall).toBeTruthy();
+    const body = JSON.parse(String((emailCall?.[1] as RequestInit)?.body || "{}")) as {
+      params?: Record<string, string>;
+    };
+    const checkoutUrl = new URL(String(body.params?.checkout_url || ""));
+    expect(checkoutUrl.origin).toBe("https://links.decole.test");
+    expect(checkoutUrl.pathname).toBe("/plano-de-voo/checkout");
+    expect(checkoutUrl.searchParams.get("rid")).toBeTruthy();
+
+    vi.unstubAllGlobals();
+  });
+
+  it("nao usa dominio DECOLE hardcoded quando tenant nao define linksDomain", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const env = makeEnv({
+      BREVO_API_KEY_SUPERARE: "xkeysib-superare",
+      HOTMART_TOKEN_SUPERARE: "hotmart-superare-token",
+      CATALOG_JSON: JSON.stringify({
+        tenants: {
+          superare: {
+            credentials: {
+              brevo_api_key_env: "BREVO_API_KEY_SUPERARE",
+              hotmart_token_env: "HOTMART_TOKEN_SUPERARE",
+            },
+            products: {
+              SUPERARE_CURSO_X: {
+                name: "SUPERARE Curso X",
+                links: {
+                  checkoutPath: "/curso-x/checkout",
+                  checkoutBaseUrl: "https://pay.hotmart.com/SUPERARE123",
+                },
+                funnelEventArchitecture: {
+                  events: [
+                    {
+                      eventType: "PURCHASE_OUT_OF_SHOPPING_CART",
+                      chain: ["send_cart_abandonment_email"],
+                      brevoConfig: { cartAbandonmentTemplateId: "12" },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      }),
+    });
+
+    await worker.queue({
+      messages: [{
+        body: {
+          event_id: "evt-cart-no-links-domain-1",
+          event_type: "PURCHASE_OUT_OF_SHOPPING_CART",
+          tenant_id: "superare",
+          product_code: "SUPERARE_CURSO_X",
+          source: "hotmart",
+          occurred_at: new Date().toISOString(),
+          lead: { email: "qa.cart.superare@example.com" },
+          payload: {},
+        },
+      }],
+    }, env);
+
+    const emailCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/smtp/email"));
+    expect(emailCall).toBeTruthy();
+    const body = JSON.parse(String((emailCall?.[1] as RequestInit)?.body || "{}")) as {
+      params?: Record<string, string>;
+    };
+    expect(body.params?.checkout_url).toBe("https://pay.hotmart.com/SUPERARE123");
+    expect(body.params?.checkout_url).not.toContain("links.decolesuacarreiraesg.com.br");
+    expect((env.IDENTITY_KV.put as any).mock.calls.some((call: unknown[]) =>
+      String(call[0]).startsWith("superare:checkout_recovery:")
+    )).toBe(false);
+
+    vi.unstubAllGlobals();
+  });
+
   it("grava dados de checkout recuperados do historico para prefill na Hotmart", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -676,6 +815,7 @@ describe("funnel-dispatcher", () => {
     const env = makeEnv({
       EVENT_STORE_DB: d1Stub.db,
       BREVO_API_KEY: "set",
+      LINKS_BASE_URL: "https://links.decolesuacarreiraesg.com.br",
       CATALOG_JSON: JSON.stringify({
         products: {
           DECOLE_PLANOVOO: {
@@ -1671,7 +1811,9 @@ describe("funnel-dispatcher", () => {
       GA4_MEASUREMENT_ID: "G-TEST",
       GA4_API_SECRET: "test-secret",
       PLANOVOO_API_BASE_URL: "https://app.planovoo.test",
+      PLANOVOO_API_BASE_URL_DECOLE: "https://app.planovoo.test",
       PLANOVOO_HOOK_SECRET: "test-secret",
+      PLANOVOO_HOOK_SECRET_DECOLE: "test-secret",
       BREVO_API_KEY: "xkeysib-test",
     });
 

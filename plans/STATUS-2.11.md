@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-18 ~16:08 WEST por Codex — Slice 2.11A.4 DONE
+> **Última atualização:** 2026-05-18 ~17:52 WEST por Codex — Slice 2.11A.5 IN_PROGRESS
 > **Fase atual:** Fase 2 — Refactor (2/9 slices completos)
-> **Próxima ação:** criar/iniciar `2.11A.5` — Refactor integrações restantes (`forward_n8n`, `call_product_api`, links/replyTo)
+> **Próxima ação:** executar `2.11A.5` — Refactor integrações restantes (`call_product_api`, links/replyTo)
 
 ---
 
@@ -53,7 +53,10 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Slice em progresso
 
-(nenhum — 2.11A.4 concluído; próximo recomendado: 2.11A.5)
+**2.11A.5** — Refactor integrações restantes do dispatcher ⏳
+- **File:** [`slices/2.11A/5-refactor-integrations.md`](./slices/2.11A/5-refactor-integrations.md)
+- **Started:** 2026-05-18 17:52 WEST por Codex
+- **Escopo:** `call_product_api` com Secrets Store, links de recuperação por tenant e remoção de fallback hardcoded de `replyToEmail`.
 
 ## Último slice concluído
 
@@ -104,7 +107,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 ### Fase 2 — Refactor (testes verdes, sem deploy)
 - [x] **2.11A.3** ✅ — Refactor resolveTrackingConfig (sGTM/GA4 do tenant) → [`slices/2.11A/3-refactor-tracking-config.md`](./slices/2.11A/3-refactor-tracking-config.md) **(DONE 2026-05-18)** — commit `22a8853`
 - [x] **2.11A.4** ✅ — Refactor handlers Brevo (ctx.credentials) → [`slices/2.11A/4-refactor-brevo-handlers.md`](./slices/2.11A/4-refactor-brevo-handlers.md) **(DONE 2026-05-18)** — commit `e44766e`
-- [ ] **2.11A.5** — Refactor forward_n8n + call_product_api + LINKS_BASE_URL + isPlanovooProductCode + replyToEmail → `slices/2.11A/5-refactor-integrations.md` (a criar)
+- [ ] **2.11A.5** ⏳ — Refactor forward_n8n + call_product_api + LINKS_BASE_URL + isPlanovooProductCode + replyToEmail → [`slices/2.11A/5-refactor-integrations.md`](./slices/2.11A/5-refactor-integrations.md) **(IN_PROGRESS 2026-05-18)** — `forward_n8n`/`isPlanovooProductCode` deferidos para 2.11A.9
 - [ ] **2.11A.7-prep** — Refactor api-hotmart-ingress (inverter ordem + lookup catalog + remove fallback) → `slices/2.11A/7-prep-refactor-hotmart-ingress.md` (a criar)
 - [ ] **2.11A.8-prep** — Refactor api-funnel-ingress (CORS catalog + remove fallbacks + appWebhooks) → `slices/2.11A/8-prep-refactor-funnel-ingress.md` (a criar)
 - [ ] **2.11B.2** — Refatorar workspace sGTM em PREVIEW (lookup tables, variáveis dinâmicas) → `slices/2.11B/2-refactor-sgtm-workspace-preview.md` (a criar)

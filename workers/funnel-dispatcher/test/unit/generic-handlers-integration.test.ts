@@ -161,7 +161,9 @@ describe("generic handlers integration (call_product_api + send_template_email)"
       BREVO_API_KEY: "",
       BREVO_API_KEY_DECOLE: "xkeysib-decole-tenant",
       HOTMART_TOKEN_DECOLE: "hotmart-decole-token",
-      PLANOVOO_API_BASE_URL: "https://plano.tenant.test",
+      PLANOVOO_API_BASE_URL: "https://legacy.planovoo.test",
+      PLANOVOO_API_BASE_URL_DECOLE: "https://plano.tenant.test",
+      PLANOVOO_HOOK_SECRET_DECOLE: "test-secret",
       CATALOG_JSON: JSON.stringify({
         tenants: {
           decole: {
@@ -181,10 +183,10 @@ describe("generic handlers integration (call_product_api + send_template_email)"
                       eventType: "PURCHASE_APPROVED",
                       chain: ["call_product_api", "send_template_email"],
                       product_api: {
-                        url_env: "PLANOVOO_API_BASE_URL",
+                        url_env: "PLANOVOO_API_BASE_URL_DECOLE",
                         path: "/api/hooks/purchase",
                         method: "POST",
-                        hmac_secret_env: "PLANOVOO_HOOK_SECRET",
+                        hmac_secret_env: "PLANOVOO_HOOK_SECRET_DECOLE",
                         request_mapping: {
                           email: "$.data.buyer.email",
                           transacao: "$.data.purchase.transaction",
@@ -219,6 +221,46 @@ describe("generic handlers integration (call_product_api + send_template_email)"
     const emailBody = JSON.parse(String(emailInit.body));
     expect(emailBody.replyTo).toEqual({ email: "contato@decolesuacarreiraesg.com.br" });
     expect(emailBody.params.formUrl).toContain("/formulario/tenant-token");
+  });
+
+  it("does not inject a hardcoded DECOLE replyTo for legacy catalog email config", async () => {
+    const fetchMock = mockGlobalFetch([
+      { body: { messageId: "msg-no-reply-to" }, status: 201 },
+    ]);
+    globalThis.fetch = fetchMock;
+
+    const handlers = createHandlers();
+    const event = makeEvent();
+    const env = makeEnv({
+      CATALOG_JSON: JSON.stringify({
+        products: {
+          DECOLE_PLANOVOO: {
+            funnelEventArchitecture: {
+              events: [
+                {
+                  eventType: "PURCHASE_APPROVED",
+                  chain: ["send_template_email"],
+                  template_email: {
+                    templateId: 12,
+                    to_email: "$.data.buyer.email",
+                    params_mapping: {
+                      transacao: "$.data.purchase.transaction",
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      }),
+    });
+
+    const result = await runChain(event, env, handlers);
+
+    expect(result.executed).toEqual(["send_template_email"]);
+    const [, emailInit] = getFetchCall(fetchMock, 0);
+    const emailBody = JSON.parse(String(emailInit.body));
+    expect(emailBody.replyTo).toBeUndefined();
   });
 
   it("uses tenant-aware dedupe keys for same event_id across tenants", async () => {

@@ -1099,10 +1099,10 @@
                   "Plano de Voo API"
                 ],
                 "product_api": {
-                  "url_env": "PLANOVOO_API_BASE_URL",
+                  "url_env": "PLANOVOO_API_BASE_URL_DECOLE",
                   "path": "/api/hooks/purchase",
                   "method": "POST",
-                  "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
+                  "hmac_secret_env": "PLANOVOO_HOOK_SECRET_DECOLE",
                   "request_mapping": {
                     "email": "$.data.buyer.email ?? $.buyer.email ?? $.lead.email",
                     "nome": "$.data.buyer.name ?? $.buyer.name",
@@ -1166,10 +1166,10 @@
                   "send_template_email"
                 ],
                 "product_api": {
-                  "url_env": "PLANOVOO_API_BASE_URL",
+                  "url_env": "PLANOVOO_API_BASE_URL_DECOLE",
                   "path": "/api/hooks/refund",
                   "method": "POST",
-                  "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
+                  "hmac_secret_env": "PLANOVOO_HOOK_SECRET_DECOLE",
                   "request_mapping": {
                     "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
                   },
@@ -1215,10 +1215,10 @@
                   "send_template_email"
                 ],
                 "product_api": {
-                  "url_env": "PLANOVOO_API_BASE_URL",
+                  "url_env": "PLANOVOO_API_BASE_URL_DECOLE",
                   "path": "/api/hooks/refund",
                   "method": "POST",
-                  "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
+                  "hmac_secret_env": "PLANOVOO_HOOK_SECRET_DECOLE",
                   "request_mapping": {
                     "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
                   },
@@ -1264,10 +1264,10 @@
                   "send_template_email"
                 ],
                 "product_api": {
-                  "url_env": "PLANOVOO_API_BASE_URL",
+                  "url_env": "PLANOVOO_API_BASE_URL_DECOLE",
                   "path": "/api/hooks/refund",
                   "method": "POST",
-                  "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
+                  "hmac_secret_env": "PLANOVOO_HOOK_SECRET_DECOLE",
                   "request_mapping": {
                     "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
                   },
@@ -1313,10 +1313,10 @@
                   "send_template_email"
                 ],
                 "product_api": {
-                  "url_env": "PLANOVOO_API_BASE_URL",
+                  "url_env": "PLANOVOO_API_BASE_URL_DECOLE",
                   "path": "/api/hooks/protest",
                   "method": "POST",
-                  "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
+                  "hmac_secret_env": "PLANOVOO_HOOK_SECRET_DECOLE",
                   "request_mapping": {
                     "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
                   },
@@ -1362,10 +1362,10 @@
                   "send_template_email"
                 ],
                 "product_api": {
-                  "url_env": "PLANOVOO_API_BASE_URL",
+                  "url_env": "PLANOVOO_API_BASE_URL_DECOLE",
                   "path": "/api/hooks/refund",
                   "method": "POST",
-                  "hmac_secret_env": "PLANOVOO_HOOK_SECRET",
+                  "hmac_secret_env": "PLANOVOO_HOOK_SECRET_DECOLE",
                   "request_mapping": {
                     "transacao": "$.data.purchase.transaction ?? $.purchase.transaction"
                   },

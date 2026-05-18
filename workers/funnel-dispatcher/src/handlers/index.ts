@@ -22,7 +22,6 @@ import { callProductApi, type ProductApiConfig } from "./call-product-api";
 import { sendTemplateEmail, type TemplateEmailConfig } from "./send-template-email";
 
 const BREVO_BASE_URL = "https://api.brevo.com/v3";
-const LINKS_BASE_URL = "https://links.decolesuacarreiraesg.com.br";
 const CHECKOUT_RECOVERY_KEY_PREFIX = "checkout_recovery:";
 const CHECKOUT_RECOVERY_INDEX_PREFIX = "checkout_recovery_index:";
 const CHECKOUT_RECOVERY_TTL_SECONDS = 14 * 24 * 60 * 60;
@@ -149,6 +148,12 @@ interface CatalogTenantTrackingConfig {
 
 interface CatalogTenantWithTracking extends CatalogTenantConfig {
   tracking?: CatalogTenantTrackingConfig;
+}
+
+interface CatalogTenantWithLinks extends CatalogTenantConfig {
+  links?: {
+    linksDomain?: string;
+  };
 }
 
 const bundledCatalog = bundledCatalogJson as ParsedCatalog;
@@ -1211,6 +1216,38 @@ async function buildCheckoutRecoveryParams(event: FunnelEvent, env: DispatcherEn
   return params;
 }
 
+function normalizeHttpBaseUrl(value: string): string {
+  if (!value) return "";
+  return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+}
+
+function resolveCheckoutLinksBaseUrl(event: FunnelEvent, env: DispatcherEnv): string {
+  const catalog = getCatalog(env);
+  const hasTenantCatalog = Boolean(catalog.tenants && Object.keys(catalog.tenants).length > 0);
+
+  if (!hasTenantCatalog) {
+    return normalizeHttpBaseUrl(asString(env.LINKS_BASE_URL || env.CHECKOUT_LINKS_BASE_URL));
+  }
+
+  const tenantId = resolveEventTenantId(event, catalog);
+  const tenant = catalog.tenants?.[tenantId] as CatalogTenantWithLinks | undefined;
+  const linksDomain = asString(tenant?.links?.linksDomain);
+  if (!linksDomain) {
+    console.log(
+      JSON.stringify({
+        stage: "handler_warn",
+        handler: "send_cart_abandonment_email",
+        reason: "missing_tenant_links_domain",
+        tenant_id: tenantId,
+        product_code: event.product_code,
+        event_id: event.event_id,
+      })
+    );
+    return "";
+  }
+  return normalizeHttpBaseUrl(linksDomain);
+}
+
 async function buildCheckoutRecoveryLink(
   event: FunnelEvent,
   env: DispatcherEnv,
@@ -1219,10 +1256,12 @@ async function buildCheckoutRecoveryLink(
 ): Promise<string> {
   const checkoutPath = asString(product?.links?.checkoutPath);
   if (!checkoutPath || !env.IDENTITY_KV) return fallbackCheckoutUrl;
+  const linksBaseUrl = resolveCheckoutLinksBaseUrl(event, env);
+  if (!linksBaseUrl) return fallbackCheckoutUrl;
 
   let checkoutUrl: URL;
   try {
-    checkoutUrl = new URL(checkoutPath, asString(env.LINKS_BASE_URL || env.CHECKOUT_LINKS_BASE_URL) || LINKS_BASE_URL);
+    checkoutUrl = new URL(checkoutPath, linksBaseUrl);
   } catch {
     return fallbackCheckoutUrl;
   }
@@ -1801,7 +1840,7 @@ async function resolveContextCredentials(
       field: "legacy.BREVO_API_KEY",
     }),
     hotmartToken: "",
-    replyToEmail: "contato@decolesuacarreiraesg.com.br",
+    replyToEmail: "",
   };
 }
 

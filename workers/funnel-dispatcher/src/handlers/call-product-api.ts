@@ -1,5 +1,6 @@
 import { HandlerContext } from "../handler-context";
 import { mapValue } from "../payload-mapper";
+import { resolveSecret, type SecretValue } from "../../../../packages/shared/src/secrets-store-wrapper";
 
 export interface ProductApiConfig {
   url?: string;
@@ -41,13 +42,24 @@ function mapEventPayload(ctx: HandlerContext, mapping: Record<string, string>): 
   return result;
 }
 
-function resolveProductApiUrl(ctx: HandlerContext, config: ProductApiConfig): string {
+async function resolveConfiguredEnvString(ctx: HandlerContext, envName: string | undefined, label: string): Promise<string> {
+  const fallbackField = label === "url" ? "product_api.url_env" : "product_api.hmac_secret_env";
+  if (!envName) {
+    throw new Error(`call_product_api: missing ${label} env var ${fallbackField}`);
+  }
+  try {
+    return await resolveSecret(ctx.env[envName] as SecretValue, envName);
+  } catch (err) {
+    throw new Error(
+      `call_product_api: missing ${label} env var ${envName}: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+}
+
+async function resolveProductApiUrl(ctx: HandlerContext, config: ProductApiConfig): Promise<string> {
   if (config.url) return config.url;
 
-  const baseUrl =
-    config.url_env && typeof ctx.env[config.url_env] === "string"
-      ? String(ctx.env[config.url_env]).replace(/\/$/, "")
-      : "";
+  const baseUrl = (await resolveConfiguredEnvString(ctx, config.url_env, "url")).replace(/\/$/, "");
   if (!baseUrl) {
     throw new Error(
       `call_product_api: missing url or env var ${config.url_env || "product_api.url_env"}`
@@ -63,10 +75,7 @@ export async function callProductApi(
   config: ProductApiConfig,
   fetchImpl: typeof fetch = fetch
 ): Promise<void> {
-  const secret = ctx.env[config.hmac_secret_env];
-  if (typeof secret !== "string" || !secret) {
-    throw new Error(`call_product_api: missing env var ${config.hmac_secret_env}`);
-  }
+  const secret = await resolveConfiguredEnvString(ctx, config.hmac_secret_env, "hmac secret");
 
   const mapped = mapEventPayload(ctx, config.request_mapping);
   const missing = (config.skip_if_missing || []).filter((key) => {
@@ -89,7 +98,7 @@ export async function callProductApi(
 
   const body = JSON.stringify(mapped);
   const signature = await signHmac(body, secret);
-  const url = resolveProductApiUrl(ctx, config);
+  const url = await resolveProductApiUrl(ctx, config);
 
   const response = await fetchImpl(url, {
     method: config.method,
