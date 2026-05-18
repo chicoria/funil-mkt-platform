@@ -349,6 +349,10 @@ Cada bloco é commit isolado com testes verdes localmente. **Sem deploy.**
 [B] 2.11B.3  Validar workspace em preview com tenant fake superare-test
 [C] 2.11C.1  links-redirect refactor (bundle catálogo + lookup routes/contacts)
 [D] 2.11D.2  dashboard-sync refactor runSync (loops aninhados, ?tenant=)
+[E] 2.11E.1  mkt-dashboard: rename total (pasta, git, package.json, wrangler, strings)
+[E] 2.11E.2  mkt-dashboard: lib/d1.ts com tenant_id em todas as queries
+[E] 2.11E.3  mkt-dashboard: API routes com repasse ?tenant= ao worker
+[E] 2.11E.5  mkt-dashboard: auth por tenant (ADMIN_SECRET_{TENANT} + login)
 ```
 
 ### FASE 3 — Deploys disruptivos (janela 48h cada)
@@ -362,9 +366,6 @@ Cada bloco é commit isolado com testes verdes localmente. **Sem deploy.**
 [A] 2.11A.8  Deploy api-funnel-ingress + smoke CORS browser
 [C] 2.11C.2  Deploy links-redirect + smoke todas URLs conhecidas
 [D] 2.11D.3  Deploy dashboard-sync + backfill sanity check
-[E] 2.11E.1  Rename decole-dashboard → mkt-dashboard (pasta + git + código)
-[E] 2.11E.2  lib/d1.ts: tenant_id em todas as queries
-[E] 2.11E.3  API routes: repasse ?tenant= ao worker
 [E] 2.11E.4  Deploy mkt-dashboard + smoke DECOLE
 ```
 

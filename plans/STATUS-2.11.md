@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-18 por Claude Sonnet 4.6 — Slice 2.11D.2 DONE — **Fase 2 COMPLETA**
-> **Fase atual:** Fase 2 — Refactor (9/9 slices completos) ✅
-> **Próxima ação:** validação humana (G.10) antes de iniciar Fase 3 — deploys disruptivos
+> **Última atualização:** 2026-05-18 por Claude Sonnet 4.6 — Fase 2 reaberta com slices 2.11E (mkt-dashboard)
+> **Fase atual:** Fase 2 — Refactor (9/13 slices completos) ⏳
+> **Próxima ação:** iniciar 2.11E.1 — rename total decole-dashboard → mkt-dashboard
 
 ---
 
@@ -42,7 +42,7 @@
 | Fase 0 — Preparação | 4/4 | ✅ Completa |
 | Fase 0.5 — Testes de regressão | 7/7 | ✅ Completa |
 | Fase 1 — Popular secrets + bindings | 1/1 | ✅ Completa |
-| Fase 2 — Refactor | 9/9 | ✅ Completa |
+| Fase 2 — Refactor | 9/13 | ⏳ Reaberta (4 slices 2.11E adicionados) |
 | Fase 3 — Deploys disruptivos | 0/6 | ⏸️ Não iniciada |
 | Fase 4 — Validação cruzada + limpeza | 0/5 | ⏸️ Não iniciada |
 | **Total** | **21/32** | |
@@ -53,7 +53,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Slice em progresso
 
-(nenhum — Fase 2 completa; aguardando validação humana para Fase 3)
+(nenhum)
 
 ## Último slice concluído
 
@@ -159,10 +159,10 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - [ ] **2.11A.8** — Deploy api-funnel-ingress + smoke CORS browser → `slices/2.11A/8-deploy-funnel-ingress.md` (a criar)
 - [ ] **2.11C.2** — Deploy links-redirect + smoke todas URLs conhecidas → `slices/2.11C/2-deploy-links-redirect.md` (a criar)
 - [ ] **2.11D.3** — Deploy dashboard-sync + backfill sanity check → `slices/2.11D/3-deploy-dashboard-sync.md` (a criar)
-- [ ] **2.11E.1** — Rename total decole-dashboard → mkt-dashboard (pasta, git, package.json, wrangler.toml, strings) → `slices/2.11E/1-rename-mkt-dashboard.md` (a criar)
-- [ ] **2.11E.2** — `lib/d1.ts`: tenant_id em todas as queries → `slices/2.11E/2-d1-queries-tenant-id.md` (a criar)
-- [ ] **2.11E.3** — API routes: repasse `?tenant=` ao worker + seletor transitório → `slices/2.11E/3-api-tenant-passthrough.md` (a criar)
-- [ ] **2.11E.4** — Deploy mkt-dashboard + smoke DECOLE → `slices/2.11E/4-deploy-mkt-dashboard.md` (a criar)
+- [ ] **2.11E.1** — Rename total decole-dashboard → mkt-dashboard (pasta, git, package.json, wrangler.toml, strings) → `slices/2.11E/1-rename-mkt-dashboard.md` (a criar) · **Fase 2**
+- [ ] **2.11E.2** — `lib/d1.ts`: tenant_id em todas as queries → `slices/2.11E/2-d1-queries-tenant-id.md` (a criar) · **Fase 2**
+- [ ] **2.11E.3** — API routes: repasse `?tenant=` ao worker + seletor transitório → `slices/2.11E/3-api-tenant-passthrough.md` (a criar) · **Fase 2**
+- [ ] **2.11E.5** — Auth por tenant: `ADMIN_SECRET_{TENANT}` + login com seleção de tenant → `slices/2.11E/5-auth-per-tenant.md` (a criar) · **Fase 2**
 
 ### Fase 4 — Validação cruzada + limpeza
 - [ ] **2.11Z.1** — Smoke E2E cross-slice com tenant fake superare-test → `slices/2.11Z/1-cross-tenant-e2e-validation.md` (a criar)
@@ -170,7 +170,6 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - [ ] **2.11B.5** — Documentar runbook onboarding tenant em RUNBOOK-ONBOARDING-TENANT.md → `slices/2.11B/5-runbook-onboarding.md` (a criar)
 - [ ] **2.11C.3** — links-redirect remove env vars antigas + validar grep → `slices/2.11C/3-cleanup-links-redirect.md` (a criar)
 - [ ] **2.11D.4** — dashboard-sync remove fallbacks + secrets antigos → `slices/2.11D/4-cleanup-dashboard-sync.md` (a criar)
-- [ ] **2.11E.5** — Auth por tenant: `ADMIN_SECRET_{TENANT}` + login com seleção de tenant → `slices/2.11E/5-auth-per-tenant.md` (a criar)
 - [ ] **2.11E.6** — Smoke auth cross-tenant + remover `ADMIN_SECRET` global → `slices/2.11E/6-cleanup-auth.md` (a criar)
 
 ---
@@ -228,14 +227,13 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Próxima ação concreta
 
-**Para o próximo agente / humano:**
+**Para o próximo agente:**
 
-1. **Validação humana obrigatória (G.10):** Fase 2 completa → confirmar "ready for Fase 3?".
-   - Verificar que todos os workers têm testes verdes localmente.
-   - Confirmar que grep audit passa em todos os 5 workers.
-   - Decidir ordem de deploys disruptivos (Fase 3).
-2. **Após aprovação:** iniciar `2.11A.6` — deploy funnel-dispatcher prod + smoke E2E (primeiro da Fase 3, menor risco).
-3. **Sequência Fase 3:** 2.11A.6 → 2.11B.4 → 2.11A.7 → 2.11A.8 → 2.11C.2 → 2.11D.3 (janela 48h cada).
+1. Ler este STATUS + [`PLANO-MKT-DASHBOARD-MULTI-TENANT.md`](./PLANO-MKT-DASHBOARD-MULTI-TENANT.md).
+2. Criar `plans/slices/2.11E/1-rename-mkt-dashboard.md` a partir de `SLICE-TEMPLATE.md`.
+3. Executar **2.11E.1** — rename total do repositório `decole-dashboard` → `mkt-dashboard`.
+4. Sequência Fase 2 restante: 2.11E.1 → 2.11E.2 → 2.11E.3 → 2.11E.5.
+5. Após os 4 slices DONE: validação humana G.10 → Fase 3.
 
 ---
 

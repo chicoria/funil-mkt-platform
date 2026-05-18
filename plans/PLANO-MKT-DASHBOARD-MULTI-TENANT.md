@@ -177,12 +177,12 @@ Secrets Store (account-level):
 
 | ID | Frente | Descrição | Fase |
 |---|---|---|---|
-| **2.11E.1** | A | Rename total: pasta, git remote, package.json, wrangler.toml, strings | Fase 3 (junto com deploys) |
-| **2.11E.2** | A | `lib/d1.ts`: adicionar `tenant_id` em todas as queries | Fase 3 |
-| **2.11E.3** | A | API routes: repasse `?tenant=` ao worker; `TENANT_ID` env var transitória | Fase 3 |
-| **2.11E.4** | A | Deploy `mkt-dashboard` + smoke DECOLE | Fase 3 |
-| **2.11E.5** | B | Auth: `ADMIN_SECRET_{TENANT}` + login com seleção de tenant | Fase 4 |
-| **2.11E.6** | B | Smoke auth cross-tenant + remover `ADMIN_SECRET` global | Fase 4 |
+| **2.11E.1** | A | Rename total: pasta, git remote, package.json, wrangler.toml, strings | **Fase 2** (refactor, sem deploy) |
+| **2.11E.2** | A | `lib/d1.ts`: adicionar `tenant_id` em todas as queries + testes | **Fase 2** (refactor, sem deploy) |
+| **2.11E.3** | A | API routes: repasse `?tenant=` ao worker; `TENANT_ID` env var transitória | **Fase 2** (refactor, sem deploy) |
+| **2.11E.4** | A | Deploy `mkt-dashboard` + smoke DECOLE | Fase 3 (deploy disruptivo) |
+| **2.11E.5** | B | Auth: `ADMIN_SECRET_{TENANT}` + login com seleção de tenant | **Fase 2** (refactor, sem deploy) |
+| **2.11E.6** | B | Smoke auth cross-tenant + remover `ADMIN_SECRET` global | Fase 4 (limpeza) |
 
 ---
 
