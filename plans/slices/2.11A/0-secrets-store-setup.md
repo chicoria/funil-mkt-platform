@@ -10,7 +10,7 @@
 | Estado | DONE |
 | Started | 2026-05-18 ~01:15 por Claude Code (agent) |
 | Completed | 2026-05-18 ~01:58 por Claude Code (agent) |
-| Commit final | (a registrar após commit) |
+| Commit final | `e835fe1` |
 | PR | (commit direto na main, sem PR — bootstrap) |
 | Janela de smoke | N/A (não-disruptivo) |
 | Cloudflare Secrets Store ID | `23bdc9c2e8ca470d82352c53ec8d2e67` (nome: `default_secrets_store` — único permitido pela conta hoje) |
