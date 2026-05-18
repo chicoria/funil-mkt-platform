@@ -1,7 +1,7 @@
 # Plano Master — Multi-Tenant
 
 > **Ponto de entrada autoritativo** para toda mudança no `funil-mkt-platform` que envolva multi-tenancy.
-> **Status:** Em execução — 13/32 slices concluídos · Fases 0, 0.5 e 1 completas · Fase 2 em andamento (1/9) · Próximo: 2.11A.4 (atualizado em 2026-05-18 ~15:51 WEST).
+> **Status:** Em execução — 14/32 slices concluídos · Fases 0, 0.5 e 1 completas · Fase 2 em andamento (2/9) · Próximo: 2.11A.5 (atualizado em 2026-05-18 ~16:08 WEST).
 > **Source of truth de progresso:** [`STATUS-2.11.md`](./STATUS-2.11.md)
 
 ---

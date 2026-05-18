@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-18 ~16:00 WEST por Codex — Slice 2.11A.4 IN_PROGRESS
-> **Fase atual:** Fase 2 — Refactor (1/9 slices completos)
-> **Próxima ação:** executar `2.11A.4` — Refactor handlers Brevo (`ctx.credentials`)
+> **Última atualização:** 2026-05-18 ~16:08 WEST por Codex — Slice 2.11A.4 DONE
+> **Fase atual:** Fase 2 — Refactor (2/9 slices completos)
+> **Próxima ação:** criar/iniciar `2.11A.5` — Refactor integrações restantes (`forward_n8n`, `call_product_api`, links/replyTo)
 
 ---
 
@@ -42,10 +42,10 @@
 | Fase 0 — Preparação | 4/4 | ✅ Completa |
 | Fase 0.5 — Testes de regressão | 7/7 | ✅ Completa |
 | Fase 1 — Popular secrets + bindings | 1/1 | ✅ Completa |
-| Fase 2 — Refactor | 1/9 | ⏳ Em andamento |
+| Fase 2 — Refactor | 2/9 | ⏳ Em andamento |
 | Fase 3 — Deploys disruptivos | 0/6 | ⏸️ Não iniciada |
 | Fase 4 — Validação cruzada + limpeza | 0/5 | ⏸️ Não iniciada |
-| **Total** | **13/32** | |
+| **Total** | **14/32** | |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
@@ -53,19 +53,21 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Slice em progresso
 
-**2.11A.4** — Refactor handlers Brevo (`ctx.credentials`) ⏳
-- **File:** [`slices/2.11A/4-refactor-brevo-handlers.md`](./slices/2.11A/4-refactor-brevo-handlers.md)
-- **Started:** 2026-05-18 16:00 WEST por Codex
-- **Escopo:** `send_brevo_doi`, `update_brevo_funnel` e `send_cart_abandonment_email` usam `HandlerContext.credentials.brevoApiKey` resolvido por tenant.
+(nenhum — 2.11A.4 concluído; próximo recomendado: 2.11A.5)
 
 ## Último slice concluído
+
+**2.11A.4** — Refactor handlers Brevo (`ctx.credentials`) ✅
+- **File:** [`slices/2.11A/4-refactor-brevo-handlers.md`](./slices/2.11A/4-refactor-brevo-handlers.md)
+- **Commit:** `e44766e`
+- **Entregáveis:** `send_brevo_doi`, `update_brevo_funnel` e `send_cart_abandonment_email` usam `HandlerContext.credentials.brevoApiKey`, suportam Secrets Store bindings e isolamento cross-tenant; `tenants.decole.credentials` repontado para `_DECOLE`.
+
+## Referência histórica
 
 **2.11A.3** — Refactor `resolveTrackingConfig` (sGTM/GA4 do tenant) ✅
 - **File:** [`slices/2.11A/3-refactor-tracking-config.md`](./slices/2.11A/3-refactor-tracking-config.md)
 - **Commit:** `22a8853`
 - **Entregáveis:** `emit_tracking` resolve sGTM/GA4 via `tenants.{id}.tracking`, suporta Secrets Store bindings via `resolveSecret()`, preserva golden master e isolamento cross-tenant.
-
-## Referência histórica
 
 **2.11A.0** — Cloudflare Secrets Store: setup + helper wrapper ✅
 - **File:** [`slices/2.11A/0-secrets-store-setup.md`](./slices/2.11A/0-secrets-store-setup.md)
@@ -101,7 +103,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ### Fase 2 — Refactor (testes verdes, sem deploy)
 - [x] **2.11A.3** ✅ — Refactor resolveTrackingConfig (sGTM/GA4 do tenant) → [`slices/2.11A/3-refactor-tracking-config.md`](./slices/2.11A/3-refactor-tracking-config.md) **(DONE 2026-05-18)** — commit `22a8853`
-- [ ] **2.11A.4** ⏳ — Refactor handlers Brevo (ctx.credentials) → [`slices/2.11A/4-refactor-brevo-handlers.md`](./slices/2.11A/4-refactor-brevo-handlers.md) **(IN_PROGRESS 2026-05-18)**
+- [x] **2.11A.4** ✅ — Refactor handlers Brevo (ctx.credentials) → [`slices/2.11A/4-refactor-brevo-handlers.md`](./slices/2.11A/4-refactor-brevo-handlers.md) **(DONE 2026-05-18)** — commit `e44766e`
 - [ ] **2.11A.5** — Refactor forward_n8n + call_product_api + LINKS_BASE_URL + isPlanovooProductCode + replyToEmail → `slices/2.11A/5-refactor-integrations.md` (a criar)
 - [ ] **2.11A.7-prep** — Refactor api-hotmart-ingress (inverter ordem + lookup catalog + remove fallback) → `slices/2.11A/7-prep-refactor-hotmart-ingress.md` (a criar)
 - [ ] **2.11A.8-prep** — Refactor api-funnel-ingress (CORS catalog + remove fallbacks + appWebhooks) → `slices/2.11A/8-prep-refactor-funnel-ingress.md` (a criar)
@@ -146,7 +148,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 | Recurso | Estado atual | Última verificação |
 |---|---|---|
 | Cloudflare Secrets Store `default_secrets_store` | ✅ **15/15 secrets** criados (ID `23bdc9c2e8ca470d82352c53ec8d2e67`) | 2026-05-18 |
-| Catálogo `config/products.catalog.json` schemaVersion | **5** (v5 aditivo — campos novos + v4 mantidos) | 2026-05-18 |
+| Catálogo `config/products.catalog.json` schemaVersion | **5** (v5 aditivo — `tenants.decole.credentials` repontado para secrets `_DECOLE`; v4 mantido onde ainda há fallback) | 2026-05-18 |
 | Workers deployed (prod) | api-funnel-ingress, api-hotmart-ingress, funnel-dispatcher, links-redirect, dashboard-sync — **wrangler.toml com bindings Secrets Store, mas SEM redeploy ainda** (Fase 3) | 2026-05-18 |
 | D1 `ga4_daily_metrics` | **Schema v2: coluna `tenant_id` adicionada** (migration 2.11D.1 — roda no bootstrap) | 2026-05-18 |
 | D1 `meta_daily_metrics` | **Schema v2: coluna `tenant_id` adicionada** (migration 2.11D.1) | 2026-05-18 |

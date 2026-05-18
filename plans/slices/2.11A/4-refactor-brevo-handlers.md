@@ -7,10 +7,10 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | IN_PROGRESS |
+| Estado | DONE |
 | Started | 2026-05-18 16:00 WEST por Codex |
-| Completed | — |
-| Commit final | — |
+| Completed | 2026-05-18 16:08 WEST por Codex |
+| Commit final | `e44766e` |
 | PR | — |
 | Janela de smoke | N/A — Fase 2 sem deploy |
 
@@ -107,7 +107,34 @@ Validação pós-rollback: testes do dispatcher voltam ao estado anterior; nenhu
 
 ## Revisão G.12 (Code + Architecture + Tests) — preenchido pelo revisor antes de DONE
 
-Pendente.
+### 2026-05-18 16:08 WEST by Codex — auto-revisão
+
+**Código TypeScript**
+- [x] Strict mode respeitado; `npm run typecheck` verde
+- [x] Handlers `send_brevo_doi`, `update_brevo_funnel` e `send_cart_abandonment_email` não leem mais `env.BREVO_API_KEY` diretamente
+- [x] `HandlerContext` resolve credenciais com `resolveSecret()`, suportando string legada e binding Secrets Store
+- [x] Fallback legado fica limitado à coexistência e não é aplicado quando o tenant não existe em catálogo multi-tenant
+
+**Arquitetura**
+- [x] Brevo passa a usar `tenants.{id}.credentials.brevo_api_key_env`
+- [x] `config/products.catalog.json` foi repontado para `BREVO_API_KEY_DECOLE` e `HOTMART_WEBHOOK_TOKEN_DECOLE`
+- [x] `send_template_email` e `call_product_api` continuam compartilhando o mesmo `HandlerContext`
+- [x] Tenant desconhecido não recebe credencial DECOLE por fallback global
+
+**Testes**
+- [x] Red verificado antes do refactor: handlers ignoravam keys por tenant e/ou usavam a key global
+- [x] Cobertura adicionada para DOI, update de funil, carrinho abandonado, Secrets Store binding e isolamento DECOLE/SUPERARE
+- [x] Sem `it.only`/`describe.skip`
+
+**Slice file**
+- [x] Execução append-only preenchida
+- [x] Decisões/gotchas registrados
+
+**Resultado:** APROVADO COM RESSALVAS
+
+Ressalvas:
+- `scripts/audit-workers-agnostic.sh` ainda não existe; gate de hardcodes segue pendente para 2.11A.9.
+- `workerViews`/`handlers` no catálogo ainda possuem metadados legados com `BREVO_API_KEY`; o runtime agora usa `tenants.{id}.credentials`. Limpeza documental completa fica junto dos fallbacks em 2.11A.9 para evitar misturar refactor funcional e remoção de legado.
 
 ---
 
@@ -142,8 +169,11 @@ Pendente.
 
 ## Gotchas / lições aprendidas
 
-Pendente.
+- Catálogo multi-tenant sem `tenant.credentials` não deve cair para `BREVO_API_KEY` global; isso mascararia tenant desconhecido como DECOLE.
+- Ao repontar `credentials.hotmart_token_env` para `_DECOLE`, o contexto precisa manter fallback para `HOTMART_WEBHOOK_TOKEN` durante a coexistência, mesmo que o token ainda não seja usado diretamente neste slice.
+- `workerViews` ainda documenta secrets antigos em alguns pontos; não é fonte runtime para os handlers e será limpo quando os fallbacks forem removidos.
 
 ## Decisões tomadas (delta vs plano original)
 
-Pendente.
+- **Catálogo:** além do código, `tenants.decole.credentials` foi repontado para `BREVO_API_KEY_DECOLE` e `HOTMART_WEBHOOK_TOKEN_DECOLE`, pois o handler passou a ler a configuração por tenant.
+- **Fallback:** manter fallback para `BREVO_API_KEY`/`HOTMART_WEBHOOK_TOKEN` apenas quando o tenant existe e a key nova ainda não está disponível, ou quando o catálogo é legado sem `tenants`.
