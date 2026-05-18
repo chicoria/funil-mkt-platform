@@ -1,7 +1,7 @@
 # Plano Master — Multi-Tenant
 
 > **Ponto de entrada autoritativo** para toda mudança no `funil-mkt-platform` que envolva multi-tenancy.
-> **Status:** Em execução — 21/32 slices concluídos · Fases 0–2 completas · Fase 3 aguardando validação humana (G.10) (atualizado em 2026-05-18 por Claude Sonnet 4.6).
+> **Status:** Em execução — 21/38 slices concluídos · Fases 0, 0.5, 1 e 2 completas · Fase 2E em andamento (mkt-dashboard refactor) (atualizado em 2026-05-18 por Claude Sonnet 4.6).
 > **Source of truth de progresso:** [`STATUS-2.11.md`](./STATUS-2.11.md)
 
 ---
@@ -389,21 +389,21 @@ Fase 0 ─┬─ [A: Store + catálogo v5] ─┐
         ├─ [B: auditar sGTM]         │
         └─ [D: migration D1]         │
                                      ▼
-Fase 0.5 ── [T: testes de regressão] ── GATE (não passa sem testes verdes)
+Fase 0.5 ── [T: testes de regressão] ── GATE
                                      ▼
 Fase 1 ── [A: popular secrets + bindings]
                                      ▼
-Fase 2 ─┬─ [A: refactors dispatcher/ingress] ──┐
-        ├─ [B: refatorar GTM preview]          │
-        ├─ [C: refatorar links-redirect]       │
-        └─ [D: refactor runSync]               │
-                                               ▼
-Fase 3 ─┬─ [A/B/C/D: deploys disruptivos workers] ──┐
-        └─ [E: rename mkt-dashboard + queries]      │
-                                                    ▼
-Fase 4 ─┬─ [Z/A/B/C/D: validação cruzada + limpeza] ──┐
-        └─ [E: auth por tenant]                        │
-                                                       ▼
+Fase 2 ─┬─ [A: refactors dispatcher/ingress] ─┐
+        ├─ [B: refatorar GTM preview]         │  ✅ DONE
+        ├─ [C: refatorar links-redirect]      │
+        └─ [D: refactor runSync]              ┘
+                                     ▼
+Fase 2E ── [E: rename mkt-dashboard + queries + auth model] ── em andamento
+                                     ▼
+Fase 3 ── [A/B/C/D/E: deploys disruptivos workers + dashboard]
+                                     ▼
+Fase 4 ── [Z/A/B/C/D/E: validação cruzada + limpeza + auth smoke]
+                                     ▼
         Bloqueador SUPERARE liberado
 ```
 

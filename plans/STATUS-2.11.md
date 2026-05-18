@@ -1,7 +1,7 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-18 por Claude Sonnet 4.6 — Fase 2 reaberta com slices 2.11E (mkt-dashboard)
-> **Fase atual:** Fase 2 — Refactor (9/13 slices completos) ⏳
+> **Última atualização:** 2026-05-18 por Claude Sonnet 4.6 — Fase 2 DONE · Fase 2E em andamento (mkt-dashboard)
+> **Fase atual:** Fase 2E — Refactor mkt-dashboard (0/4 slices completos) ⏳
 > **Próxima ação:** iniciar 2.11E.1 — rename total decole-dashboard → mkt-dashboard
 
 ---
@@ -42,10 +42,11 @@
 | Fase 0 — Preparação | 4/4 | ✅ Completa |
 | Fase 0.5 — Testes de regressão | 7/7 | ✅ Completa |
 | Fase 1 — Popular secrets + bindings | 1/1 | ✅ Completa |
-| Fase 2 — Refactor | 9/13 | ⏳ Reaberta (4 slices 2.11E adicionados) |
-| Fase 3 — Deploys disruptivos | 0/6 | ⏸️ Não iniciada |
-| Fase 4 — Validação cruzada + limpeza | 0/5 | ⏸️ Não iniciada |
-| **Total** | **21/32** | |
+| Fase 2 — Refactor (workers) | 9/9 | ✅ Completa |
+| Fase 2E — Refactor mkt-dashboard | 0/4 | ⏳ Em andamento |
+| Fase 3 — Deploys disruptivos | 0/7 | ⏸️ Não iniciada |
+| Fase 4 — Validação cruzada + limpeza | 0/6 | ⏸️ Não iniciada |
+| **Total** | **21/38** | |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
@@ -152,6 +153,12 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - [x] **2.11C.1** ✅ — links-redirect refactor (bundle catálogo + lookup routes/contacts) → [`slices/2.11C/1-refactor-links-redirect.md`](./slices/2.11C/1-refactor-links-redirect.md) **(DONE 2026-05-18)** — commit `92bb29a`
 - [x] **2.11D.2** ✅ — dashboard-sync refactor runSync (SoC 5 módulos, loop multi-tenant, ?tenant=) → [`slices/2.11D/2-refactor-sync-runner.md`](./slices/2.11D/2-refactor-sync-runner.md) **(DONE 2026-05-18)** — commit `1404ceb`
 
+### Fase 2E — Refactor mkt-dashboard (sem deploy)
+- [ ] **2.11E.1** — Rename total decole-dashboard → mkt-dashboard (pasta, git, package.json, wrangler.toml, strings) → `slices/2.11E/1-rename-mkt-dashboard.md` (a criar)
+- [ ] **2.11E.2** — `lib/d1.ts`: tenant_id em todas as queries → `slices/2.11E/2-d1-queries-tenant-id.md` (a criar)
+- [ ] **2.11E.3** — API routes: repasse `?tenant=` ao worker + seletor transitório → `slices/2.11E/3-api-tenant-passthrough.md` (a criar)
+- [ ] **2.11E.5** — Auth por tenant: `ADMIN_SECRET_{TENANT}` + login com seleção de tenant → `slices/2.11E/5-auth-per-tenant.md` (a criar)
+
 ### Fase 3 — Deploys disruptivos (janela 48h cada)
 - [ ] **2.11A.6** — Deploy funnel-dispatcher prod + smoke E2E → `slices/2.11A/6-deploy-dispatcher.md` (a criar)
 - [ ] **2.11B.4** — Publicar versão sGTM workspace em prod + smoke → `slices/2.11B/4-publish-sgtm-prod.md` (a criar)
@@ -159,10 +166,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - [ ] **2.11A.8** — Deploy api-funnel-ingress + smoke CORS browser → `slices/2.11A/8-deploy-funnel-ingress.md` (a criar)
 - [ ] **2.11C.2** — Deploy links-redirect + smoke todas URLs conhecidas → `slices/2.11C/2-deploy-links-redirect.md` (a criar)
 - [ ] **2.11D.3** — Deploy dashboard-sync + backfill sanity check → `slices/2.11D/3-deploy-dashboard-sync.md` (a criar)
-- [ ] **2.11E.1** — Rename total decole-dashboard → mkt-dashboard (pasta, git, package.json, wrangler.toml, strings) → `slices/2.11E/1-rename-mkt-dashboard.md` (a criar) · **Fase 2**
-- [ ] **2.11E.2** — `lib/d1.ts`: tenant_id em todas as queries → `slices/2.11E/2-d1-queries-tenant-id.md` (a criar) · **Fase 2**
-- [ ] **2.11E.3** — API routes: repasse `?tenant=` ao worker + seletor transitório → `slices/2.11E/3-api-tenant-passthrough.md` (a criar) · **Fase 2**
-- [ ] **2.11E.5** — Auth por tenant: `ADMIN_SECRET_{TENANT}` + login com seleção de tenant → `slices/2.11E/5-auth-per-tenant.md` (a criar) · **Fase 2**
+- [ ] **2.11E.4** — Deploy mkt-dashboard + smoke DECOLE → `slices/2.11E/4-deploy-mkt-dashboard.md` (a criar)
 
 ### Fase 4 — Validação cruzada + limpeza
 - [ ] **2.11Z.1** — Smoke E2E cross-slice com tenant fake superare-test → `slices/2.11Z/1-cross-tenant-e2e-validation.md` (a criar)
