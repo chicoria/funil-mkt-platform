@@ -173,7 +173,7 @@ export default {
     }
 
     if (url.pathname !== "/sync" && url.pathname !== "/sync/run") {
-      return new Response("decole-dashboard-sync worker", { status: 200 });
+      return new Response("dashboard-sync worker", { status: 200 });
     }
 
     if (!isAuthorized(request, env, url)) return new Response("Unauthorized", { status: 401 });
