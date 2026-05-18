@@ -274,6 +274,201 @@ describe("funnel-dispatcher", () => {
     vi.unstubAllGlobals();
   });
 
+  it("usa credenciais Brevo do tenant para DOI, funil e carrinho", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const env = makeEnv({
+      BREVO_API_KEY: "",
+      BREVO_API_KEY_DECOLE: "xkeysib-decole-tenant",
+      HOTMART_TOKEN_DECOLE: "hotmart-decole-token",
+      CATALOG_JSON: JSON.stringify({
+        tenants: {
+          decole: {
+            name: "DECOLE",
+            domains: ["api.decolesuacarreiraesg.com.br"],
+            credentials: {
+              brevo_api_key_env: "BREVO_API_KEY_DECOLE",
+              hotmart_token_env: "HOTMART_TOKEN_DECOLE",
+              replyToEmail: "contato@decolesuacarreiraesg.com.br",
+            },
+            products: {
+              DECOLE_PLANOVOO: {
+                name: "DECOLE - Plano de Voo",
+                links: {
+                  checkoutPath: "/plano-de-voo/checkout",
+                  checkoutBaseUrl: "https://pay.hotmart.com/R105463680A?off=f3yweqek",
+                },
+                brevo: {
+                  doiRedirectUrl: "https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html",
+                  lists: { precheckout: { id: "8" } },
+                  templates: { doi: { id: "10" } },
+                  funnelFields: {
+                    steps: "DECOLE_PLANOVOO_FUNIL_STEPS",
+                    lastStep: "DECOLE_PLANOVOO_FUNIL_LAST_STEP",
+                    lastStepTimestamp: "DECOLE_PLANOVOO_FUNIL_LAST_STEP_TIMESTAMP",
+                  },
+                },
+                funnelEventArchitecture: {
+                  events: [
+                    { eventType: "GENERATE_LEAD", chain: ["send_brevo_doi"], brevoConfig: {} },
+                    { eventType: "PURCHASE_APPROVED", chain: ["update_brevo_funnel"] },
+                    {
+                      eventType: "PURCHASE_OUT_OF_SHOPPING_CART",
+                      chain: ["send_cart_abandonment_email"],
+                      brevoConfig: { cartAbandonmentTemplateId: "11" },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      }),
+    });
+
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: {
+              event_id: "evt-brevo-tenant-doi",
+              event_type: "GENERATE_LEAD",
+              tenant_id: "decole",
+              product_code: "DECOLE_PLANOVOO",
+              source: "site",
+              occurred_at: "2026-05-18T12:00:00.000Z",
+              lead: { email: "tenant.doi@example.com" },
+              payload: {},
+            },
+          },
+        ],
+      },
+      env
+    );
+
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: {
+              event_id: "evt-brevo-tenant-funnel",
+              event_type: "PURCHASE_APPROVED",
+              tenant_id: "decole",
+              product_code: "DECOLE_PLANOVOO",
+              source: "hotmart",
+              occurred_at: "2026-05-18T12:05:00.000Z",
+              lead: { email: "tenant.funnel@example.com" },
+              payload: {},
+            },
+          },
+        ],
+      },
+      env
+    );
+
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: {
+              event_id: "evt-brevo-tenant-cart",
+              event_type: "PURCHASE_OUT_OF_SHOPPING_CART",
+              tenant_id: "decole",
+              product_code: "DECOLE_PLANOVOO",
+              source: "hotmart",
+              occurred_at: "2026-05-18T12:10:00.000Z",
+              lead: { email: "tenant.cart@example.com" },
+              payload: {},
+            },
+          },
+        ],
+      },
+      env
+    );
+
+    const brevoCalls = fetchMock.mock.calls.filter((call) => String(call[0]).includes("api.brevo.com/v3"));
+    expect(brevoCalls).toHaveLength(3);
+    expect(brevoCalls.map((call) => ((call[1] as RequestInit)?.headers as Record<string, string>)["api-key"]))
+      .toEqual(["xkeysib-decole-tenant", "xkeysib-decole-tenant", "xkeysib-decole-tenant"]);
+    expect(brevoCalls.map((call) => String(call[0]))).toEqual([
+      "https://api.brevo.com/v3/contacts/doubleOptinConfirmation",
+      "https://api.brevo.com/v3/contacts",
+      "https://api.brevo.com/v3/smtp/email",
+    ]);
+
+    vi.unstubAllGlobals();
+  });
+
+  it("resolve credencial Brevo via Secrets Store binding", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const brevoBinding = { get: vi.fn(async () => "xkeysib-decole-binding") };
+    const env = makeEnv({
+      BREVO_API_KEY: "",
+      BREVO_API_KEY_DECOLE: brevoBinding,
+      HOTMART_TOKEN_DECOLE: "hotmart-decole-token",
+      CATALOG_JSON: JSON.stringify({
+        tenants: {
+          decole: {
+            name: "DECOLE",
+            domains: ["api.decolesuacarreiraesg.com.br"],
+            credentials: {
+              brevo_api_key_env: "BREVO_API_KEY_DECOLE",
+              hotmart_token_env: "HOTMART_TOKEN_DECOLE",
+            },
+            products: {
+              DECOLE_ESG_MENTORIA: {
+                brevo: {
+                  funnelFields: {
+                    steps: "DECOLE_ESG_FUNIL_STEPS",
+                    lastStep: "DECOLE_ESG_FUNIL_LAST_STEP",
+                    lastStepTimestamp: "DECOLE_ESG_FUNIL_LAST_STEP_TIMESTAMP",
+                  },
+                },
+                funnelEventArchitecture: {
+                  events: [{ eventType: "PURCHASE_APPROVED", chain: ["update_brevo_funnel"] }],
+                },
+              },
+            },
+          },
+        },
+      }),
+    });
+
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: {
+              event_id: "evt-brevo-binding-1",
+              event_type: "PURCHASE_APPROVED",
+              tenant_id: "decole",
+              product_code: "DECOLE_ESG_MENTORIA",
+              source: "hotmart",
+              occurred_at: "2026-05-18T12:15:00.000Z",
+              lead: { email: "tenant.binding@example.com" },
+              payload: {},
+            },
+          },
+        ],
+      },
+      env
+    );
+
+    const contactCall = fetchMock.mock.calls.find((call) => String(call[0]) === "https://api.brevo.com/v3/contacts");
+    expect(contactCall).toBeTruthy();
+    expect(((contactCall?.[1] as RequestInit)?.headers as Record<string, string>)["api-key"]).toBe("xkeysib-decole-binding");
+    expect(brevoBinding.get).toHaveBeenCalledTimes(1);
+
+    vi.unstubAllGlobals();
+  });
+
   it("cria DOI usando template, lista e redirection do catalog por produto", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -1543,10 +1738,16 @@ describe("funnel-dispatcher", () => {
 
     const env = makeEnv({
       EVENT_STORE_DB: d1Stub.db,
-      BREVO_API_KEY: "set",
+      BREVO_API_KEY: "legacy-key-must-not-be-used",
+      BREVO_API_KEY_SUPERARE: "superare-key",
+      HOTMART_TOKEN_SUPERARE: "superare-hotmart-token",
       CATALOG_JSON: JSON.stringify({
         tenants: {
           superare: {
+            credentials: {
+              brevo_api_key_env: "BREVO_API_KEY_SUPERARE",
+              hotmart_token_env: "HOTMART_TOKEN_SUPERARE",
+            },
             products: {
               PLANOVOO: {
                 brevo: {

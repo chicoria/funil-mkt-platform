@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-18 ~15:51 WEST por Codex — Slice 2.11A.3 DONE
+> **Última atualização:** 2026-05-18 ~16:00 WEST por Codex — Slice 2.11A.4 IN_PROGRESS
 > **Fase atual:** Fase 2 — Refactor (1/9 slices completos)
-> **Próxima ação:** criar/iniciar `2.11A.4` — Refactor handlers Brevo (`ctx.credentials`)
+> **Próxima ação:** executar `2.11A.4` — Refactor handlers Brevo (`ctx.credentials`)
 
 ---
 
@@ -53,7 +53,10 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Slice em progresso
 
-(nenhum — 2.11A.3 concluído; próximo recomendado: 2.11A.4)
+**2.11A.4** — Refactor handlers Brevo (`ctx.credentials`) ⏳
+- **File:** [`slices/2.11A/4-refactor-brevo-handlers.md`](./slices/2.11A/4-refactor-brevo-handlers.md)
+- **Started:** 2026-05-18 16:00 WEST por Codex
+- **Escopo:** `send_brevo_doi`, `update_brevo_funnel` e `send_cart_abandonment_email` usam `HandlerContext.credentials.brevoApiKey` resolvido por tenant.
 
 ## Último slice concluído
 
@@ -98,7 +101,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ### Fase 2 — Refactor (testes verdes, sem deploy)
 - [x] **2.11A.3** ✅ — Refactor resolveTrackingConfig (sGTM/GA4 do tenant) → [`slices/2.11A/3-refactor-tracking-config.md`](./slices/2.11A/3-refactor-tracking-config.md) **(DONE 2026-05-18)** — commit `22a8853`
-- [ ] **2.11A.4** — Refactor handlers Brevo (ctx.credentials) → `slices/2.11A/4-refactor-brevo-handlers.md` (a criar)
+- [ ] **2.11A.4** ⏳ — Refactor handlers Brevo (ctx.credentials) → [`slices/2.11A/4-refactor-brevo-handlers.md`](./slices/2.11A/4-refactor-brevo-handlers.md) **(IN_PROGRESS 2026-05-18)**
 - [ ] **2.11A.5** — Refactor forward_n8n + call_product_api + LINKS_BASE_URL + isPlanovooProductCode + replyToEmail → `slices/2.11A/5-refactor-integrations.md` (a criar)
 - [ ] **2.11A.7-prep** — Refactor api-hotmart-ingress (inverter ordem + lookup catalog + remove fallback) → `slices/2.11A/7-prep-refactor-hotmart-ingress.md` (a criar)
 - [ ] **2.11A.8-prep** — Refactor api-funnel-ingress (CORS catalog + remove fallbacks + appWebhooks) → `slices/2.11A/8-prep-refactor-funnel-ingress.md` (a criar)

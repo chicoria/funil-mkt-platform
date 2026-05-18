@@ -349,6 +349,55 @@ describe("cross-tenant isolation — produto invisível entre tenants", () => {
   });
 });
 
+describe("cross-tenant isolation — Brevo credentials por tenant", () => {
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it("GENERATE_LEAD de tenants distintos usa API key Brevo do tenant correto", async () => {
+    const fetchMock = makeFetchMock();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const env = makeEnv({
+      CATALOG_JSON: MULTI_TENANT_CATALOG,
+      BREVO_API_KEY: "legacy-key-must-not-be-used",
+      BREVO_API_KEY_DECOLE: "decole-key",
+      BREVO_API_KEY_SUPERARE: "superare-key",
+    });
+
+    await worker.queue(
+      { messages: [{ body: {
+        event_id: "iso-brevo-decole-1",
+        event_type: "GENERATE_LEAD",
+        tenant_id: "decole",
+        product_code: "DECOLE_ESG_MENTORIA",
+        source: "site",
+        occurred_at: new Date().toISOString(),
+        lead: { email: "lead.decole@example.com" },
+        payload: {},
+      } }] },
+      env
+    );
+
+    await worker.queue(
+      { messages: [{ body: {
+        event_id: "iso-brevo-superare-1",
+        event_type: "GENERATE_LEAD",
+        tenant_id: "superare",
+        product_code: "SUPERARE_CURSO_X",
+        source: "site",
+        occurred_at: new Date().toISOString(),
+        lead: { email: "lead.superare@example.com" },
+        payload: {},
+      } }] },
+      env
+    );
+
+    const brevoCalls = fetchMock.mock.calls.filter(([url]) => String(url) === "https://api.brevo.com/v3/contacts");
+    expect(brevoCalls).toHaveLength(2);
+    expect(((brevoCalls[0]?.[1] as RequestInit)?.headers as Record<string, string>)["api-key"]).toBe("decole-key");
+    expect(((brevoCalls[1]?.[1] as RequestInit)?.headers as Record<string, string>)["api-key"]).toBe("superare-key");
+  });
+});
+
 describe("cross-tenant isolation — tenant desconhecido", () => {
   afterEach(() => { vi.unstubAllGlobals(); });
 

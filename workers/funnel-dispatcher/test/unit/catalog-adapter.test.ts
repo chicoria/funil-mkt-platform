@@ -163,7 +163,7 @@ describe("bundled products.catalog.json (multi-tenant shape — Slice 2.6B)", ()
     const decole = bundled.tenants?.decole;
     expect(decole).toBeDefined();
     expect(decole?.domains).toContain("api.decolesuacarreiraesg.com.br");
-    expect(decole?.credentials?.brevo_api_key_env).toBe("BREVO_API_KEY");
+    expect(decole?.credentials?.brevo_api_key_env).toBe("BREVO_API_KEY_DECOLE");
   });
 
   it("keeps DECOLE_PLANOVOO and DECOLE_ESG_MENTORIA under decole tenant", () => {
@@ -251,7 +251,7 @@ describe("catalog-adapter bundled catalog — schema v5 fields (Slice 2.11T.1)",
 
   it("v4 fields still present after v5 additions (backward compat)", () => {
     const credentials = v5Decole.credentials as Record<string, string>;
-    expect(credentials?.brevo_api_key_env).toBe("BREVO_API_KEY");
+    expect(credentials?.brevo_api_key_env).toBe("BREVO_API_KEY_DECOLE");
     const esgTracking = v5Products.DECOLE_ESG_MENTORIA?.tracking as Record<string, Record<string, string>>;
     expect(esgTracking?.sgtm?.endpointEnvVar).toBeDefined();
     expect(esgTracking?.ga4?.measurementIdEnvVar).toBeDefined();

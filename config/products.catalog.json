@@ -50,8 +50,8 @@
         "decolesuacarreiraesg.com.br"
       ],
       "credentials": {
-        "brevo_api_key_env": "BREVO_API_KEY",
-        "hotmart_token_env": "HOTMART_WEBHOOK_TOKEN",
+        "brevo_api_key_env": "BREVO_API_KEY_DECOLE",
+        "hotmart_token_env": "HOTMART_WEBHOOK_TOKEN_DECOLE",
         "replyToEmail": "contato@decolesuacarreiraesg.com.br"
       },
       "_v5_note": "Campos abaixo são novos no schema v5 (2026-05-18). Campos v4 dentro de products.*.tracking foram mantidos para compatibilidade. Serão removidos na Fase 2 após refactor dos workers.",

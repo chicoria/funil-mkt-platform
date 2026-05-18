@@ -191,7 +191,7 @@ function envString(env: DispatcherEnv, key: string | undefined): string {
 async function secretEnvString(
   env: DispatcherEnv,
   key: string | undefined,
-  context: { field: string; tenantId: string; productCode: string }
+  context: { handler?: string; field: string; tenantId: string; productCode: string }
 ): Promise<string> {
   const normalizedKey = asString(key);
   if (!normalizedKey) return "";
@@ -205,7 +205,7 @@ async function secretEnvString(
     console.log(
       JSON.stringify({
         stage: "handler_warn",
-        handler: "emit_tracking",
+        handler: context.handler || "emit_tracking",
         reason: "secret_resolution_failed",
         field: context.field,
         secret_name: normalizedKey,
@@ -1346,7 +1346,8 @@ async function sendBrevoEmail(
   templateIdRaw: string,
   extraParams: Record<string, unknown> = {}
 ): Promise<void> {
-  const apiKey = asString(env.BREVO_API_KEY);
+  const ctx = await getOrCreateContext(event, env);
+  const apiKey = ctx.credentials.brevoApiKey;
   const email = asString(event.lead?.email);
   const templateId = Number(templateIdRaw);
 
@@ -1449,7 +1450,8 @@ function buildBrevoDoiAttributes(event: FunnelEvent, env: DispatcherEnv): Record
 }
 
 async function createBrevoDoiContact(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
-  const apiKey = asString(env.BREVO_API_KEY);
+  const ctx = await getOrCreateContext(event, env);
+  const apiKey = ctx.credentials.brevoApiKey;
   const email = asString(event.lead?.email);
   const templateId = asPositiveInteger(resolveDoiTemplateId(event, env));
   const includeListIds = resolveDoiListIds(event, env);
@@ -1510,7 +1512,8 @@ async function createBrevoDoiContact(event: FunnelEvent, env: DispatcherEnv): Pr
 }
 
 async function updateBrevoFunnel(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
-  const apiKey = asString(env.BREVO_API_KEY);
+  const ctx = await getOrCreateContext(event, env);
+  const apiKey = ctx.credentials.brevoApiKey;
   const email = asString(event.lead?.email);
 
   if (!apiKey || !email) {
@@ -1719,40 +1722,101 @@ function resolveContextTenant(event: FunnelEvent, catalog: ParsedCatalog): strin
   return resolveEventTenantId(event, catalog);
 }
 
-function resolveContextCredentials(
+async function resolveContextSecret(
+  env: DispatcherEnv,
+  key: string | undefined,
+  context: { tenantId: string; productCode: string; field: string }
+): Promise<string> {
+  return secretEnvString(env, key, {
+    handler: "resolve_credentials",
+    tenantId: context.tenantId,
+    productCode: context.productCode,
+    field: context.field,
+  });
+}
+
+async function resolveContextSecretWithFallback(
+  env: DispatcherEnv,
+  key: string | undefined,
+  fallbackKey: string,
+  context: { tenantId: string; productCode: string; field: string; fallbackField: string }
+): Promise<string> {
+  const primary = await resolveContextSecret(env, key, {
+    tenantId: context.tenantId,
+    productCode: context.productCode,
+    field: context.field,
+  });
+  if (primary) return primary;
+
+  if (asString(key) === fallbackKey) return "";
+  return resolveContextSecret(env, fallbackKey, {
+    tenantId: context.tenantId,
+    productCode: context.productCode,
+    field: context.fallbackField,
+  });
+}
+
+async function resolveContextCredentials(
   tenant: CatalogTenantConfig | undefined,
-  env: DispatcherEnv
-): { brevoApiKey: string; hotmartToken: string; replyToEmail?: string } {
+  env: DispatcherEnv,
+  event: FunnelEvent,
+  tenantId: string,
+  hasTenantCatalog: boolean
+): Promise<{ brevoApiKey: string; hotmartToken: string; replyToEmail?: string }> {
   const credentials = tenant?.credentials;
+  const productCode = asString(event.product_code);
   if (credentials) {
     const brevoApiKeyEnv = asString(credentials.brevo_api_key_env);
     const hotmartTokenEnv = asString(credentials.hotmart_token_env);
     const replyToEmail = asString(credentials.replyToEmail);
     return {
-      brevoApiKey: envString(env, brevoApiKeyEnv),
-      hotmartToken: envString(env, hotmartTokenEnv),
+      brevoApiKey: await resolveContextSecretWithFallback(env, brevoApiKeyEnv, "BREVO_API_KEY", {
+        tenantId,
+        productCode,
+        field: "tenant.credentials.brevo_api_key_env",
+        fallbackField: "legacy.BREVO_API_KEY",
+      }),
+      hotmartToken: await resolveContextSecretWithFallback(env, hotmartTokenEnv, "HOTMART_WEBHOOK_TOKEN", {
+        tenantId,
+        productCode,
+        field: "tenant.credentials.hotmart_token_env",
+        fallbackField: "legacy.HOTMART_WEBHOOK_TOKEN",
+      }),
       ...(replyToEmail ? { replyToEmail } : {}),
     };
   }
 
+  if (hasTenantCatalog) {
+    return {
+      brevoApiKey: "",
+      hotmartToken: "",
+      replyToEmail: "",
+    };
+  }
+
   return {
-    brevoApiKey: asString(env.BREVO_API_KEY),
+    brevoApiKey: await resolveContextSecret(env, "BREVO_API_KEY", {
+      tenantId,
+      productCode,
+      field: "legacy.BREVO_API_KEY",
+    }),
     hotmartToken: "",
     replyToEmail: "contato@decolesuacarreiraesg.com.br",
   };
 }
 
-function getOrCreateContext(event: FunnelEvent, env: DispatcherEnv): HandlerContext {
+async function getOrCreateContext(event: FunnelEvent, env: DispatcherEnv): Promise<HandlerContext> {
   let ctx = chainContexts.get(event);
   if (ctx) return ctx;
 
   const catalog = getCatalog(env);
   const tenantId = resolveContextTenant(event, catalog);
+  const hasTenantCatalog = Boolean(catalog.tenants && Object.keys(catalog.tenants).length > 0);
   ctx = new HandlerContext(
     event,
     env,
     tenantId,
-    resolveContextCredentials(catalog.tenants?.[tenantId], env)
+    await resolveContextCredentials(catalog.tenants?.[tenantId], env, event, tenantId, hasTenantCatalog)
   );
   const productApiResult = getHandlerResult<ProductApiHandlerResult>(event, "call_product_api");
   if (productApiResult && isRecord(productApiResult)) {
@@ -1839,7 +1903,7 @@ export function createHandlers(): HandlerMap {
         console.log(JSON.stringify({ stage: "handler_skip", handler: "call_product_api", reason: "no_product_api_config", event_id: event.event_id }));
         return;
       }
-      const ctx = getOrCreateContext(event, env);
+      const ctx = await getOrCreateContext(event, env);
       await callProductApi(ctx, eventConfig.product_api);
       persistProductApiResult(event, ctx);
     },
@@ -1850,7 +1914,7 @@ export function createHandlers(): HandlerMap {
         console.log(JSON.stringify({ stage: "handler_skip", handler: "send_template_email", reason: "no_template_email_config", event_id: event.event_id }));
         return;
       }
-      const ctx = getOrCreateContext(event, env);
+      const ctx = await getOrCreateContext(event, env);
       await sendTemplateEmail(ctx, eventConfig.template_email);
     },
   };
