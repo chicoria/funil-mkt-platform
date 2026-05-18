@@ -7,10 +7,10 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | IN_PROGRESS |
+| Estado | DONE |
 | Started | 2026-05-18 15:41 WEST por Codex |
-| Completed | — |
-| Commit final | — |
+| Completed | 2026-05-18 15:51 WEST por Codex |
+| Commit final | `22a8853` |
 | PR | — |
 | Janela de smoke | N/A — Fase 2 sem deploy |
 
@@ -33,7 +33,7 @@
 
 | Arquivo | Ação | Descrição curta |
 |---|---|---|
-| `workers/funnel-dispatcher/src/handlers/index.ts` | EDIT | `resolveTrackingConfig` lê sGTM/GA4/Meta CAPI de `tenants.{id}.tracking`; Meta Pixel segue por produto |
+| `workers/funnel-dispatcher/src/handlers/index.ts` | EDIT | `resolveTrackingConfig` lê sGTM/GA4 de `tenants.{id}.tracking`; Meta Pixel segue por produto |
 | `workers/funnel-dispatcher/test/unit/index.test.ts` | EDIT | Ajustar teste de tracking para tenant-level v5 |
 | `workers/funnel-dispatcher/test/unit/cross-tenant-isolation.test.ts` | EDIT | Garantir isolamento com `tenants.{id}.tracking` |
 | `workers/funnel-dispatcher/test/snapshot/emit-tracking-payload.test.ts` | EDIT | Preservar golden master usando config v5 |
@@ -62,9 +62,10 @@ Nenhuma mudança esperada. O catálogo v5 já contém `tenants.decole.tracking`.
 
 ### Unit
 
-- [ ] `workers/funnel-dispatcher/test/unit/index.test.ts`: `emit_tracking` usa sGTM/GA4 do tenant e preserva `produto` por produto
-- [ ] `workers/funnel-dispatcher/test/unit/cross-tenant-isolation.test.ts`: tenants distintos usam endpoints/measurement IDs distintos em `tenants.{id}.tracking`
-- [ ] `workers/funnel-dispatcher/test/snapshot/emit-tracking-payload.test.ts`: golden master de payload preservado
+- [x] `workers/funnel-dispatcher/test/unit/index.test.ts`: `emit_tracking` usa sGTM/GA4 do tenant e preserva `produto` por produto
+- [x] `workers/funnel-dispatcher/test/unit/index.test.ts`: `emit_tracking` lê bindings `env.X.get()` do Secrets Store
+- [x] `workers/funnel-dispatcher/test/unit/cross-tenant-isolation.test.ts`: tenants distintos usam endpoints/measurement IDs distintos em `tenants.{id}.tracking`
+- [x] `workers/funnel-dispatcher/test/snapshot/emit-tracking-payload.test.ts`: golden master de payload preservado
 
 ### E2E
 
@@ -78,10 +79,13 @@ N/A — Fase 2 não faz deploy nem smoke externo.
 
 ```bash
 cd workers/funnel-dispatcher && npx vitest run test/unit/index.test.ts test/unit/cross-tenant-isolation.test.ts test/snapshot/emit-tracking-payload.test.ts
-# Esperado: testes verdes, 0 failed
+# 2026-05-18: 43 passed, 0 failed
 
 cd workers/funnel-dispatcher && npm run typecheck
-# Esperado: 0 erros TypeScript
+# 2026-05-18: 0 erros TypeScript
+
+cd workers/funnel-dispatcher && npx vitest run
+# 2026-05-18: 169 passed, 0 failed
 ```
 
 ## Smoke checklist
@@ -98,12 +102,33 @@ Validação pós-rollback: testes do dispatcher voltam ao estado anterior; nenhu
 
 ## Revisão G.12 (Code + Architecture + Tests) — preenchido pelo revisor antes de DONE
 
-### Pendente
+### 2026-05-18 15:51 WEST by Codex — auto-revisão
 
-**Resultado:** PENDENTE
+**Código TypeScript**
+- [x] Strict mode respeitado; `npm run typecheck` verde
+- [x] `resolveSecret()` usado para env vars de tracking, suportando Secrets Store binding e string legada
+- [x] Erros de Secrets Store geram `handler_warn` com `secret_name`, `tenant_id`, `product_code` e campo afetado
+- [x] Nenhum hardcode novo de tenant/produto no código de produção
 
-Ressalvas / Bloqueios:
-- —
+**Arquitetura**
+- [x] sGTM endpoint e GA4 measurement/api secret vêm primeiro de `tenants.{id}.tracking`
+- [x] Fallback v4 continua apenas durante coexistência e exige produto resolvido em catálogo multi-tenant
+- [x] Tenant desconhecido não cai para config DECOLE; teste de isolamento cobre este caso
+- [x] Meta CAPI token permanece tenant-level no catálogo, mas não é enviado pelo dispatcher; roteamento/token CAPI é responsabilidade do sGTM no slice 2.11B
+
+**Testes**
+- [x] Red verificado: testes v5 falharam antes do refactor com `missing_product_tracking_config`
+- [x] Happy path DECOLE e SUPERARE, tenant desconhecido, golden master e Secrets Store binding cobertos
+- [x] Sem `it.only`/`describe.skip`
+
+**Slice file**
+- [x] Execução append-only preenchida
+- [x] Decisões/gotchas registrados
+
+**Resultado:** APROVADO COM RESSALVAS
+
+Ressalvas:
+- `scripts/audit-workers-agnostic.sh` ainda não existe e o CI mantém o audit em `continue-on-error` até 2.11A.9. Hardcodes preexistentes em outros pontos do dispatcher continuam para slices seguintes.
 
 ---
 
@@ -116,10 +141,28 @@ Ressalvas / Bloqueios:
 - O que falhou: nada até agora.
 - Próximo passo planejado: atualizar `STATUS-2.11.md`, escrever/ajustar testes de tracking por tenant e implementar o refactor.
 
+### 2026-05-18 15:44 WEST by Codex — Red
+
+- O que foi tentado: testes de tracking migrados para catálogo v5 com `tenants.{id}.tracking`.
+- O que falhou como esperado: `emit_tracking` não chamava sGTM e logava `missing_product_tracking_config`, porque o código ainda lia sGTM/GA4 do produto.
+- Resultado: Red confirmado em `index.test.ts`, `cross-tenant-isolation.test.ts` e golden master.
+
+### 2026-05-18 15:51 WEST by Codex — Green + review
+
+- O que funcionou: `resolveTrackingConfig` passou a resolver tenant/produto pelo catálogo, ler sGTM/GA4 de `tenants.{id}.tracking` e usar `resolveSecret()` para string legada ou Secrets Store binding.
+- Validação executada:
+  - `cd workers/funnel-dispatcher && npm run typecheck` — 0 erros
+  - `cd workers/funnel-dispatcher && npx vitest run test/unit/index.test.ts test/unit/cross-tenant-isolation.test.ts test/snapshot/emit-tracking-payload.test.ts` — 43 passed
+  - `cd workers/funnel-dispatcher && npx vitest run` — 169 passed
+- Commit de implementação: `22a8853`.
+
 ## Gotchas / lições aprendidas
 
 - A Fase 2 ainda mantém fallback v4 durante coexistência. Remoção de fallbacks antigos fica para 2.11A.9.
+- Quando sGTM passa a ser tenant-level, testes que buscam URL por produto precisam limpar `fetchMock.mock.calls` entre eventos, porque dois produtos do mesmo tenant usam o mesmo endpoint.
+- O dispatcher não deve enviar `META_CAPI_ACCESS_TOKEN` no payload; esse segredo pertence ao container sGTM/lookup tables (slice 2.11B).
 
 ## Decisões tomadas (delta vs plano original)
 
-- Nenhum desvio até agora.
+- **Meta CAPI no dispatcher:** não resolver nem enviar `META_CAPI_ACCESS_TOKEN` em `emit_tracking`. O catálogo já declara `tenants.{id}.tracking.metaCapi`, mas o handler envia apenas GA4 Measurement Protocol ao sGTM. Token/Pixel CAPI são roteados no sGTM compartilhado (2.11B).
+- **Catálogo:** nenhuma alteração em `config/products.catalog.json`; o schema v5 e os campos `tenants.decole.tracking` já existiam.

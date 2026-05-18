@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-18 ~15:41 WEST por Codex — Slice 2.11A.3 IN_PROGRESS
-> **Fase atual:** Fase 2 — Refactor (0/9 slices completos; 2.11A.3 em progresso)
-> **Próxima ação:** concluir `2.11A.3` — Refactor `resolveTrackingConfig` (sGTM/GA4/Meta CAPI por tenant)
+> **Última atualização:** 2026-05-18 ~15:51 WEST por Codex — Slice 2.11A.3 DONE
+> **Fase atual:** Fase 2 — Refactor (1/9 slices completos)
+> **Próxima ação:** criar/iniciar `2.11A.4` — Refactor handlers Brevo (`ctx.credentials`)
 
 ---
 
@@ -42,10 +42,10 @@
 | Fase 0 — Preparação | 4/4 | ✅ Completa |
 | Fase 0.5 — Testes de regressão | 7/7 | ✅ Completa |
 | Fase 1 — Popular secrets + bindings | 1/1 | ✅ Completa |
-| Fase 2 — Refactor | 0/9 | ⏸️ Não iniciada |
+| Fase 2 — Refactor | 1/9 | ⏳ Em andamento |
 | Fase 3 — Deploys disruptivos | 0/6 | ⏸️ Não iniciada |
 | Fase 4 — Validação cruzada + limpeza | 0/5 | ⏸️ Não iniciada |
-| **Total** | **12/32** | |
+| **Total** | **13/32** | |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
@@ -53,19 +53,16 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Slice em progresso
 
-**2.11A.3** — Refactor `resolveTrackingConfig` (sGTM/GA4/Meta CAPI do tenant) ⏳
+(nenhum — 2.11A.3 concluído; próximo recomendado: 2.11A.4)
+
+## Último slice concluído
+
+**2.11A.3** — Refactor `resolveTrackingConfig` (sGTM/GA4 do tenant) ✅
 - **File:** [`slices/2.11A/3-refactor-tracking-config.md`](./slices/2.11A/3-refactor-tracking-config.md)
-- **Started:** 2026-05-18 15:41 WEST by Codex
-- **Escopo:** `funnel-dispatcher` sem deploy; preservar golden master de `emit_tracking`
+- **Commit:** `22a8853`
+- **Entregáveis:** `emit_tracking` resolve sGTM/GA4 via `tenants.{id}.tracking`, suporta Secrets Store bindings via `resolveSecret()`, preserva golden master e isolamento cross-tenant.
 
-## Último slice concluído
-
-**2.11A.2** — Popular secrets _DECOLE no Secrets Store + bindings ✅
-- **File:** [`slices/2.11A/2-populate-secrets-bindings.md`](./slices/2.11A/2-populate-secrets-bindings.md)
-- **Commits:** `45f83d5` · `299eead` · `5a4aab3` · `c0ba466`
-- **Entregáveis:** 15 secrets no Cloudflare Secrets Store; bindings `[[secrets_store_secrets]]` nos 5 workers; 2 supressões de código morto (forward_n8n + APP_EVENTS_HMAC)
-
-## Último slice concluído
+## Referência histórica
 
 **2.11A.0** — Cloudflare Secrets Store: setup + helper wrapper ✅
 - **File:** [`slices/2.11A/0-secrets-store-setup.md`](./slices/2.11A/0-secrets-store-setup.md)
@@ -100,7 +97,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - [x] **2.11A.2** ✅ — Popular secrets _DECOLE no Store + bindings wrangler.toml → [`slices/2.11A/2-populate-secrets-bindings.md`](./slices/2.11A/2-populate-secrets-bindings.md) **(DONE 2026-05-18)** — **15/15 criados** ✅ (n8n + app_events_hmac suprimidos — código morto; planovoo_hook_secret restaurado do VPS)
 
 ### Fase 2 — Refactor (testes verdes, sem deploy)
-- [ ] **2.11A.3** ⏳ — Refactor resolveTrackingConfig (sGTM/GA4/MetaCAPI do tenant) → [`slices/2.11A/3-refactor-tracking-config.md`](./slices/2.11A/3-refactor-tracking-config.md) **(IN_PROGRESS 2026-05-18)**
+- [x] **2.11A.3** ✅ — Refactor resolveTrackingConfig (sGTM/GA4 do tenant) → [`slices/2.11A/3-refactor-tracking-config.md`](./slices/2.11A/3-refactor-tracking-config.md) **(DONE 2026-05-18)** — commit `22a8853`
 - [ ] **2.11A.4** — Refactor handlers Brevo (ctx.credentials) → `slices/2.11A/4-refactor-brevo-handlers.md` (a criar)
 - [ ] **2.11A.5** — Refactor forward_n8n + call_product_api + LINKS_BASE_URL + isPlanovooProductCode + replyToEmail → `slices/2.11A/5-refactor-integrations.md` (a criar)
 - [ ] **2.11A.7-prep** — Refactor api-hotmart-ingress (inverter ordem + lookup catalog + remove fallback) → `slices/2.11A/7-prep-refactor-hotmart-ingress.md` (a criar)
@@ -180,19 +177,12 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Próxima ação concreta
 
-**Para o primeiro agente a executar este plano:**
+**Para o próximo agente:**
 
-1. **Confirmar com humano** que execução pode iniciar (validação humana — PLANO-MASTER G.10)
-2. **Criar slice files da Fase 0** (4 arquivos) seguindo template [`SLICE-TEMPLATE.md`](./SLICE-TEMPLATE.md):
-   - `slices/2.11A/0-secrets-store-setup.md` (exemplo modelado no satélite 1 seção H.2 do plano-de-design)
-   - `slices/2.11A/1-catalog-v5-additive.md`
-   - `slices/2.11B/1-audit-sgtm-current.md`
-   - `slices/2.11D/1-d1-migration-tenant-id.md`
-3. **Atualizar este STATUS** para refletir slices criados (mover de TODO genérico com "(a criar)" para TODO sem essa marca)
-4. **Confirmar com humano** qual slice começar primeiro (recomendado: 2.11A.0)
-5. **Pegar slice** (mudar status para IN_PROGRESS, registrar Started + agent ID)
-6. **Executar conforme slice file**
-7. **Ao final:** atualizar slice (DONE + commit + execução) + STATUS (progresso + próximo) + estado externo se aplicável
+1. Confirmar recovery point (`git status --short`, `git log --oneline -10`) e ler este STATUS + satélite 2.11A.
+2. Criar `plans/slices/2.11A/4-refactor-brevo-handlers.md` a partir de `SLICE-TEMPLATE.md`.
+3. Marcar 2.11A.4 como IN_PROGRESS.
+4. Refatorar handlers Brevo para usar credenciais resolvidas por tenant (`ctx.credentials`), preservando testes existentes e isolamento cross-tenant.
 
 ---
 
@@ -207,3 +197,4 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - **2026-05-18 ~08:20 (Claude Code):** Fase 0.5 completa: 2.11T.1 (catalog-adapter v5), 2.11T.5 (makeTestEnv bridge), 2.11T.6 (ci-multitenant-gates.yml). 11/32.
 - **2026-05-18 ~10:30 (Claude Code + chicoria):** 2.11A.2 DONE (Fase 1). 15/15 secrets no Cloudflare Secrets Store. Descobertas: `forward_n8n` e `APP_EVENTS_HMAC` são dead code (suprimidos, cleanup em 2.11A.9). `PLANOVOO_HOOK_SECRET` restaurado do VPS pelo humano. 12/32.
 - **2026-05-18 ~15:41 (Codex):** Humano aprovou avanço da Fase 2. Criado slice 2.11A.3. IN_PROGRESS.
+- **2026-05-18 ~15:51 (Codex):** 2.11A.3 DONE. `resolveTrackingConfig` lê sGTM/GA4 do tenant, suporta Secrets Store bindings, golden master preservado. 13/32.
