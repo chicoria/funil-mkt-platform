@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-18 ~01:58 por Claude Code (agent) — Slice 2.11A.0 DONE
-> **Fase atual:** Fase 0 — Preparação (1/4 slices completos)
-> **Próxima ação:** validação humana do 2.11A.0; depois iniciar próximo slice da Fase 0 (recomendado: 2.11A.1 — catálogo v5 aditivo)
+> **Última atualização:** 2026-05-18 ~15:35 WEST por Codex — cabeçalho sincronizado com progresso real (12/32)
+> **Fase atual:** Fase 2 — Refactor (0/9 slices completos), aguardando validação humana para iniciar
+> **Próxima ação:** validação humana para Fase 2; depois criar/iniciar `2.11A.3` — Refactor `resolveTrackingConfig` (sGTM/GA4/Meta CAPI por tenant)
 
 ---
 
