@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-18 ~20:13 WEST por Codex — Slice 2.11A.8-prep DONE
+> **Última atualização:** 2026-05-18 ~20:17 WEST por Codex — Slice 2.11B.2 IN_PROGRESS
 > **Fase atual:** Fase 2 — Refactor (5/9 slices completos)
-> **Próxima ação:** criar/executar `2.11B.2` — Refatorar workspace sGTM em PREVIEW
+> **Próxima ação:** executar `2.11B.2` — Refatorar workspace sGTM em PREVIEW
 
 ---
 
@@ -53,7 +53,10 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Slice em progresso
 
-(nenhum)
+**2.11B.2** — Refatorar workspace sGTM em PREVIEW ⏳
+- **File:** [`slices/2.11B/2-refactor-sgtm-workspace-preview.md`](./slices/2.11B/2-refactor-sgtm-workspace-preview.md)
+- **Started:** 2026-05-18 20:17 WEST por Codex
+- **Escopo:** preparar workspace server-side `GTM-K6Q4H6BR` com variáveis/lookup tables dinâmicas por tenant/produto em preview, sem publish produção.
 
 ## Último slice concluído
 
@@ -122,7 +125,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - [x] **2.11A.5** ✅ — Refactor integrações restantes do dispatcher (`call_product_api`, links/replyTo) → [`slices/2.11A/5-refactor-integrations.md`](./slices/2.11A/5-refactor-integrations.md) **(DONE 2026-05-18)** — commit `66002a9`; `forward_n8n`/`isPlanovooProductCode` deferidos para 2.11A.9
 - [x] **2.11A.7-prep** ✅ — Refactor api-hotmart-ingress (inverter ordem + lookup catalog + remove fallback) → [`slices/2.11A/7-prep-refactor-hotmart-ingress.md`](./slices/2.11A/7-prep-refactor-hotmart-ingress.md) **(DONE 2026-05-18)** — commit `fe125e4`
 - [x] **2.11A.8-prep** ✅ — Refactor api-funnel-ingress (CORS catalog + remove fallbacks + appWebhooks) → [`slices/2.11A/8-prep-refactor-funnel-ingress.md`](./slices/2.11A/8-prep-refactor-funnel-ingress.md) **(DONE 2026-05-18)** — commit `d8dbef7`
-- [ ] **2.11B.2** — Refatorar workspace sGTM em PREVIEW (lookup tables, variáveis dinâmicas) → `slices/2.11B/2-refactor-sgtm-workspace-preview.md` (a criar)
+- [ ] **2.11B.2** ⏳ — Refatorar workspace sGTM em PREVIEW (lookup tables, variáveis dinâmicas) → [`slices/2.11B/2-refactor-sgtm-workspace-preview.md`](./slices/2.11B/2-refactor-sgtm-workspace-preview.md) **(IN_PROGRESS 2026-05-18)**
 - [ ] **2.11B.3** — Validar workspace sGTM em preview com tenant fake superare-test → `slices/2.11B/3-validate-preview-superare-fake.md` (a criar)
 - [ ] **2.11C.1** — links-redirect refactor (bundle catálogo + lookup routes/contacts) → `slices/2.11C/1-refactor-links-redirect.md` (a criar)
 - [ ] **2.11D.2** — dashboard-sync refactor runSync (loops aninhados, ?tenant=) → `slices/2.11D/2-refactor-sync-runner.md` (a criar)
@@ -199,10 +202,10 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 **Para o próximo agente:**
 
-1. Confirmar recovery point (`git status --short`, `git log --oneline -10`) e ler este STATUS + satélite 2.11B.
-2. Criar `plans/slices/2.11B/2-refactor-sgtm-workspace-preview.md` a partir de `SLICE-TEMPLATE.md`.
-3. Marcar 2.11B.2 como IN_PROGRESS.
-4. Refatorar workspace sGTM em PREVIEW para lookup tables/variáveis dinâmicas por tenant, sem publicar produção.
+1. Continuar `plans/slices/2.11B/2-refactor-sgtm-workspace-preview.md`.
+2. Verificar acesso Tag Manager API com a service account local.
+3. Exportar/inspecionar workspace server-side `GTM-K6Q4H6BR`.
+4. Aplicar refactor apenas em workspace/preview ou marcar BLOCKED se a service account não tiver permissão.
 
 ---
 
@@ -222,3 +225,4 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - **2026-05-18 ~18:03 (Codex):** 2.11A.5 DONE. `call_product_api`, links de carrinho e `replyToEmail` sem acoplamento runtime DECOLE; `forward_n8n`/`isPlanovooProductCode` deferidos para 2.11A.9. 15/32.
 - **2026-05-18 ~20:02 (Codex):** 2.11A.7-prep DONE. `api-hotmart-ingress` resolve tenant/produto/token por catálogo e Secrets Store, sem fallback `DEFAULT_TENANT_ID`/`HOTMART_WEBHOOK_TOKEN`. 16/32.
 - **2026-05-18 ~20:13 (Codex):** 2.11A.8-prep DONE. `api-funnel-ingress` resolve tenant/CORS/app webhooks por catálogo, sem `ALLOWED_ORIGINS`/`DEFAULT_TENANT_ID`/`APP_EVENTS_HMAC` no runtime. 17/32.
+- **2026-05-18 ~20:17 (Codex):** 2.11B.2 IN_PROGRESS. Slice criada para refactor sGTM em PREVIEW; próxima ação é verificar acesso Tag Manager API e exportar workspace.

@@ -54,6 +54,43 @@ Modelo B escolhido sobre:
 - **Passo 5:** smoke E2E real com DECOLE — confirmar que nada quebrou
 - Janela: 1 semana com folga para testes
 
+### 5.1 Estado confirmado em 2.11B.2 (2026-05-18)
+
+**Cloud Run / domínio**
+- Projeto GCP: `gtm-k6q4h6br-ndq3n`
+- Região ativa: `us-central1`
+- Serviços encontrados: `server-side-tagging` e `server-side-tagging-preview`
+- Domain mapping: `sgtm.decolesuacarreiraesg.com.br` → `server-side-tagging`
+- Estado do domínio: `Ready=True`, `CertificateProvisioned=True`, `DomainRoutable=True`
+- DNS: `sgtm.decolesuacarreiraesg.com.br CNAME ghs.googlehosted.com.`
+
+**GTM server-side**
+- Account: `6266094107`
+- Container server-side: `GTM-K6Q4H6BR` (`containerId=241313282`)
+- Workspace criado para o slice: `codex-2.11B.2-multitenant-preview` (`workspaceId=24`)
+- Não houve publish de versão; o workspace foi apenas compilado com `quick_preview`.
+
+**Refactor aplicado no workspace 24**
+- Variáveis base:
+  - `RH - Host` (`Request Header`, header `host`)
+  - `ED - produto` (`Event Data`, key path `produto`)
+  - `ED - test_event_code` (`Event Data`, key path `test_event_code`)
+- Lookup tables:
+  - `LT - Tenant ID by Host`
+  - `LT - GA4 Measurement ID by Tenant`
+  - `LT - Meta CAPI Token by Tenant`
+  - `LT - Meta Pixel ID by Tenant/Product`
+  - `LT - Meta Test Event Code by Tenant/Product`
+- Tags:
+  - `GA4` usa `{{LT - GA4 Measurement ID by Tenant}}`
+  - `Meta CAPI - Dynamic by Tenant/Product` usa lookup de pixel/token/test code
+- A tag Meta estática duplicada do pixel PlanoVoo foi removida apenas do workspace 24.
+
+**Ressalvas para 2.11B.3**
+- Existe um workspace preexistente `codex-mp-routing-1777296276501` (`workspaceId=17`) que não foi tocado.
+- O workspace 24 inclui linhas placeholder para `superare-test` apenas para preview/validação; não estão publicadas.
+- A validação do envio real para GA4/Meta em preview fica para 2.11B.3.
+
 ## 6. Onboarding de novo tenant (runbook)
 
 (Esse runbook macro vai virar `RUNBOOK-ONBOARDING-TENANT.md` no slice 2.11B.5)
