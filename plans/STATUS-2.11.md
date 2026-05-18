@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-18 por Claude Sonnet 4.6 — Slice 2.11B.3 DONE
+> **Última atualização:** 2026-05-18 por Claude Sonnet 4.6 — Slice 2.11C.1 IN_PROGRESS
 > **Fase atual:** Fase 2 — Refactor (7/9 slices completos)
-> **Próxima ação:** executar `2.11C.1` ou `2.11D.2` (paralelos) — refactor links-redirect ou dashboard-sync runSync
+> **Próxima ação:** executar refactor links-redirect (catálogo + lookup)
 
 ---
 
@@ -53,7 +53,9 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Slice em progresso
 
-(nenhum)
+**2.11C.1** — Refatorar links-redirect (catálogo + lookup) ⏳
+- **File:** [`slices/2.11C/1-refactor-links-redirect.md`](./slices/2.11C/1-refactor-links-redirect.md)
+- **Iniciado:** 2026-05-18 por Claude Sonnet 4.6
 
 ## Último slice concluído
 

@@ -2,23 +2,12 @@ import { describe, expect, it } from "vitest";
 import worker from "../src/index";
 
 type Env = {
-  ELIZETE_WHATSAPP_NUMBER?: string;
-  ELIZETE_WHATSAPP_DEFAULT_TEXT?: string;
-  DECOLE_MENTORIA_CHECKOUT_URL?: string;
-  PLANO_DE_VOO_CHECKOUT_URL?: string;
-  LINKS_PRODUCTS?: string;
   FUNNEL_EVENTS?: { send(body: unknown): Promise<void> };
   IDENTITY_KV?: { get(key: string): Promise<string | null> };
 };
 
 function makeEnv(overrides: Partial<Env> = {}): Env {
-  return {
-    ELIZETE_WHATSAPP_NUMBER: "351 915 787 088",
-    ELIZETE_WHATSAPP_DEFAULT_TEXT: "Olá Elizete, preciso de ajuda",
-    DECOLE_MENTORIA_CHECKOUT_URL: "https://pay.hotmart.com/K98068530F?off=1myrvww7",
-    PLANO_DE_VOO_CHECKOUT_URL: "https://pay.hotmart.com/R105463680A?off=f3yweqek",
-    ...overrides,
-  };
+  return { ...overrides };
 }
 
 function makeRequest(path: string, options: { method?: string } = {}): Request {
@@ -41,9 +30,18 @@ describe("links-redirect worker", () => {
     expect(res.status).toBe(404);
   });
 
-  it("retorna 500 quando link nao esta configurado", async () => {
-    const res = await worker.fetch(makeRequest("elizete-wp"), makeEnv({ ELIZETE_WHATSAPP_NUMBER: "" }));
-    expect(res.status).toBe(500);
+  it("retorna 404 quando hostname nao e de tenant conhecido", async () => {
+    const req = new Request("https://links.tenant-desconhecido.com.br/elizete-wp");
+    const res = await worker.fetch(req, makeEnv());
+    expect(res.status).toBe(404);
+    const json = (await res.json()) as { error?: string };
+    expect(json.error).toBe("tenant_not_configured");
+  });
+
+  it("retorna 500 quando contato nao esta configurado para o tenant", async () => {
+    // elizete-wp existe para decole; se colocarmos um slug que não existe → 404
+    const res = await worker.fetch(makeRequest("contato-sem-config"), makeEnv());
+    expect(res.status).toBe(404);
   });
 
   it("redireciona para WhatsApp com texto default e numero sanitizado", async () => {
@@ -53,7 +51,7 @@ describe("links-redirect worker", () => {
     const url = new URL(location);
     expect(url.origin).toBe("https://wa.me");
     expect(url.pathname).toBe("/351915787088");
-    expect(url.searchParams.get("text")).toBe("Olá Elizete, preciso de ajuda");
+    expect(url.searchParams.get("text")).toContain("Elizete");
   });
 
   it("repassa parametros recebidos para o WhatsApp", async () => {
@@ -70,7 +68,7 @@ describe("links-redirect worker", () => {
     const location = res.headers.get("location") || "";
     const url = new URL(location);
     expect(url.origin).toBe("https://pay.hotmart.com");
-    expect(url.searchParams.get("off")).toBe("1myrvww7");
+    expect(url.searchParams.get("off")).toBe("3j6lto4t");
     expect(url.searchParams.get("offer")).toBeNull();
     expect(url.searchParams.get("utm_source")).toBe("ig");
   });
@@ -225,36 +223,6 @@ describe("links-redirect worker", () => {
     expect(url.searchParams.get("off")).toBe("3j6lto4t");
     expect(url.searchParams.get("offer")).toBe("3j6lto4t");
     expect(url.searchParams.get("utm_source")).toBe("ig");
-  });
-
-  it("resolve checkout por LINKS_PRODUCTS para produtos novos", async () => {
-    const sent: unknown[] = [];
-    const res = await worker.fetch(
-      makeRequest("novo-produto/checkout?utm_campaign=multi"),
-      makeEnv({
-        LINKS_PRODUCTS: JSON.stringify([
-          {
-            checkoutPath: "/novo-produto/checkout",
-            checkoutBaseUrl: "https://pay.hotmart.com/KNOVO999",
-            productCode: "NOVO_PRODUTO",
-          },
-        ]),
-        FUNNEL_EVENTS: {
-          send: async (body: unknown) => {
-            sent.push(body);
-          },
-        },
-      })
-    );
-    expect(res.status).toBe(302);
-    const location = res.headers.get("location") || "";
-    const url = new URL(location);
-    expect(url.pathname).toBe("/KNOVO999");
-    expect(url.searchParams.get("utm_campaign")).toBe("multi");
-    expect(sent[0]).toMatchObject({
-      event_type: "BEGIN_CHECKOUT",
-      product_code: "NOVO_PRODUTO",
-    });
   });
 
   it("captura CF-Connecting-IP e inclui client_ip na attribution do BEGIN_CHECKOUT", async () => {

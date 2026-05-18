@@ -1,3 +1,5 @@
+import { tryResolveTenantIdFromHostname } from "../../../packages/shared/src/tenant-from-hostname";
+import bundledCatalogJson from "../../../config/products.catalog.json";
 import { FunnelEvent } from "../../../packages/shared/src/funnel-event";
 
 interface QueueBinding {
@@ -9,14 +11,8 @@ interface KVNamespaceLike {
 }
 
 interface Env {
-  ELIZETE_WHATSAPP_NUMBER?: string;
-  ELIZETE_WHATSAPP_DEFAULT_TEXT?: string;
-  DECOLE_MENTORIA_CHECKOUT_URL?: string;
-  PLANO_DE_VOO_CHECKOUT_URL?: string;
-  LINKS_PRODUCTS?: string;
   FUNNEL_EVENTS?: QueueBinding;
   IDENTITY_KV?: KVNamespaceLike;
-  DEFAULT_TENANT_ID?: string;
 }
 
 type HandlerResult = {
@@ -32,31 +28,56 @@ interface LinksProductConfig {
   productCode?: string;
 }
 
-let cachedLinksProductsRaw = "";
-let cachedLinksProducts: LinksProductConfig[] = [];
+interface LinksCatalog {
+  tenants: Record<string, {
+    domains?: readonly string[];
+    links?: {
+      linksDomain?: string;
+      routes?: ReadonlyArray<{ readonly path: string; readonly type: string; readonly productCode: string; readonly legacy?: boolean; readonly deprecated?: boolean }>;
+      contacts?: Record<string, { readonly type: string; readonly number?: string; readonly defaultText?: string }>;
+    };
+    products?: Record<string, { links?: { readonly checkoutBaseUrl?: string } }>;
+  }>;
+}
+
 const CHECKOUT_RECOVERY_PARAM_KEYS = new Set([
-  "email",
-  "name",
-  "phoneac",
-  "phonenumber",
-  "fbp",
-  "fbc",
-  "fbclid",
-  "gclid",
-  "wbraid",
-  "gbraid",
-  "utm_source",
-  "utm_medium",
-  "utm_campaign",
-  "utm_content",
-  "utm_term",
-  "anonymous_id",
-  "session_id",
-  "lead_id",
-  "off",
-  "offer",
+  "email", "name", "phoneac", "phonenumber",
+  "fbp", "fbc", "fbclid", "gclid", "wbraid", "gbraid",
+  "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
+  "anonymous_id", "session_id", "lead_id", "off", "offer",
 ]);
-const DEFAULT_TENANT_ID = "decole";
+
+// --- Pure functions (exported for unit testing) ---
+
+export function resolveCheckoutByCatalog(
+  catalog: LinksCatalog,
+  tenantId: string,
+  path: string
+): LinksProductConfig | null {
+  const normalizedPath = "/" + lowercasePath(normalizePath(path));
+  const tenant = catalog.tenants[tenantId];
+  if (!tenant) return null;
+  const routes = tenant.links?.routes ?? [];
+  const route = routes.find((r) => lowercasePath(r.path) === normalizedPath);
+  if (!route) return null;
+  const checkoutBaseUrl = tenant.products?.[route.productCode]?.links?.checkoutBaseUrl ?? "";
+  if (!checkoutBaseUrl) return null;
+  return {
+    checkoutPath: lowercasePath(normalizePath(route.path)),
+    checkoutBaseUrl,
+    productCode: route.productCode,
+  };
+}
+
+export function resolveContact(
+  catalog: LinksCatalog,
+  tenantId: string,
+  slug: string
+): { type: string; number?: string; defaultText?: string } | null {
+  return catalog.tenants[tenantId]?.links?.contacts?.[slug] ?? null;
+}
+
+// --- Helpers ---
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -88,46 +109,6 @@ function lowercasePath(pathname: string): string {
   return pathname.toLowerCase();
 }
 
-function parseLinksProducts(rawConfig: string): LinksProductConfig[] {
-  const raw = asTrimmedString(rawConfig);
-  if (!raw) return [];
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    console.log(JSON.stringify({ stage: "config_error", reason: "invalid_links_products_json" }));
-    return [];
-  }
-
-  if (!Array.isArray(parsed)) {
-    console.log(JSON.stringify({ stage: "config_error", reason: "links_products_not_array" }));
-    return [];
-  }
-
-  return parsed
-    .map((entry) => {
-      const data = entry as Record<string, unknown>;
-      const checkoutPath = lowercasePath(normalizePath(asTrimmedString(data.checkoutPath)));
-      const checkoutBaseUrl = asTrimmedString(data.checkoutBaseUrl);
-      const productCode = asTrimmedString(data.productCode ?? data.product_code).toUpperCase();
-      if (!checkoutPath || !checkoutBaseUrl) return null;
-      const config: LinksProductConfig = { checkoutPath, checkoutBaseUrl };
-      if (productCode) config.productCode = productCode;
-      return config;
-    })
-    .filter((entry): entry is LinksProductConfig => !!entry);
-}
-
-function getLinksProducts(env: Env): LinksProductConfig[] {
-  const raw = asTrimmedString(env.LINKS_PRODUCTS);
-  if (!raw) return [];
-  if (raw === cachedLinksProductsRaw) return cachedLinksProducts;
-  cachedLinksProductsRaw = raw;
-  cachedLinksProducts = parseLinksProducts(raw);
-  return cachedLinksProducts;
-}
-
 function appendQueryParams(baseUrl: string, params: URLSearchParams, ignoreKeys: string[] = []): string {
   if (!baseUrl) return baseUrl;
   let url: URL;
@@ -136,12 +117,10 @@ function appendQueryParams(baseUrl: string, params: URLSearchParams, ignoreKeys:
   } catch {
     return baseUrl;
   }
-
   params.forEach((value, key) => {
     if (!key || ignoreKeys.includes(key)) return;
     url.searchParams.set(key, value);
   });
-
   return url.toString();
 }
 
@@ -153,14 +132,13 @@ function firstSearchParam(params: URLSearchParams, keys: string[]): string {
   return "";
 }
 
-function checkoutRecoveryKeys(recoveryId: string, env: Env): string[] {
-  const tenantId = asTrimmedString(env.DEFAULT_TENANT_ID) || DEFAULT_TENANT_ID;
+function checkoutRecoveryKeys(recoveryId: string, tenantId: string): string[] {
   if (recoveryId.startsWith(`${tenantId}:checkout_recovery:`)) return [recoveryId];
   if (recoveryId.startsWith("checkout_recovery:")) return [`${tenantId}:${recoveryId}`, recoveryId];
   return [`${tenantId}:checkout_recovery:${recoveryId}`, `checkout_recovery:${recoveryId}`];
 }
 
-async function withCheckoutRecoveryParams(url: URL, env: Env): Promise<URL> {
+async function withCheckoutRecoveryParams(url: URL, tenantId: string, env: Env): Promise<URL> {
   const recoveryId = firstSearchParam(url.searchParams, ["rid", "recovery_id", "recoveryId"]);
   if (!recoveryId) return url;
 
@@ -174,7 +152,7 @@ async function withCheckoutRecoveryParams(url: URL, env: Env): Promise<URL> {
   let parsed: unknown;
   try {
     let raw = "";
-    for (const key of checkoutRecoveryKeys(recoveryId, env)) {
+    for (const key of checkoutRecoveryKeys(recoveryId, tenantId)) {
       raw = (await env.IDENTITY_KV.get(key)) || "";
       if (raw) break;
     }
@@ -198,19 +176,20 @@ async function withCheckoutRecoveryParams(url: URL, env: Env): Promise<URL> {
   return nextUrl;
 }
 
-function handleElizeteWhatsapp(url: URL, env: Env): HandlerResult | null {
-  const phone = asTrimmedString(env.ELIZETE_WHATSAPP_NUMBER);
-  if (!phone) return null;
-
-  const text =
-    asTrimmedString(url.searchParams.get("text")) ||
-    asTrimmedString(url.searchParams.get("t")) ||
-    asTrimmedString(env.ELIZETE_WHATSAPP_DEFAULT_TEXT);
-
-  return {
-    location: appendQueryParams(buildWhatsAppUrl(phone, text), url.searchParams),
-    cacheControl: "no-store",
-  };
+function handleContactBySlug(slug: string, tenantId: string, url: URL): HandlerResult | null {
+  const contact = resolveContact(bundledCatalogJson as LinksCatalog, tenantId, slug);
+  if (!contact) return null;
+  if (contact.type === "whatsapp" && contact.number) {
+    const text =
+      asTrimmedString(url.searchParams.get("text")) ||
+      asTrimmedString(url.searchParams.get("t")) ||
+      asTrimmedString(contact.defaultText);
+    return {
+      location: appendQueryParams(buildWhatsAppUrl(contact.number, text), url.searchParams),
+      cacheControl: "no-store",
+    };
+  }
+  return null;
 }
 
 function handleCheckoutByBaseUrl(url: URL, baseUrl: string): HandlerResult | null {
@@ -218,7 +197,6 @@ function handleCheckoutByBaseUrl(url: URL, baseUrl: string): HandlerResult | nul
 
   const hasExplicitOfferParam =
     url.searchParams.has("offer") || url.searchParams.has("offer_id") || url.searchParams.has("offerId");
-
   const offerCode =
     asTrimmedString(url.searchParams.get("off")) ||
     asTrimmedString(url.searchParams.get("offer")) ||
@@ -234,67 +212,20 @@ function handleCheckoutByBaseUrl(url: URL, baseUrl: string): HandlerResult | nul
       asTrimmedString(target.searchParams.get("off")) || asTrimmedString(target.searchParams.get("offer"));
     const resolvedOffer = offerCode || baseOffer;
 
-    if (offerCode) {
-      target.searchParams.set("off", offerCode);
-    }
-
-    if (hasExplicitOfferParam && resolvedOffer) {
-      target.searchParams.set("offer", resolvedOffer);
-    }
-
-    if (!hasExplicitOfferParam) {
-      target.searchParams.delete("offer");
-    }
+    if (offerCode) target.searchParams.set("off", offerCode);
+    if (hasExplicitOfferParam && resolvedOffer) target.searchParams.set("offer", resolvedOffer);
+    if (!hasExplicitOfferParam) target.searchParams.delete("offer");
 
     finalLocation = target.toString();
   } catch {
     finalLocation = location;
   }
 
-  return {
-    location: finalLocation,
-    cacheControl: "no-store",
-  };
+  return { location: finalLocation, cacheControl: "no-store" };
 }
 
-function inferProductCodeByPath(path: string): string {
-  const normalizedPath = lowercasePath(normalizePath(path));
-  if (normalizedPath === "checkout" || normalizedPath === "decole-esg/checkout") return "DECOLE_ESG_MENTORIA";
-  if (normalizedPath === "plano-de-voo/checkout") return "DECOLE_PLANOVOO";
-  return "";
-}
-
-function resolveCheckoutProductByPath(path: string, env: Env): LinksProductConfig | null {
-  const normalizedPath = lowercasePath(normalizePath(path));
-
-  const dynamicMatch = getLinksProducts(env).find((item) => item.checkoutPath === normalizedPath);
-  if (dynamicMatch) {
-    return {
-      ...dynamicMatch,
-      productCode: dynamicMatch.productCode || inferProductCodeByPath(normalizedPath) || undefined,
-    };
-  }
-
-  if (normalizedPath === "checkout" || normalizedPath === "decole-esg/checkout") {
-    return {
-      checkoutPath: normalizedPath,
-      checkoutBaseUrl: asTrimmedString(env.DECOLE_MENTORIA_CHECKOUT_URL),
-      productCode: "DECOLE_ESG_MENTORIA",
-    };
-  }
-  if (normalizedPath === "plano-de-voo/checkout") {
-    return {
-      checkoutPath: normalizedPath,
-      checkoutBaseUrl: asTrimmedString(env.PLANO_DE_VOO_CHECKOUT_URL),
-      productCode: "DECOLE_PLANOVOO",
-    };
-  }
-
-  return null;
-}
-
-function handleCheckoutPath(url: URL, checkoutPath: string, env: Env): HandlerResult | null {
-  const product = resolveCheckoutProductByPath(checkoutPath, env);
+function handleCheckoutPath(url: URL, checkoutPath: string, tenantId: string): HandlerResult | null {
+  const product = resolveCheckoutByCatalog(bundledCatalogJson as LinksCatalog, tenantId, checkoutPath);
   const result = handleCheckoutByBaseUrl(url, product?.checkoutBaseUrl || "");
   if (!result) return null;
   return {
@@ -307,19 +238,13 @@ function handleCheckoutPath(url: URL, checkoutPath: string, env: Env): HandlerRe
 function withOfferCode(url: URL, offerCode: string): URL {
   const nextUrl = new URL(url);
   if (!offerCode) return nextUrl;
-
   nextUrl.searchParams.delete("off");
   nextUrl.searchParams.delete("offer");
   nextUrl.searchParams.delete("offer_id");
   nextUrl.searchParams.delete("offerId");
   nextUrl.searchParams.set("offer", offerCode);
-
   return nextUrl;
 }
-
-const handlers: Record<string, (url: URL, env: Env) => HandlerResult | null> = {
-  "elizete-wp": handleElizeteWhatsapp,
-};
 
 function buildBeginCheckoutEvent(request: Request, url: URL, result: HandlerResult): FunnelEvent | null {
   const clientIp =
@@ -380,29 +305,16 @@ async function enqueueBeginCheckout(request: Request, url: URL, result: HandlerR
     console.log(JSON.stringify({ stage: "begin_checkout_skip", reason: "missing_queue" }));
     return;
   }
-
   const event = buildBeginCheckoutEvent(request, url, result);
   if (!event) {
     console.log(JSON.stringify({ stage: "begin_checkout_skip", reason: "missing_product_code" }));
     return;
   }
-
   try {
     await env.FUNNEL_EVENTS.send(event);
-    console.log(
-      JSON.stringify({
-        stage: "begin_checkout_queued",
-        event_id: event.event_id,
-        product_code: event.product_code,
-      })
-    );
+    console.log(JSON.stringify({ stage: "begin_checkout_queued", event_id: event.event_id, product_code: event.product_code }));
   } catch (error) {
-    console.log(
-      JSON.stringify({
-        stage: "begin_checkout_error",
-        reason: error instanceof Error ? error.message : "queue_send_failed",
-      })
-    );
+    console.log(JSON.stringify({ stage: "begin_checkout_error", reason: error instanceof Error ? error.message : "queue_send_failed" }));
   }
 }
 
@@ -416,7 +328,6 @@ async function redirectResponse(
   if (options.emitBeginCheckout && request.method === "GET") {
     await enqueueBeginCheckout(request, url, result, env);
   }
-
   return new Response(null, {
     status: 302,
     headers: {
@@ -432,6 +343,12 @@ const worker = {
     const rawPath = normalizePath(url.pathname);
     const path = lowercasePath(rawPath);
 
+    const tenantId = tryResolveTenantIdFromHostname(url.hostname, bundledCatalogJson);
+    if (!tenantId) {
+      console.log(JSON.stringify({ stage: "tenant_not_configured", hostname: url.hostname }));
+      return jsonResponse({ ok: false, error: "tenant_not_configured" }, 404);
+    }
+
     if (request.method === "GET" || request.method === "HEAD") {
       if (!path || path === "health") {
         return jsonResponse({ ok: true, worker: "links-redirect" }, 200);
@@ -444,39 +361,34 @@ const worker = {
         if (!checkoutPrefix || !offerCode) {
           return jsonResponse({ ok: false, error: "not_found" }, 404);
         }
-
         const checkoutPath = `${checkoutPrefix}/checkout`;
-        const requestUrl = await withCheckoutRecoveryParams(withOfferCode(url, offerCode), env);
-        const result = handleCheckoutPath(requestUrl, checkoutPath, env);
-
+        const requestUrl = await withCheckoutRecoveryParams(withOfferCode(url, offerCode), tenantId, env);
+        const result = handleCheckoutPath(requestUrl, checkoutPath, tenantId);
         if (!result || !result.location) {
           return jsonResponse({ ok: false, error: "link_not_configured" }, 500);
         }
-
         return redirectResponse(request, requestUrl, result, env, { emitBeginCheckout: true });
       }
 
       if (path === "checkout" || path.endsWith("/checkout")) {
-        const requestUrl = await withCheckoutRecoveryParams(url, env);
-        const result = handleCheckoutPath(requestUrl, rawPath, env);
+        const requestUrl = await withCheckoutRecoveryParams(url, tenantId, env);
+        const result = handleCheckoutPath(requestUrl, rawPath, tenantId);
         if (!result || !result.location) {
           return jsonResponse({ ok: false, error: "link_not_configured" }, 500);
         }
-
         return redirectResponse(request, requestUrl, result, env, { emitBeginCheckout: true });
       }
 
-      const handler = handlers[path];
-      if (!handler) {
-        return jsonResponse({ ok: false, error: "not_found" }, 404);
+      // Contact handler — lookup dinâmico do catálogo
+      const contactResult = handleContactBySlug(path, tenantId, url);
+      if (contactResult) {
+        if (!contactResult.location) {
+          return jsonResponse({ ok: false, error: "link_not_configured" }, 500);
+        }
+        return redirectResponse(request, url, contactResult, env);
       }
 
-      const result = handler(url, env);
-      if (!result || !result.location) {
-        return jsonResponse({ ok: false, error: "link_not_configured" }, 500);
-      }
-
-      return redirectResponse(request, url, result, env);
+      return jsonResponse({ ok: false, error: "not_found" }, 404);
     }
 
     return jsonResponse({ ok: false, error: "method_not_allowed" }, 405);
