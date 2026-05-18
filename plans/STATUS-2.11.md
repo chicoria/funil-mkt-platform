@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-18 ~17:52 WEST por Codex — Slice 2.11A.5 IN_PROGRESS
-> **Fase atual:** Fase 2 — Refactor (2/9 slices completos)
-> **Próxima ação:** executar `2.11A.5` — Refactor integrações restantes (`call_product_api`, links/replyTo)
+> **Última atualização:** 2026-05-18 ~18:03 WEST por Codex — Slice 2.11A.5 DONE
+> **Fase atual:** Fase 2 — Refactor (3/9 slices completos)
+> **Próxima ação:** criar/executar `2.11A.7-prep` — Refactor api-hotmart-ingress
 
 ---
 
@@ -42,10 +42,10 @@
 | Fase 0 — Preparação | 4/4 | ✅ Completa |
 | Fase 0.5 — Testes de regressão | 7/7 | ✅ Completa |
 | Fase 1 — Popular secrets + bindings | 1/1 | ✅ Completa |
-| Fase 2 — Refactor | 2/9 | ⏳ Em andamento |
+| Fase 2 — Refactor | 3/9 | ⏳ Em andamento |
 | Fase 3 — Deploys disruptivos | 0/6 | ⏸️ Não iniciada |
 | Fase 4 — Validação cruzada + limpeza | 0/5 | ⏸️ Não iniciada |
-| **Total** | **14/32** | |
+| **Total** | **15/32** | |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
@@ -53,19 +53,21 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Slice em progresso
 
-**2.11A.5** — Refactor integrações restantes do dispatcher ⏳
-- **File:** [`slices/2.11A/5-refactor-integrations.md`](./slices/2.11A/5-refactor-integrations.md)
-- **Started:** 2026-05-18 17:52 WEST por Codex
-- **Escopo:** `call_product_api` com Secrets Store, links de recuperação por tenant e remoção de fallback hardcoded de `replyToEmail`.
+(nenhum)
 
 ## Último slice concluído
+
+**2.11A.5** — Refactor integrações restantes do dispatcher ✅
+- **File:** [`slices/2.11A/5-refactor-integrations.md`](./slices/2.11A/5-refactor-integrations.md)
+- **Commit:** `66002a9`
+- **Entregáveis:** `call_product_api` resolve URL/HMAC via `resolveSecret()` para string legada ou Secrets Store binding; links de carrinho usam `tenants.{id}.links.linksDomain` e fazem fallback para checkout original sem domínio DECOLE quando falta configuração; contexto legado não injeta mais `replyToEmail` hardcoded; `DECOLE_PLANOVOO.product_api` aponta para secrets `_DECOLE`.
+
+## Referência histórica recente
 
 **2.11A.4** — Refactor handlers Brevo (`ctx.credentials`) ✅
 - **File:** [`slices/2.11A/4-refactor-brevo-handlers.md`](./slices/2.11A/4-refactor-brevo-handlers.md)
 - **Commit:** `e44766e`
 - **Entregáveis:** `send_brevo_doi`, `update_brevo_funnel` e `send_cart_abandonment_email` usam `HandlerContext.credentials.brevoApiKey`, suportam Secrets Store bindings e isolamento cross-tenant; `tenants.decole.credentials` repontado para `_DECOLE`.
-
-## Referência histórica
 
 **2.11A.3** — Refactor `resolveTrackingConfig` (sGTM/GA4 do tenant) ✅
 - **File:** [`slices/2.11A/3-refactor-tracking-config.md`](./slices/2.11A/3-refactor-tracking-config.md)
@@ -107,7 +109,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 ### Fase 2 — Refactor (testes verdes, sem deploy)
 - [x] **2.11A.3** ✅ — Refactor resolveTrackingConfig (sGTM/GA4 do tenant) → [`slices/2.11A/3-refactor-tracking-config.md`](./slices/2.11A/3-refactor-tracking-config.md) **(DONE 2026-05-18)** — commit `22a8853`
 - [x] **2.11A.4** ✅ — Refactor handlers Brevo (ctx.credentials) → [`slices/2.11A/4-refactor-brevo-handlers.md`](./slices/2.11A/4-refactor-brevo-handlers.md) **(DONE 2026-05-18)** — commit `e44766e`
-- [ ] **2.11A.5** ⏳ — Refactor forward_n8n + call_product_api + LINKS_BASE_URL + isPlanovooProductCode + replyToEmail → [`slices/2.11A/5-refactor-integrations.md`](./slices/2.11A/5-refactor-integrations.md) **(IN_PROGRESS 2026-05-18)** — `forward_n8n`/`isPlanovooProductCode` deferidos para 2.11A.9
+- [x] **2.11A.5** ✅ — Refactor integrações restantes do dispatcher (`call_product_api`, links/replyTo) → [`slices/2.11A/5-refactor-integrations.md`](./slices/2.11A/5-refactor-integrations.md) **(DONE 2026-05-18)** — commit `66002a9`; `forward_n8n`/`isPlanovooProductCode` deferidos para 2.11A.9
 - [ ] **2.11A.7-prep** — Refactor api-hotmart-ingress (inverter ordem + lookup catalog + remove fallback) → `slices/2.11A/7-prep-refactor-hotmart-ingress.md` (a criar)
 - [ ] **2.11A.8-prep** — Refactor api-funnel-ingress (CORS catalog + remove fallbacks + appWebhooks) → `slices/2.11A/8-prep-refactor-funnel-ingress.md` (a criar)
 - [ ] **2.11B.2** — Refatorar workspace sGTM em PREVIEW (lookup tables, variáveis dinâmicas) → `slices/2.11B/2-refactor-sgtm-workspace-preview.md` (a criar)
@@ -151,7 +153,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 | Recurso | Estado atual | Última verificação |
 |---|---|---|
 | Cloudflare Secrets Store `default_secrets_store` | ✅ **15/15 secrets** criados (ID `23bdc9c2e8ca470d82352c53ec8d2e67`) | 2026-05-18 |
-| Catálogo `config/products.catalog.json` schemaVersion | **5** (v5 aditivo — `tenants.decole.credentials` repontado para secrets `_DECOLE`; v4 mantido onde ainda há fallback) | 2026-05-18 |
+| Catálogo `config/products.catalog.json` schemaVersion | **5** (v5 aditivo — `tenants.decole.credentials` e `DECOLE_PLANOVOO.product_api` repontados para secrets `_DECOLE`; v4 mantido onde ainda há fallback) | 2026-05-18 |
 | Workers deployed (prod) | api-funnel-ingress, api-hotmart-ingress, funnel-dispatcher, links-redirect, dashboard-sync — **wrangler.toml com bindings Secrets Store, mas SEM redeploy ainda** (Fase 3) | 2026-05-18 |
 | D1 `ga4_daily_metrics` | **Schema v2: coluna `tenant_id` adicionada** (migration 2.11D.1 — roda no bootstrap) | 2026-05-18 |
 | D1 `meta_daily_metrics` | **Schema v2: coluna `tenant_id` adicionada** (migration 2.11D.1) | 2026-05-18 |
@@ -188,9 +190,9 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 **Para o próximo agente:**
 
 1. Confirmar recovery point (`git status --short`, `git log --oneline -10`) e ler este STATUS + satélite 2.11A.
-2. Criar `plans/slices/2.11A/4-refactor-brevo-handlers.md` a partir de `SLICE-TEMPLATE.md`.
-3. Marcar 2.11A.4 como IN_PROGRESS.
-4. Refatorar handlers Brevo para usar credenciais resolvidas por tenant (`ctx.credentials`), preservando testes existentes e isolamento cross-tenant.
+2. Criar `plans/slices/2.11A/7-prep-refactor-hotmart-ingress.md` a partir de `SLICE-TEMPLATE.md`.
+3. Marcar 2.11A.7-prep como IN_PROGRESS.
+4. Refatorar `api-hotmart-ingress` para lookup por catálogo, removendo fallback silencioso e preservando testes/regressões existentes.
 
 ---
 
@@ -206,3 +208,5 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - **2026-05-18 ~10:30 (Claude Code + chicoria):** 2.11A.2 DONE (Fase 1). 15/15 secrets no Cloudflare Secrets Store. Descobertas: `forward_n8n` e `APP_EVENTS_HMAC` são dead code (suprimidos, cleanup em 2.11A.9). `PLANOVOO_HOOK_SECRET` restaurado do VPS pelo humano. 12/32.
 - **2026-05-18 ~15:41 (Codex):** Humano aprovou avanço da Fase 2. Criado slice 2.11A.3. IN_PROGRESS.
 - **2026-05-18 ~15:51 (Codex):** 2.11A.3 DONE. `resolveTrackingConfig` lê sGTM/GA4 do tenant, suporta Secrets Store bindings, golden master preservado. 13/32.
+- **2026-05-18 ~16:08 (Codex):** 2.11A.4 DONE. Handlers Brevo usam `ctx.credentials`, Secrets Store bindings e isolamento cross-tenant. 14/32.
+- **2026-05-18 ~18:03 (Codex):** 2.11A.5 DONE. `call_product_api`, links de carrinho e `replyToEmail` sem acoplamento runtime DECOLE; `forward_n8n`/`isPlanovooProductCode` deferidos para 2.11A.9. 15/32.

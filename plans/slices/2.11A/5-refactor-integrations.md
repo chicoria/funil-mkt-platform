@@ -7,10 +7,10 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | IN_PROGRESS |
+| Estado | DONE |
 | Started | 2026-05-18 17:52 WEST por Codex |
-| Completed | — |
-| Commit final | — |
+| Completed | 2026-05-18 18:03 WEST por Codex |
+| Commit final | `66002a9` |
 | PR | — |
 | Janela de smoke | N/A — Fase 2 sem deploy |
 
@@ -92,7 +92,25 @@ Validação pós-rollback: testes do dispatcher voltam ao estado anterior; nenhu
 
 ## Revisão G.12 (Code + Architecture + Tests) — preenchido pelo revisor antes de DONE
 
-Pendente.
+### 2026-05-18 18:03 WEST by Codex — auto-revisão
+
+**Código TypeScript**
+- [x] Strict mode respeitado; `npm run typecheck` verde
+- [x] `call_product_api` resolve `url_env` e `hmac_secret_env` via `resolveSecret()`, aceitando string legada e binding Secrets Store
+- [x] Links de recuperação não dependem mais de constante hardcoded DECOLE em catálogo multi-tenant
+- [x] Fallback hardcoded de `replyToEmail` foi removido sem bloquear envio
+
+**Arquitetura**
+- [x] Interface declarativa `product_api.url_env`/`hmac_secret_env` preservada, sem lógica especial por produto no código
+- [x] `linksDomain` vem de `tenants.{id}.links.linksDomain`; ausência em catálogo multi-tenant gera warning e usa `fallbackCheckoutUrl`
+- [x] Catálogo legado sem `tenants` mantém coexistência apenas via `LINKS_BASE_URL`/`CHECKOUT_LINKS_BASE_URL`
+- [x] `forward_n8n`, `workerViews` e `isPlanovooProductCode` ficaram fora de escopo e documentados para 2.11A.9
+
+**Testes**
+- [x] Red verificado para env vars `_DECOLE`, Secrets Store bindings, `linksDomain`, ausência de `linksDomain` e `replyToEmail`
+- [x] Cobertura adicionada em `call-product-api.test.ts`, `generic-handlers-integration.test.ts` e `index.test.ts`
+- [x] Suíte completa do dispatcher verde: 177 testes
+- [x] Grep cirúrgico sem matches para constante `LINKS_BASE_URL`, fallback hardcoded ativo de `replyToEmail` e `product_api` apontando para envs legadas no catálogo/runtime
 
 ---
 
@@ -129,6 +147,13 @@ Pendente.
   - `node -e "JSON.parse(require('fs').readFileSync('config/products.catalog.json','utf8'))"` ✅
   - `git diff --check` ✅
 - Próximo passo planejado: revisão G.12 e fechamento do slice.
+
+### 2026-05-18 18:03 WEST by Codex
+
+- O que foi tentado: commit de implementação e revisão G.12.
+- O que funcionou: commit `66002a9` criado com código, catálogo, testes e slice em progresso; revisão G.12 sem achados bloqueantes.
+- O que falhou: nada.
+- Próximo passo planejado: fechar `STATUS-2.11.md` e `PLANO-MASTER-MULTI-TENANT.md`.
 
 ## Gotchas / lições aprendidas
 

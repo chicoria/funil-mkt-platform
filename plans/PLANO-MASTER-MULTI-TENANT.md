@@ -1,7 +1,7 @@
 # Plano Master — Multi-Tenant
 
 > **Ponto de entrada autoritativo** para toda mudança no `funil-mkt-platform` que envolva multi-tenancy.
-> **Status:** Em execução — 14/32 slices concluídos · Fases 0, 0.5 e 1 completas · Fase 2 em andamento (2/9) · Próximo: 2.11A.5 (atualizado em 2026-05-18 ~16:08 WEST).
+> **Status:** Em execução — 15/32 slices concluídos · Fases 0, 0.5 e 1 completas · Fase 2 em andamento (3/9) · Próximo: 2.11A.7-prep (atualizado em 2026-05-18 ~18:03 WEST).
 > **Source of truth de progresso:** [`STATUS-2.11.md`](./STATUS-2.11.md)
 
 ---
@@ -423,3 +423,4 @@ Para o primeiro agente a executar este plano:
 ## Histórico
 
 - **2026-05-18:** Plano master criado. Aprovação inicial pelo humano. Pré-execução.
+- **2026-05-18 ~18:03 WEST:** 2.11A.5 concluído. `funnel-dispatcher` agora resolve `call_product_api`, links de carrinho e `replyToEmail` sem fallback runtime hardcoded para DECOLE; próximo slice é `2.11A.7-prep`.
