@@ -39,13 +39,13 @@
 
 | Fase | Slices | Status |
 |---|---|---|
-| Fase 0 — Preparação | 4/4 | ✅ Completa (2.11A.0 ✅ 2.11A.1 ✅ 2.11B.1 ✅ 2.11D.1 ✅) |
-| Fase 0.5 — Testes de regressão | 0/7 | ⏸️ Não iniciada |
+| Fase 0 — Preparação | 4/4 | ✅ Completa |
+| Fase 0.5 — Testes de regressão | 4/7 | ⏳ Em progresso (T.2 ✅ T.3 ✅ T.4 ✅ D.0 ✅) |
 | Fase 1 — Popular secrets + bindings | 0/1 | ⏸️ Não iniciada |
 | Fase 2 — Refactor | 0/9 | ⏸️ Não iniciada |
 | Fase 3 — Deploys disruptivos | 0/6 | ⏸️ Não iniciada |
 | Fase 4 — Validação cruzada + limpeza | 0/5 | ⏸️ Não iniciada |
-| **Total** | **4/32** | |
+| **Total** | **8/32** | |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
@@ -79,10 +79,10 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ### Fase 0.5 — Testes de regressão (gate para Fase 2)
 - [ ] **2.11T.1** — catalog-adapter.test.ts → `slices/2.11T/1-catalog-adapter-tests.md` (a criar)
-- [ ] **2.11T.2** — secrets-store-wrapper.test.ts → `slices/2.11T/2-secrets-wrapper-tests.md` (a criar)
-- [ ] **2.11T.3** — cross-tenant-isolation.test.ts (TESTE MAIS IMPORTANTE) → `slices/2.11T/3-cross-tenant-isolation.md` (a criar)
-- [ ] **2.11T.4** — emit-tracking-payload.test.ts (golden master) → `slices/2.11T/4-golden-master-emit-tracking.md` (a criar)
-- [ ] **2.11D.0** — dashboard-sync test harness mínimo + sync-runner.test.ts → `slices/2.11D/0-test-harness-bootstrap.md` (a criar)
+- [x] **2.11T.2** ✅ — secrets-store-wrapper.test.ts (12 testes) — concluído em 2.11A.0 ([`slices/2.11A/0-secrets-store-setup.md`](./slices/2.11A/0-secrets-store-setup.md))
+- [x] **2.11T.3** ✅ — cross-tenant-isolation.test.ts → [`slices/2.11T/3-cross-tenant-isolation.md`](./slices/2.11T/3-cross-tenant-isolation.md) **(DONE 2026-05-18)**
+- [x] **2.11T.4** ✅ — emit-tracking-payload.test.ts (golden master) → [`slices/2.11T/4-golden-master-emit-tracking.md`](./slices/2.11T/4-golden-master-emit-tracking.md) **(DONE 2026-05-18)**
+- [x] **2.11D.0** ✅ — dashboard-sync test harness mínimo → [`slices/2.11D/0-test-harness-bootstrap.md`](./slices/2.11D/0-test-harness-bootstrap.md) **(DONE 2026-05-18)**
 - [ ] **2.11T.5** — Atualizar mocks existentes (env.X → ctx.credentials.X) → `slices/2.11T/5-mocks-update.md` (a criar)
 - [ ] **2.11T.6** — GitHub Actions: pr-e2e-multitenant.yml + ci-multitenant-gates.yml → `slices/2.11T/6-ci-e2e-action.md` (a criar)
 
