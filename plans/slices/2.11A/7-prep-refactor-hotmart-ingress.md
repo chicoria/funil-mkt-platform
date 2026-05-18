@@ -7,10 +7,10 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | IN_PROGRESS |
+| Estado | DONE |
 | Started | 2026-05-18 18:22 WEST por Codex |
-| Completed | — |
-| Commit final | — |
+| Completed | 2026-05-18 20:02 WEST por Codex |
+| Commit final | `fe125e4` |
 | PR | — |
 | Janela de smoke | N/A — Fase 2 sem deploy |
 
@@ -87,7 +87,27 @@ Validação pós-rollback: testes do `api-hotmart-ingress` voltam ao estado ante
 
 ## Revisão G.12 (Code + Architecture + Tests) — preenchido pelo revisor antes de DONE
 
-Pendente.
+### 2026-05-18 20:02 WEST by Codex — auto-revisão
+
+**Código TypeScript**
+- [x] Strict mode respeitado; `npm run typecheck` verde
+- [x] Erros tratados explicitamente: `unknown_tenant`, `unknown_product_slug`, `unauthorized`, `secret_misconfigured`
+- [x] `resolveSecret()` usado para token Hotmart por tenant, com suporte a string e binding Secrets Store
+- [x] Runtime do worker sem referências hardcoded a tenant/produto/slug/token legado
+
+**Arquitetura**
+- [x] Tenant resolvido por hostname via catálogo, sem fallback silencioso
+- [x] Produto resolvido por `tenants.{id}.products.{code}.hotmart.urlSlugs`
+- [x] Token resolvido por `tenants.{id}.credentials.hotmart_token_env`
+- [x] O mesmo código serve tenant novo com domínio/produto/secret no catálogo, sem code change
+
+**Testes**
+- [x] Red verificável: 7 falhas antes da implementação
+- [x] Happy path, lifecycle Hotmart, auth por tenant, binding Secrets Store e fail-fast cobertos
+- [x] Isolamento entre tenants coberto com fixture `CATALOG_JSON`
+- [x] Sem `it.only`/`describe.skip`
+
+**Resultado:** APROVADO
 
 ---
 
@@ -124,6 +144,13 @@ Pendente.
   - `git diff --check` ✅
   - `rg -n 'DECOLE|PLANOVOO|decole-esg|planovoo|plano-de-voo|HOTMART_WEBHOOK_TOKEN|DEFAULT_TENANT_ID' workers/api-hotmart-ingress/src` ✅ — 0 matches
 - Próximo passo planejado: commit de implementação e revisão G.12 antes de fechar o slice.
+
+### 2026-05-18 20:02 WEST by Codex
+
+- O que foi tentado: commit de implementação e revisão G.12.
+- O que funcionou: commit `fe125e4` criado com código, testes, catálogo, wrangler e slice em progresso; revisão G.12 aprovada.
+- O que falhou: nada.
+- Próximo passo planejado: fechar `STATUS-2.11.md` e `PLANO-MASTER-MULTI-TENANT.md`.
 
 ## Gotchas / lições aprendidas
 
