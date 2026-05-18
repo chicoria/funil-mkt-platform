@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-18 por Claude Sonnet 4.6 — Slice 2.11C.1 DONE
-> **Fase atual:** Fase 2 — Refactor (8/9 slices completos)
-> **Próxima ação:** executar `2.11D.2` — dashboard-sync refactor runSync (último slice da Fase 2)
+> **Última atualização:** 2026-05-18 por Claude Sonnet 4.6 — Slice 2.11D.2 DONE — **Fase 2 COMPLETA**
+> **Fase atual:** Fase 2 — Refactor (9/9 slices completos) ✅
+> **Próxima ação:** validação humana (G.10) antes de iniciar Fase 3 — deploys disruptivos
 
 ---
 
@@ -42,10 +42,10 @@
 | Fase 0 — Preparação | 4/4 | ✅ Completa |
 | Fase 0.5 — Testes de regressão | 7/7 | ✅ Completa |
 | Fase 1 — Popular secrets + bindings | 1/1 | ✅ Completa |
-| Fase 2 — Refactor | 8/9 | ⏳ Em andamento |
+| Fase 2 — Refactor | 9/9 | ✅ Completa |
 | Fase 3 — Deploys disruptivos | 0/6 | ⏸️ Não iniciada |
 | Fase 4 — Validação cruzada + limpeza | 0/5 | ⏸️ Não iniciada |
-| **Total** | **20/32** | |
+| **Total** | **21/32** | |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
@@ -53,9 +53,16 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Slice em progresso
 
-(nenhum)
+(nenhum — Fase 2 completa; aguardando validação humana para Fase 3)
 
 ## Último slice concluído
+
+**2.11D.2** — Refatorar dashboard-sync runSync (multi-tenant, SoC) ✅
+- **File:** [`slices/2.11D/2-refactor-sync-runner.md`](./slices/2.11D/2-refactor-sync-runner.md)
+- **Commit:** `1404ceb`
+- **Entregáveis:** monolito de 638 linhas dividido em 5 módulos focados (`types`, `catalog`, `ga4`, `meta`, `sync-runner`); `runSync` itera `catalog.tenants` automaticamente; `?tenant=unknown` → 400; D1 INSERTs incluem `tenant_id`; 24/24 testes verdes; grep 0 matches em `src/`.
+
+## Referência histórica recente
 
 **2.11C.1** — Refatorar links-redirect (catálogo + lookup) ✅
 - **File:** [`slices/2.11C/1-refactor-links-redirect.md`](./slices/2.11C/1-refactor-links-redirect.md)
@@ -143,7 +150,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - [x] **2.11B.2** ✅ — Refatorar workspace sGTM em PREVIEW (lookup tables, variáveis dinâmicas) → [`slices/2.11B/2-refactor-sgtm-workspace-preview.md`](./slices/2.11B/2-refactor-sgtm-workspace-preview.md) **(DONE 2026-05-18)** — commit `e115f92`
 - [x] **2.11B.3** ✅ — Validar workspace sGTM em preview com tenant fake superare-test → [`slices/2.11B/3-validate-preview-superare-fake.md`](./slices/2.11B/3-validate-preview-superare-fake.md) **(DONE 2026-05-18)**
 - [x] **2.11C.1** ✅ — links-redirect refactor (bundle catálogo + lookup routes/contacts) → [`slices/2.11C/1-refactor-links-redirect.md`](./slices/2.11C/1-refactor-links-redirect.md) **(DONE 2026-05-18)** — commit `92bb29a`
-- [ ] **2.11D.2** — dashboard-sync refactor runSync (loops aninhados, ?tenant=) → `slices/2.11D/2-refactor-sync-runner.md` (a criar)
+- [x] **2.11D.2** ✅ — dashboard-sync refactor runSync (SoC 5 módulos, loop multi-tenant, ?tenant=) → [`slices/2.11D/2-refactor-sync-runner.md`](./slices/2.11D/2-refactor-sync-runner.md) **(DONE 2026-05-18)** — commit `1404ceb`
 
 ### Fase 3 — Deploys disruptivos (janela 48h cada)
 - [ ] **2.11A.6** — Deploy funnel-dispatcher prod + smoke E2E → `slices/2.11A/6-deploy-dispatcher.md` (a criar)
@@ -215,11 +222,14 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Próxima ação concreta
 
-**Para o próximo agente:**
+**Para o próximo agente / humano:**
 
-1. Confirmar recovery point (`git status --short`, `git log --oneline -10`) e ler este STATUS.
-2. Executar **2.11C.1** (links-redirect refactor) ou **2.11D.2** (dashboard-sync runSync refactor) — são paralelos e independentes.
-3. **Critério para avançar para Fase 3:** 2.11C.1 e 2.11D.2 precisam estar DONE antes de iniciar qualquer deploy disruptivo.
+1. **Validação humana obrigatória (G.10):** Fase 2 completa → confirmar "ready for Fase 3?".
+   - Verificar que todos os workers têm testes verdes localmente.
+   - Confirmar que grep audit passa em todos os 5 workers.
+   - Decidir ordem de deploys disruptivos (Fase 3).
+2. **Após aprovação:** iniciar `2.11A.6` — deploy funnel-dispatcher prod + smoke E2E (primeiro da Fase 3, menor risco).
+3. **Sequência Fase 3:** 2.11A.6 → 2.11B.4 → 2.11A.7 → 2.11A.8 → 2.11C.2 → 2.11D.3 (janela 48h cada).
 
 ---
 
@@ -243,3 +253,4 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - **2026-05-18 ~20:29 (Codex):** 2.11B.2 DONE. Workspace sGTM preview `workspaceId=24` preparado com Host/produto/lookup tables, tag Meta dinâmica e GA4 dinâmico; `quick_preview` sem erro; sem publish produção. 18/32.
 - **2026-05-18 (Claude Sonnet 4.6):** 2.11B.3 DONE. Workspace 24 validado com 5 lookup tables completas para DECOLE e `superare-test`; 2 entradas faltantes (`Meta CAPI Token` e `Meta Test Event Code`) adicionadas; isolamento cross-tenant verificado por script (0 vazamentos); quick_preview sem compilerError; preview server Cloud Run ativo. 19/32.
 - **2026-05-18 (Claude Sonnet 4.6):** 2.11C.1 DONE. `links-redirect` agnóstico — resolve tenant do hostname, rotas/contatos do catálogo, fail-fast 404 para tenant desconhecido; remove todos os hardcodes DECOLE/ELIZETE; 28/28 testes verdes; grep 0 matches em src/. 20/32.
+- **2026-05-18 (Claude Sonnet 4.6):** 2.11D.2 DONE. `dashboard-sync` dividido em 5 módulos (types/catalog/ga4/meta/sync-runner); runSync itera catálogo automaticamente; ?tenant= com fail-fast 400; D1 INSERTs com tenant_id; 24/24 testes verdes; grep 0 matches. **Fase 2 COMPLETA 9/9.** 21/32.

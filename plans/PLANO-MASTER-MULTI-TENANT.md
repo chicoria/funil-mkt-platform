@@ -1,7 +1,7 @@
 # Plano Master — Multi-Tenant
 
 > **Ponto de entrada autoritativo** para toda mudança no `funil-mkt-platform` que envolva multi-tenancy.
-> **Status:** Em execução — 20/32 slices concluídos · Fases 0, 0.5 e 1 completas · Fase 2 em andamento (8/9) · Próximo: 2.11D.2 — último slice da Fase 2 (atualizado em 2026-05-18 por Claude Sonnet 4.6).
+> **Status:** Em execução — 21/32 slices concluídos · Fases 0–2 completas · Fase 3 aguardando validação humana (G.10) (atualizado em 2026-05-18 por Claude Sonnet 4.6).
 > **Source of truth de progresso:** [`STATUS-2.11.md`](./STATUS-2.11.md)
 
 ---
@@ -403,11 +403,11 @@ Fase 4 ── validação cruzada + limpeza
 
 ## Próxima ação concreta
 
-Para o próximo agente:
+Para o próximo agente / humano:
 
-1. **Ler** `STATUS-2.11.md` para confirmar o recovery point atual.
-2. **Executar** `2.11C.1` (links-redirect refactor) ou `2.11D.2` (dashboard-sync runSync) — são independentes e podem rodar em paralelo.
-3. Após ambos DONE, a Fase 2 estará completa (9/9) e a Fase 3 pode ser iniciada.
+1. **Validação humana G.10** — Fase 2 completa → confirmar "ready for Fase 3?".
+2. **Após aprovação:** iniciar `2.11A.6` — deploy funnel-dispatcher prod + smoke E2E.
+3. Sequência Fase 3: `2.11A.6` → `2.11B.4` → `2.11A.7` → `2.11A.8` → `2.11C.2` → `2.11D.3` (janela 48h cada).
 
 ---
 
@@ -419,4 +419,5 @@ Para o próximo agente:
 - **2026-05-18 ~20:13 WEST:** 2.11A.8-prep concluído. `api-funnel-ingress` agora resolve tenant, CORS e app webhooks por catálogo, sem `ALLOWED_ORIGINS`/`DEFAULT_TENANT_ID`/`APP_EVENTS_HMAC` no runtime; próximo slice é `2.11B.2`.
 - **2026-05-18 ~20:29 WEST:** 2.11B.2 concluído. Workspace sGTM preview `codex-2.11B.2-multitenant-preview` (`workspaceId=24`) preparado com lookups por tenant/produto e tags GA4/Meta dinâmicas, sem publish produção; próximo slice é `2.11B.3`.
 - **2026-05-18:** 2.11B.3 concluído. Workspace 24 validado com 5 lookup tables completas para DECOLE e tenant fake `superare-test`; isolamento cross-tenant confirmado (0 vazamentos); 2 entradas placeholder faltantes corrigidas; próximo: `2.11C.1` ou `2.11D.2`.
-- **2026-05-18:** 2.11C.1 concluído. `links-redirect` agnóstico — resolve tenant do hostname, rotas e contatos do catálogo; remove todos os hardcodes DECOLE/ELIZETE; 28/28 testes verdes; grep 0 matches; próximo: `2.11D.2`.
+- **2026-05-18:** 2.11C.1 concluído. `links-redirect` agnóstico — resolve tenant do hostname, rotas e contatos do catálogo; remove todos os hardcodes DECOLE/ELIZETE; 28/28 testes verdes; grep 0 matches.
+- **2026-05-18:** 2.11D.2 concluído. `dashboard-sync` dividido em 5 módulos SoC (types/catalog/ga4/meta/sync-runner); runSync itera catálogo; ?tenant= fail-fast 400; 24/24 testes verdes; grep 0 matches. **Fase 2 completa (9/9).** Próximo: validação humana G.10 → Fase 3.
