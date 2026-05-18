@@ -1,5 +1,12 @@
 import { fromAppEvent, fromBrowserTracking, fromPrecheckoutForm } from "../../../packages/shared/src/event-normalizer";
+import { resolveSecret, type SecretValue } from "../../../packages/shared/src/secrets-store-wrapper";
 import { tryResolveTenantIdFromHostname } from "../../../packages/shared/src/tenant-from-hostname";
+import {
+  getTenantAllowedOrigins,
+  type CatalogV5,
+  type CatalogV5AppWebhook,
+  type CatalogV5Integration,
+} from "../../../packages/shared/src/catalog-v5";
 import bundledCatalog from "../../../config/products.catalog.json";
 import type { FunnelEvent } from "../../../packages/shared/src/funnel-event";
 
@@ -9,28 +16,51 @@ interface QueueBinding {
 
 interface Env {
   FUNNEL_EVENTS?: QueueBinding;
-  /** @deprecated APP_EVENTS_HMAC nunca foi usado pelo app Plano de Voo —
-   *  o endpoint /webhooks/v1/planovoo/app/event nunca recebe chamadas da app.
-   *  Remover em 2.11A.9 (Fase 4) junto com verifyAppSignature() e a rota. */
-  APP_EVENTS_HMAC?: string;
-  ALLOWED_ORIGINS?: string;
-  DEFAULT_TENANT_ID?: string;
+  CATALOG_JSON?: string;
+  [key: string]: unknown;
 }
 
-const KNOWN_TENANT_IDS = new Set(Object.keys(bundledCatalog.tenants || {}));
-
-function withTenantId(event: FunnelEvent, request: Request, env: Env, payload: Record<string, unknown>): FunnelEvent {
-  const hostname = new URL(request.url).hostname;
-  const fromHostname = tryResolveTenantIdFromHostname(hostname, bundledCatalog);
-  const candidate = typeof payload.tenant_id === "string" ? payload.tenant_id.trim() : "";
-  const fromPayload = candidate && KNOWN_TENANT_IDS.has(candidate) ? candidate : undefined;
-  event.tenant_id = fromHostname ?? fromPayload ?? env.DEFAULT_TENANT_ID ?? "decole";
-  return event;
+interface ResolvedAppWebhook {
+  webhook: CatalogV5AppWebhook;
+  integration: CatalogV5Integration;
 }
 
 function asString(value: unknown): string {
   if (value === undefined || value === null) return "";
   return String(value).trim();
+}
+
+function logIngress(data: Record<string, unknown>): void {
+  console.log(JSON.stringify({ worker: "api-funnel-ingress", ...data }));
+}
+
+function getCatalog(env: Env): CatalogV5 {
+  const raw = asString(env.CATALOG_JSON);
+  if (!raw) return bundledCatalog as CatalogV5;
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as CatalogV5;
+    }
+  } catch {
+    logIngress({ stage: "warn", error: "catalog_json_invalid" });
+  }
+  return bundledCatalog as CatalogV5;
+}
+
+function resolveTenantId(request: Request, catalog: CatalogV5, payload?: Record<string, unknown>): string | undefined {
+  const hostname = new URL(request.url).hostname;
+  const fromHostname = tryResolveTenantIdFromHostname(hostname, catalog);
+  if (fromHostname) return fromHostname;
+
+  const candidate = typeof payload?.tenant_id === "string" ? payload.tenant_id.trim() : "";
+  if (candidate && catalog.tenants?.[candidate]) return candidate;
+  return undefined;
+}
+
+function withTenantId(event: FunnelEvent, tenantId: string): FunnelEvent {
+  event.tenant_id = tenantId;
+  return event;
 }
 
 function jsonResponse(body: unknown, status: number): Response {
@@ -40,38 +70,32 @@ function jsonResponse(body: unknown, status: number): Response {
   });
 }
 
-function parseAllowedOrigins(raw: string): string[] {
-  return raw
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
-}
-
-function isOriginAllowed(request: Request, env: Env): boolean {
+function isOriginAllowed(request: Request, catalog: CatalogV5, tenantId: string): boolean {
   const origin = asString(request.headers.get("origin"));
   if (!origin) return true;
-  const configured = parseAllowedOrigins(asString(env.ALLOWED_ORIGINS));
-  if (!configured.length) return true;
-  return configured.includes(origin);
+  return getTenantAllowedOrigins(catalog, tenantId).includes(origin);
 }
 
-function corsHeaders(request: Request, env: Env): Record<string, string> {
+function corsHeaders(request: Request, catalog: CatalogV5, tenantId?: string): Record<string, string> {
   const origin = asString(request.headers.get("origin"));
-  const configured = parseAllowedOrigins(asString(env.ALLOWED_ORIGINS));
-  const allowOrigin =
-    origin && configured.includes(origin) ? origin : configured[0] || "https://decolesuacarreiraesg.com.br";
-  return {
-    "access-control-allow-origin": allowOrigin,
+  const headers: Record<string, string> = {
     "access-control-allow-methods": "POST, OPTIONS",
+    // Header de protocolo comum; só integrações com appWebhook.requiresHmac validam x-app-signature.
     "access-control-allow-headers": "content-type, x-app-signature",
     "access-control-max-age": "86400",
     vary: "Origin",
   };
+
+  if (origin && tenantId && getTenantAllowedOrigins(catalog, tenantId).includes(origin)) {
+    headers["access-control-allow-origin"] = origin;
+  }
+
+  return headers;
 }
 
-function withCors(response: Response, request: Request, env: Env): Response {
+function withCors(response: Response, request: Request, catalog: CatalogV5, tenantId?: string): Response {
   const headers = new Headers(response.headers);
-  const cors = corsHeaders(request, env);
+  const cors = corsHeaders(request, catalog, tenantId);
   for (const [key, value] of Object.entries(cors)) {
     headers.set(key, value);
   }
@@ -80,10 +104,6 @@ function withCors(response: Response, request: Request, env: Env): Response {
     statusText: response.statusText,
     headers,
   });
-}
-
-function logIngress(data: Record<string, unknown>): void {
-  console.log(JSON.stringify({ worker: "api-funnel-ingress", ...data }));
 }
 
 async function parseBody(request: Request): Promise<Record<string, unknown>> {
@@ -113,14 +133,6 @@ async function parseBody(request: Request): Promise<Record<string, unknown>> {
   return {};
 }
 
-/** @deprecated Nunca chamado pelo app Plano de Voo. Remover em 2.11A.9. */
-function verifyAppSignature(request: Request, env: Env): boolean {
-  const required = asString(env.APP_EVENTS_HMAC);
-  if (!required) return true;
-  const provided = asString(request.headers.get("x-app-signature"));
-  return provided === required;
-}
-
 function productCodeFromBody(payload: Record<string, unknown>, fallback: string): string {
   const candidates = [payload.product_code, payload.productCode, payload.produto, payload.PRODUCT_CODE]
     .map((v) => asString(v))
@@ -128,17 +140,55 @@ function productCodeFromBody(payload: Record<string, unknown>, fallback: string)
   return (candidates[0] || fallback).toUpperCase().replace(/[^A-Z0-9_]+/g, "_");
 }
 
+function findAppWebhook(catalog: CatalogV5, tenantId: string, pathname: string): ResolvedAppWebhook | undefined {
+  const tenant = catalog.tenants?.[tenantId];
+  if (!tenant?.integrations) return undefined;
+
+  for (const integration of Object.values(tenant.integrations)) {
+    const webhook = integration.appWebhooks?.find((candidate) => candidate.path === pathname);
+    if (webhook) return { webhook, integration };
+  }
+
+  return undefined;
+}
+
+async function verifyAppWebhookSignature(
+  request: Request,
+  env: Env,
+  resolved: ResolvedAppWebhook
+): Promise<"ok" | "unauthorized" | "secret_misconfigured"> {
+  if (!resolved.webhook.requiresHmac) return "ok";
+
+  const secretEnv = asString(resolved.integration.hookSecretEnv);
+  if (!secretEnv) return "secret_misconfigured";
+
+  let required: string;
+  try {
+    required = await resolveSecret(env[secretEnv] as SecretValue, secretEnv);
+  } catch {
+    return "secret_misconfigured";
+  }
+
+  return asString(request.headers.get("x-app-signature")) === required ? "ok" : "unauthorized";
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const { pathname } = new URL(request.url);
+    const catalog = getCatalog(env);
 
     if (request.method === "OPTIONS" && pathname.startsWith("/funnel/")) {
-      if (!isOriginAllowed(request, env)) {
-        logIngress({ stage: "preflight_blocked", pathname, status: 403 });
-        return withCors(jsonResponse({ ok: false, error: "origin_not_allowed" }, 403), request, env);
+      const tenantId = resolveTenantId(request, catalog);
+      if (!tenantId) {
+        logIngress({ stage: "preflight_blocked", pathname, error: "unknown_tenant", status: 400 });
+        return withCors(jsonResponse({ ok: false, error: "unknown_tenant" }, 400), request, catalog);
       }
-      logIngress({ stage: "preflight_ok", pathname, status: 204 });
-      return withCors(new Response(null, { status: 204 }), request, env);
+      if (!isOriginAllowed(request, catalog, tenantId)) {
+        logIngress({ stage: "preflight_blocked", pathname, tenant_id: tenantId, error: "origin_not_allowed", status: 403 });
+        return withCors(jsonResponse({ ok: false, error: "origin_not_allowed" }, 403), request, catalog, tenantId);
+      }
+      logIngress({ stage: "preflight_ok", pathname, tenant_id: tenantId, status: 204 });
+      return withCors(new Response(null, { status: 204 }), request, catalog, tenantId);
     }
 
     if (pathname === "/health") {
@@ -146,26 +196,30 @@ export default {
     }
 
     if (request.method !== "POST") {
-      return withCors(jsonResponse({ ok: false, error: "method_not_allowed" }, 405), request, env);
-    }
-
-    if (!env.FUNNEL_EVENTS) {
-      logIngress({ stage: "error", pathname, error: "queue_not_configured", status: 500 });
-      return withCors(jsonResponse({ ok: false, error: "queue_not_configured" }, 500), request, env);
-    }
-
-    if (pathname.startsWith("/funnel/") && !isOriginAllowed(request, env)) {
-      logIngress({ stage: "blocked", pathname, error: "origin_not_allowed", status: 403 });
-      return withCors(jsonResponse({ ok: false, error: "origin_not_allowed" }, 403), request, env);
+      return withCors(jsonResponse({ ok: false, error: "method_not_allowed" }, 405), request, catalog, resolveTenantId(request, catalog));
     }
 
     const payload = await parseBody(request);
 
     if (pathname === "/funnel/precheckout") {
+      const tenantId = resolveTenantId(request, catalog, payload);
+      if (!tenantId) {
+        logIngress({ stage: "blocked", pathname, error: "unknown_tenant", status: 400 });
+        return withCors(jsonResponse({ ok: false, error: "unknown_tenant" }, 400), request, catalog);
+      }
+      if (!isOriginAllowed(request, catalog, tenantId)) {
+        logIngress({ stage: "blocked", pathname, tenant_id: tenantId, error: "origin_not_allowed", status: 403 });
+        return withCors(jsonResponse({ ok: false, error: "origin_not_allowed" }, 403), request, catalog, tenantId);
+      }
       const clientIp = request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "";
       if (clientIp) payload.client_ip = clientIp;
-      const event = withTenantId(fromPrecheckoutForm(payload, productCodeFromBody(payload, "UNKNOWN_PRODUCT")), request, env, payload);
-      await env.FUNNEL_EVENTS.send(event);
+      const queue = env.FUNNEL_EVENTS;
+      if (!queue) {
+        logIngress({ stage: "error", pathname, tenant_id: tenantId, error: "queue_not_configured", status: 500 });
+        return withCors(jsonResponse({ ok: false, error: "queue_not_configured" }, 500), request, catalog, tenantId);
+      }
+      const event = withTenantId(fromPrecheckoutForm(payload, productCodeFromBody(payload, "UNKNOWN_PRODUCT")), tenantId);
+      await queue.send(event);
       logIngress({
         stage: "queued",
         pathname,
@@ -175,33 +229,26 @@ export default {
         product_code: event.product_code,
         status: 202,
       });
-      return withCors(jsonResponse({ ok: true, event_id: event.event_id, event_type: event.event_type }, 202), request, env);
+      return withCors(jsonResponse({ ok: true, event_id: event.event_id, event_type: event.event_type }, 202), request, catalog, tenantId);
     }
 
     if (pathname === "/funnel/event") {
-      const event = withTenantId(fromBrowserTracking(payload, productCodeFromBody(payload, "UNKNOWN_PRODUCT")), request, env, payload);
-      await env.FUNNEL_EVENTS.send(event);
-      logIngress({
-        stage: "queued",
-        pathname,
-        tenant_id: event.tenant_id,
-        event_id: event.event_id,
-        event_type: event.event_type,
-        product_code: event.product_code,
-        status: 202,
-      });
-      return withCors(jsonResponse({ ok: true, event_id: event.event_id, event_type: event.event_type }, 202), request, env);
-    }
-
-    // @deprecated: app Plano de Voo nunca chama este endpoint (não envia eventos ao funil).
-    // APP_EVENTS_HMAC, verifyAppSignature() e esta rota programados para remoção em 2.11A.9.
-    if (pathname === "/webhooks/v1/planovoo/app/event") {
-      if (!verifyAppSignature(request, env)) {
-        logIngress({ stage: "blocked", pathname, error: "unauthorized", status: 401 });
-        return withCors(jsonResponse({ ok: false, error: "unauthorized" }, 401), request, env);
+      const tenantId = resolveTenantId(request, catalog, payload);
+      if (!tenantId) {
+        logIngress({ stage: "blocked", pathname, error: "unknown_tenant", status: 400 });
+        return withCors(jsonResponse({ ok: false, error: "unknown_tenant" }, 400), request, catalog);
       }
-      const event = withTenantId(fromAppEvent(payload, productCodeFromBody(payload, "DECOLE_PLANOVOO")), request, env, payload);
-      await env.FUNNEL_EVENTS.send(event);
+      if (!isOriginAllowed(request, catalog, tenantId)) {
+        logIngress({ stage: "blocked", pathname, tenant_id: tenantId, error: "origin_not_allowed", status: 403 });
+        return withCors(jsonResponse({ ok: false, error: "origin_not_allowed" }, 403), request, catalog, tenantId);
+      }
+      const queue = env.FUNNEL_EVENTS;
+      if (!queue) {
+        logIngress({ stage: "error", pathname, tenant_id: tenantId, error: "queue_not_configured", status: 500 });
+        return withCors(jsonResponse({ ok: false, error: "queue_not_configured" }, 500), request, catalog, tenantId);
+      }
+      const event = withTenantId(fromBrowserTracking(payload, productCodeFromBody(payload, "UNKNOWN_PRODUCT")), tenantId);
+      await queue.send(event);
       logIngress({
         stage: "queued",
         pathname,
@@ -211,9 +258,51 @@ export default {
         product_code: event.product_code,
         status: 202,
       });
-      return withCors(jsonResponse({ ok: true, event_id: event.event_id, event_type: event.event_type }, 202), request, env);
+      return withCors(jsonResponse({ ok: true, event_id: event.event_id, event_type: event.event_type }, 202), request, catalog, tenantId);
     }
 
-    return withCors(jsonResponse({ ok: false, error: "not_found" }, 404), request, env);
+    if (pathname.startsWith("/webhooks/v1/")) {
+      const tenantId = resolveTenantId(request, catalog);
+      if (!tenantId) {
+        logIngress({ stage: "blocked", pathname, error: "unknown_tenant", status: 400 });
+        return withCors(jsonResponse({ ok: false, error: "unknown_tenant" }, 400), request, catalog);
+      }
+
+      const appWebhook = findAppWebhook(catalog, tenantId, pathname);
+      if (!appWebhook) {
+        logIngress({ stage: "blocked", pathname, tenant_id: tenantId, error: "not_found", status: 404 });
+        return withCors(jsonResponse({ ok: false, error: "not_found" }, 404), request, catalog, tenantId);
+      }
+
+      const signatureResult = await verifyAppWebhookSignature(request, env, appWebhook);
+      if (signatureResult === "secret_misconfigured") {
+        logIngress({ stage: "error", pathname, tenant_id: tenantId, error: "secret_misconfigured", status: 500 });
+        return withCors(jsonResponse({ ok: false, error: "secret_misconfigured" }, 500), request, catalog, tenantId);
+      }
+      if (signatureResult === "unauthorized") {
+        logIngress({ stage: "blocked", pathname, tenant_id: tenantId, error: "unauthorized", status: 401 });
+        return withCors(jsonResponse({ ok: false, error: "unauthorized" }, 401), request, catalog, tenantId);
+      }
+
+      const queue = env.FUNNEL_EVENTS;
+      if (!queue) {
+        logIngress({ stage: "error", pathname, tenant_id: tenantId, error: "queue_not_configured", status: 500 });
+        return withCors(jsonResponse({ ok: false, error: "queue_not_configured" }, 500), request, catalog, tenantId);
+      }
+      const event = withTenantId(fromAppEvent(payload, appWebhook.webhook.productCode), tenantId);
+      await queue.send(event);
+      logIngress({
+        stage: "queued",
+        pathname,
+        tenant_id: event.tenant_id,
+        event_id: event.event_id,
+        event_type: event.event_type,
+        product_code: event.product_code,
+        status: 202,
+      });
+      return withCors(jsonResponse({ ok: true, event_id: event.event_id, event_type: event.event_type }, 202), request, catalog, tenantId);
+    }
+
+    return withCors(jsonResponse({ ok: false, error: "not_found" }, 404), request, catalog, resolveTenantId(request, catalog, payload));
   },
 };

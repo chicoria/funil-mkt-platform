@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-18 ~20:02 WEST por Codex — Slice 2.11A.7-prep DONE
+> **Última atualização:** 2026-05-18 ~20:06 WEST por Codex — Slice 2.11A.8-prep IN_PROGRESS
 > **Fase atual:** Fase 2 — Refactor (4/9 slices completos)
-> **Próxima ação:** criar/executar `2.11A.8-prep` — Refactor api-funnel-ingress
+> **Próxima ação:** executar `2.11A.8-prep` — Refactor api-funnel-ingress
 
 ---
 
@@ -53,7 +53,10 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Slice em progresso
 
-(nenhum)
+**2.11A.8-prep** — Refactor api-funnel-ingress ⏳
+- **File:** [`slices/2.11A/8-prep-refactor-funnel-ingress.md`](./slices/2.11A/8-prep-refactor-funnel-ingress.md)
+- **Started:** 2026-05-18 20:06 WEST por Codex
+- **Escopo:** CORS por `tenants.{id}.allowedOrigins`, tenant sem fallback silencioso e app webhooks por `integrations.*.appWebhooks`.
 
 ## Último slice concluído
 
@@ -116,7 +119,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - [x] **2.11A.4** ✅ — Refactor handlers Brevo (ctx.credentials) → [`slices/2.11A/4-refactor-brevo-handlers.md`](./slices/2.11A/4-refactor-brevo-handlers.md) **(DONE 2026-05-18)** — commit `e44766e`
 - [x] **2.11A.5** ✅ — Refactor integrações restantes do dispatcher (`call_product_api`, links/replyTo) → [`slices/2.11A/5-refactor-integrations.md`](./slices/2.11A/5-refactor-integrations.md) **(DONE 2026-05-18)** — commit `66002a9`; `forward_n8n`/`isPlanovooProductCode` deferidos para 2.11A.9
 - [x] **2.11A.7-prep** ✅ — Refactor api-hotmart-ingress (inverter ordem + lookup catalog + remove fallback) → [`slices/2.11A/7-prep-refactor-hotmart-ingress.md`](./slices/2.11A/7-prep-refactor-hotmart-ingress.md) **(DONE 2026-05-18)** — commit `fe125e4`
-- [ ] **2.11A.8-prep** — Refactor api-funnel-ingress (CORS catalog + remove fallbacks + appWebhooks) → `slices/2.11A/8-prep-refactor-funnel-ingress.md` (a criar)
+- [ ] **2.11A.8-prep** ⏳ — Refactor api-funnel-ingress (CORS catalog + remove fallbacks + appWebhooks) → [`slices/2.11A/8-prep-refactor-funnel-ingress.md`](./slices/2.11A/8-prep-refactor-funnel-ingress.md) **(IN_PROGRESS 2026-05-18)**
 - [ ] **2.11B.2** — Refatorar workspace sGTM em PREVIEW (lookup tables, variáveis dinâmicas) → `slices/2.11B/2-refactor-sgtm-workspace-preview.md` (a criar)
 - [ ] **2.11B.3** — Validar workspace sGTM em preview com tenant fake superare-test → `slices/2.11B/3-validate-preview-superare-fake.md` (a criar)
 - [ ] **2.11C.1** — links-redirect refactor (bundle catálogo + lookup routes/contacts) → `slices/2.11C/1-refactor-links-redirect.md` (a criar)

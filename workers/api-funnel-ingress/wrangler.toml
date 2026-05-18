@@ -13,19 +13,11 @@ routes = [
 binding = "FUNNEL_EVENTS"
 queue = "decole-q-funnel-events"
 
-[vars]
-ALLOWED_ORIGINS = "https://decolesuacarreiraesg.com.br"
-DEFAULT_TENANT_ID = "decole"
-
 # ── Cloudflare Secrets Store bindings (Slice 2.11A.2) ──────────────────────
 [[secrets_store_secrets]]
-binding = "HOTMART_WEBHOOK_TOKEN_DECOLE"
+binding = "PLANOVOO_HOOK_SECRET_DECOLE"
 store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
-secret_name = "hotmart_webhook_token_decole"
-
-# APP_EVENTS_HMAC suprimido: verifyAppSignature() é dead code —
-# app Plano de Voo nunca envia eventos para este endpoint.
-# Remover em 2.11A.9 junto com /webhooks/v1/planovoo/app/event e verifyAppSignature().
+secret_name = "planovoo_hook_secret_decole"
 
 [observability]
 enabled = true

@@ -1568,7 +1568,7 @@
     "api-funnel-ingress": {
       "description": "Recebe eventos de precheckout/browser/app e publica na queue canônica.",
       "secrets": [
-        "APP_EVENTS_HMAC"
+        "PLANOVOO_HOOK_SECRET_DECOLE"
       ]
     },
     "funnel-dispatcher": {
