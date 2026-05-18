@@ -53,7 +53,14 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Slice em progresso
 
-(nenhum — Fase 0, Fase 0.5 e Fase 1 completas; aguardando validação humana para iniciar Fase 2)
+(nenhum — Fase 0 ✅, Fase 0.5 ✅, Fase 1 ✅ completas; aguardando validação humana para Fase 2)
+
+## Último slice concluído
+
+**2.11A.2** — Popular secrets _DECOLE no Secrets Store + bindings ✅
+- **File:** [`slices/2.11A/2-populate-secrets-bindings.md`](./slices/2.11A/2-populate-secrets-bindings.md)
+- **Commits:** `45f83d5` · `299eead` · `5a4aab3` · `c0ba466`
+- **Entregáveis:** 15 secrets no Cloudflare Secrets Store; bindings `[[secrets_store_secrets]]` nos 5 workers; 2 supressões de código morto (forward_n8n + APP_EVENTS_HMAC)
 
 ## Último slice concluído
 
@@ -135,16 +142,17 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 | Recurso | Estado atual | Última verificação |
 |---|---|---|
-| Cloudflare Secrets Store `default_secrets_store` | ✅ **15/15 secrets criados** (ID `23bdc9c2e8ca470d82352c53ec8d2e67`) — confirmado em 2026-05-18 | 2026-05-18 |
-| Catálogo `config/products.catalog.json` schemaVersion | 4 (pré-multi-tenant evolution) | 2026-05-18 |
-| Workers deployed (prod) | api-funnel-ingress, api-hotmart-ingress, funnel-dispatcher, links-redirect, dashboard-sync (todos pré-2.11) | 2026-05-18 |
-| D1 `ga4_daily_metrics` | Sem coluna `tenant_id` | 2026-05-18 |
-| D1 `meta_daily_metrics` | Sem coluna `tenant_id` | 2026-05-18 |
-| sGTM workspace DECOLE (Cloud Run) | Single-tenant config | 2026-05-18 |
-| sGTM custom domains | `sgtm.decolesuacarreiraesg.com.br` apenas | 2026-05-18 |
-| Fallbacks ativos no código | Sim (workers leem `env.X` direto, com hardcode de DECOLE) | 2026-05-18 |
-| Worker secrets antigos (Cloudflare) | Presentes em todos os workers (BREVO_API_KEY, HOTMART_WEBHOOK_TOKEN, etc.) | 2026-05-18 |
-| Service account GCP `acesso-api@gtm-k6q4h6br-ndq3n` | Existe (`~/secrets/decole/gtm-k6q4h6br-ndq3n-7525dc924517.json`) — provavelmente tem roles Cloud Run + GTM (validar via `gcloud projects get-iam-policy`) | 2026-05-18 |
+| Cloudflare Secrets Store `default_secrets_store` | ✅ **15/15 secrets** criados (ID `23bdc9c2e8ca470d82352c53ec8d2e67`) | 2026-05-18 |
+| Catálogo `config/products.catalog.json` schemaVersion | **5** (v5 aditivo — campos novos + v4 mantidos) | 2026-05-18 |
+| Workers deployed (prod) | api-funnel-ingress, api-hotmart-ingress, funnel-dispatcher, links-redirect, dashboard-sync — **wrangler.toml com bindings Secrets Store, mas SEM redeploy ainda** (Fase 3) | 2026-05-18 |
+| D1 `ga4_daily_metrics` | **Schema v2: coluna `tenant_id` adicionada** (migration 2.11D.1 — roda no bootstrap) | 2026-05-18 |
+| D1 `meta_daily_metrics` | **Schema v2: coluna `tenant_id` adicionada** (migration 2.11D.1) | 2026-05-18 |
+| sGTM workspace DECOLE (Cloud Run) | Single-tenant config (baseline documentado em `slices/2.11B/1-audit-sgtm-current.md`) | 2026-05-18 |
+| sGTM custom domains | `sgtm.decolesuacarreiraesg.com.br` apenas — container ID: `GTM-K6Q4H6BR` | 2026-05-18 |
+| Fallbacks ativos no código | **Sim** — workers leem per-worker secrets como fallback via helper wrapper; código src/ ainda tem hardcode (Fase 2 refactora) | 2026-05-18 |
+| Worker secrets antigos (Cloudflare) | Presentes (BREVO_API_KEY, HOTMART_WEBHOOK_TOKEN, etc.) — mantidos como fallback até Fase 4 | 2026-05-18 |
+| Dead code identificado | `forwardN8n()` + `verifyAppSignature()` marcados `@deprecated` — cleanup em 2.11A.9 | 2026-05-18 |
+| Service account GCP `acesso-api@gtm-k6q4h6br-ndq3n` | Existe em `~/secrets/decole/gtm-k6q4h6br-ndq3n-7525dc924517.json` | 2026-05-18 |
 
 ---
 
@@ -187,6 +195,11 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Histórico de mudanças neste STATUS
 
-- **2026-05-18 (humano chicoria@gmail.com):** Criação inicial. Estado: pré-execução. Aguarda confirmação humana para iniciar Fase 0.
-- **2026-05-18 ~01:15 (Claude Code):** Humano aprovou início da execução. Criado slice file `slices/2.11A/0-secrets-store-setup.md`. Status 2.11A.0 = IN_PROGRESS.
-- **2026-05-18 ~01:58 (Claude Code):** Slice 2.11A.0 fechado como DONE. Entregáveis: `packages/shared/src/secrets-store-wrapper.ts` (78 linhas, 7 testes verdes), Cloudflare Secrets Store confirmado (`default_secrets_store`). Decisão tomada: 1 store global em vez de 2 (limite beta). Progresso global: 1/32.
+- **2026-05-18 (humano chicoria@gmail.com):** Criação inicial. Pré-execução.
+- **2026-05-18 ~01:15 (Claude Code):** Humano aprovou. Criado slice 2.11A.0. IN_PROGRESS.
+- **2026-05-18 ~02:15 (Claude Code):** 2.11A.0 DONE. `secrets-store-wrapper.ts` (12 testes pós-revisão G.12). Store `default_secrets_store` confirmado. 1/32.
+- **2026-05-18 ~03:00 (Claude Code):** 2.11A.1 DONE. `catalog-v5.ts` + schema v5 aditivo (29 testes). 2/32.
+- **2026-05-18 ~07:30 (Claude Code):** Fase 0 completa (2.11B.1 + 2.11D.1). 4/32.
+- **2026-05-18 ~08:10 (Claude Code):** Fase 0.5 em progresso: 2.11T.3 (cross-tenant isolation, 7 testes), 2.11T.4 (golden master emit_tracking, 11 testes), 2.11D.0 (dashboard-sync test harness, 8 testes). 8/32.
+- **2026-05-18 ~08:20 (Claude Code):** Fase 0.5 completa: 2.11T.1 (catalog-adapter v5), 2.11T.5 (makeTestEnv bridge), 2.11T.6 (ci-multitenant-gates.yml). 11/32.
+- **2026-05-18 ~10:30 (Claude Code + chicoria):** 2.11A.2 DONE (Fase 1). 15/15 secrets no Cloudflare Secrets Store. Descobertas: `forward_n8n` e `APP_EVENTS_HMAC` são dead code (suprimidos, cleanup em 2.11A.9). `PLANOVOO_HOOK_SECRET` restaurado do VPS pelo humano. 12/32.

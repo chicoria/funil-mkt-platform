@@ -7,11 +7,11 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | IN_PROGRESS |
+| Estado | DONE |
 | Started | 2026-05-18 ~02:20 por Claude Code (agent) |
-| Completed | — |
-| Commit final | — |
-| PR | — |
+| Completed | 2026-05-18 ~03:00 por Claude Code (agent) |
+| Commit final | `b7c65b3` |
+| PR | commit directo main |
 
 ## Contexto
 
@@ -91,10 +91,26 @@ Schema v5 adiciona: `tracking` (tenant-level), `integrations`, `allowedOrigins`,
 }
 ```
 
+## Revisão G.12
+
+APROVADO COM RESSALVAS (agente separado, `a3fa872974800acbf`):
+- Sem bloqueadores
+- 7 ressalvas não-bloqueantes aplicadas: cross-tenant isolation test, remoção de index signature, docs de assimetria v4/v5, `clearSecretCache @internal`, 4 testes adicionados
+
 ## Execução (append-only)
 
 ### 2026-05-18 ~02:20 by Claude Code
 - Criado slice file; início de implementação TDD
+
+### 2026-05-18 ~03:00 by Claude Code
+- TDD Red: `catalog-v5.test.ts` criado com 20 testes → módulo não existia
+- TDD Green: `packages/shared/src/catalog-v5.ts` implementado com 6 helpers
+- Revisão G.12 (agente separado): APROVADO COM RESSALVAS → ressalvas aplicadas
+  (cross-tenant isolation tests adicionados, `[key: string]: unknown` removido de `CatalogV5Integration`, docs assimetria v4/v5)
+- `config/products.catalog.json` bumped para schemaVersion 5 com campos aditivos
+- Suite total: 29 testes catalog-v5 + 69 packages/shared verdes
+- JSON validado (`python3 -c "import json; json.load(...)"`)
+- Commits: `b7c65b3`
 
 ## Revisão G.12 (Code + Architecture + Tests)
 
