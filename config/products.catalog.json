@@ -1667,6 +1667,7 @@
       "endpoint": "/smtp/email"
     },
     "forward_n8n": {
+      "_deprecated": "2026-05-18 — forward_n8n não está em nenhuma chain de evento. Código morto. Remover em 2.11A.9 (Fase 4): handler forwardN8n(), buildN8nForwardPayload(), N8N_WEBHOOK_URL env var, N8N_DISABLE_FORWARD env var.",
       "worker": "funnel-dispatcher",
       "binding": "N8N_WEBHOOK_URL"
     },
