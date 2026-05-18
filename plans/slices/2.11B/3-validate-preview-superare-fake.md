@@ -10,7 +10,7 @@
 | Estado | DONE |
 | Started | 2026-05-18 por Claude Sonnet 4.6 |
 | Completed | 2026-05-18 por Claude Sonnet 4.6 |
-| Commit final | (a registrar após commit) |
+| Commit final | `075a462` |
 | PR | — |
 | Janela de smoke | N/A — PREVIEW, sem publish produção |
 
