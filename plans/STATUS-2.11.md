@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-18 por Claude Sonnet 4.6 — Fase 2 DONE · Fase 2E em andamento (mkt-dashboard)
-> **Fase atual:** Fase 2E — Refactor mkt-dashboard (0/4 slices completos) ⏳
-> **Próxima ação:** iniciar 2.11E.1 — rename total decole-dashboard → mkt-dashboard
+> **Última atualização:** 2026-05-18 por Claude Sonnet 4.6 — 2.11E.1 DONE (rename mkt-dashboard)
+> **Fase atual:** Fase 2E — Refactor mkt-dashboard (1/4 slices completos) ⏳
+> **Próxima ação:** 2.11E.2 — lib/d1.ts com tenant_id em todas as queries
 
 ---
 
@@ -43,10 +43,10 @@
 | Fase 0.5 — Testes de regressão | 7/7 | ✅ Completa |
 | Fase 1 — Popular secrets + bindings | 1/1 | ✅ Completa |
 | Fase 2 — Refactor (workers) | 9/9 | ✅ Completa |
-| Fase 2E — Refactor mkt-dashboard | 0/4 | ⏳ Em andamento |
+| Fase 2E — Refactor mkt-dashboard | 1/4 | ⏳ Em andamento |
 | Fase 3 — Deploys disruptivos | 0/7 | ⏸️ Não iniciada |
 | Fase 4 — Validação cruzada + limpeza | 0/6 | ⏸️ Não iniciada |
-| **Total** | **21/38** | |
+| **Total** | **22/38** | |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
@@ -154,7 +154,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - [x] **2.11D.2** ✅ — dashboard-sync refactor runSync (SoC 5 módulos, loop multi-tenant, ?tenant=) → [`slices/2.11D/2-refactor-sync-runner.md`](./slices/2.11D/2-refactor-sync-runner.md) **(DONE 2026-05-18)** — commit `1404ceb`
 
 ### Fase 2E — Refactor mkt-dashboard (sem deploy)
-- [ ] **2.11E.1** — Rename total decole-dashboard → mkt-dashboard (pasta, git, package.json, wrangler.toml, strings) → `slices/2.11E/1-rename-mkt-dashboard.md` (a criar)
+- [x] **2.11E.1** ✅ — Rename total decole-dashboard → mkt-dashboard → [`slices/2.11E/1-rename-mkt-dashboard.md`](./slices/2.11E/1-rename-mkt-dashboard.md) **(DONE 2026-05-18)** — commit `5ac0432` (repo mkt-dashboard)
 - [ ] **2.11E.2** — `lib/d1.ts`: tenant_id em todas as queries → `slices/2.11E/2-d1-queries-tenant-id.md` (a criar)
 - [ ] **2.11E.3** — API routes: repasse `?tenant=` ao worker + seletor transitório → `slices/2.11E/3-api-tenant-passthrough.md` (a criar)
 - [ ] **2.11E.5** — Auth por tenant: `ADMIN_SECRET_{TENANT}` + login com seleção de tenant → `slices/2.11E/5-auth-per-tenant.md` (a criar)
