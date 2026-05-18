@@ -1,7 +1,7 @@
 # Plano Master — Multi-Tenant
 
 > **Ponto de entrada autoritativo** para toda mudança no `funil-mkt-platform` que envolva multi-tenancy.
-> **Status:** Em execução — 17/32 slices concluídos · Fases 0, 0.5 e 1 completas · Fase 2 em andamento (5/9) · Próximo: 2.11B.2 (atualizado em 2026-05-18 ~20:13 WEST).
+> **Status:** Em execução — 18/32 slices concluídos · Fases 0, 0.5 e 1 completas · Fase 2 em andamento (6/9) · Próximo: 2.11B.3 (atualizado em 2026-05-18 ~20:29 WEST).
 > **Source of truth de progresso:** [`STATUS-2.11.md`](./STATUS-2.11.md)
 
 ---
@@ -406,10 +406,10 @@ Fase 4 ── validação cruzada + limpeza
 Para o próximo agente:
 
 1. **Ler** `STATUS-2.11.md` para confirmar o recovery point atual.
-2. **Criar** `plans/slices/2.11B/2-refactor-sgtm-workspace-preview.md` seguindo `SLICE-TEMPLATE.md`.
-3. **Marcar** 2.11B.2 como IN_PROGRESS no slice e em `STATUS-2.11.md`.
-4. **Refatorar** o workspace sGTM em PREVIEW para lookup tables/variáveis dinâmicas por tenant, sem publicar produção.
-5. **Validar** conforme o slice e registrar G.12 antes de marcar DONE.
+2. **Criar** `plans/slices/2.11B/3-validate-preview-superare-fake.md` seguindo `SLICE-TEMPLATE.md`.
+3. **Marcar** 2.11B.3 como IN_PROGRESS no slice e em `STATUS-2.11.md`.
+4. **Validar** o workspace sGTM preview `workspaceId=24` com tenant fake `superare-test`, sem publicar produção.
+5. **Registrar** evidências de preview e G.12 antes de marcar DONE.
 
 ---
 
@@ -419,3 +419,4 @@ Para o próximo agente:
 - **2026-05-18 ~18:03 WEST:** 2.11A.5 concluído. `funnel-dispatcher` agora resolve `call_product_api`, links de carrinho e `replyToEmail` sem fallback runtime hardcoded para DECOLE; próximo slice é `2.11A.7-prep`.
 - **2026-05-18 ~20:02 WEST:** 2.11A.7-prep concluído. `api-hotmart-ingress` agora resolve tenant/produto/token via catálogo e Secrets Store, sem fallback runtime hardcoded para DECOLE; próximo slice é `2.11A.8-prep`.
 - **2026-05-18 ~20:13 WEST:** 2.11A.8-prep concluído. `api-funnel-ingress` agora resolve tenant, CORS e app webhooks por catálogo, sem `ALLOWED_ORIGINS`/`DEFAULT_TENANT_ID`/`APP_EVENTS_HMAC` no runtime; próximo slice é `2.11B.2`.
+- **2026-05-18 ~20:29 WEST:** 2.11B.2 concluído. Workspace sGTM preview `codex-2.11B.2-multitenant-preview` (`workspaceId=24`) preparado com lookups por tenant/produto e tags GA4/Meta dinâmicas, sem publish produção; próximo slice é `2.11B.3`.

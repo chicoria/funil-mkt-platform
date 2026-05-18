@@ -7,10 +7,10 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | IN_PROGRESS |
+| Estado | DONE |
 | Started | 2026-05-18 20:17 WEST por Codex |
-| Completed | — |
-| Commit final | — |
+| Completed | 2026-05-18 20:29 WEST por Codex |
+| Commit final | `e115f92` |
 | PR | — |
 | Janela de smoke | N/A — PREVIEW, sem publish produção |
 
