@@ -87,7 +87,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - [x] **2.11T.6** ✅ — ci-multitenant-gates.yml (5 gates: typecheck, unit, agnostic, catalog, secrets) → [`slices/2.11T/6-ci-e2e-action.md`](./slices/2.11T/6-ci-e2e-action.md) **(DONE 2026-05-18)**
 
 ### Fase 1 — Popular secrets + bindings
-- [x] **2.11A.2** ✅ — Popular secrets _DECOLE no Store + bindings wrangler.toml → [`slices/2.11A/2-populate-secrets-bindings.md`](./slices/2.11A/2-populate-secrets-bindings.md) **(DONE 2026-05-18)** — 14/14 criados; 2 pendentes (planovoo_hook_secret, app_events_hmac); n8n_webhook_url suprimido (código morto — ver decisão abaixo)
+- [x] **2.11A.2** ✅ — Popular secrets _DECOLE no Store + bindings wrangler.toml → [`slices/2.11A/2-populate-secrets-bindings.md`](./slices/2.11A/2-populate-secrets-bindings.md) **(DONE 2026-05-18)** — **15/15 criados** ✅ (n8n + app_events_hmac suprimidos — código morto; planovoo_hook_secret restaurado do VPS)
 
 ### Fase 2 — Refactor (testes verdes, sem deploy)
 - [ ] **2.11A.3** — Refactor resolveTrackingConfig (sGTM/GA4/MetaCAPI do tenant) → `slices/2.11A/3-refactor-tracking-config.md` (a criar)
@@ -135,7 +135,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 | Recurso | Estado atual | Última verificação |
 |---|---|---|
-| Cloudflare Secrets Store `default_secrets_store` (único permitido pelo limite beta) | ✅ Existe, vazio (ID `23bdc9c2e8ca470d82352c53ec8d2e67`) — confirmado em 2026-05-18 via GET /secrets | 2026-05-18 |
+| Cloudflare Secrets Store `default_secrets_store` | ✅ **15/15 secrets criados** (ID `23bdc9c2e8ca470d82352c53ec8d2e67`) — confirmado em 2026-05-18 | 2026-05-18 |
 | Catálogo `config/products.catalog.json` schemaVersion | 4 (pré-multi-tenant evolution) | 2026-05-18 |
 | Workers deployed (prod) | api-funnel-ingress, api-hotmart-ingress, funnel-dispatcher, links-redirect, dashboard-sync (todos pré-2.11) | 2026-05-18 |
 | D1 `ga4_daily_metrics` | Sem coluna `tenant_id` | 2026-05-18 |
