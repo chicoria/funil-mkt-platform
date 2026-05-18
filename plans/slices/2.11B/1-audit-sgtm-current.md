@@ -10,7 +10,7 @@
 | Estado | DONE |
 | Started | 2026-05-18 ~07:30 por Claude Code (agent) |
 | Completed | 2026-05-18 ~07:30 por Claude Code (agent) |
-| Commit final | (incluído no commit de STATUS-2.11) |
+| Commit final | `e6f3b9d` |
 | PR | N/A — documentação |
 
 ## Contexto

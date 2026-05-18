@@ -10,7 +10,8 @@
 | Estado | DONE |
 | Started | 2026-05-18 ~08:25 por Claude Code |
 | Completed | 2026-05-18 ~10:30 por Claude Code |
-| Commits | `45f83d5` (secrets+bindings) · `299eead` (suprimir forward_n8n) · `5a4aab3` (suprimir APP_EVENTS_HMAC) · `c0ba466` (sync planovoo_hook_secret) |
+| Commit final | `45f83d5` · `299eead` · `5a4aab3` · `c0ba466` |
+| Commits (detalhe) | `45f83d5` (secrets+bindings) · `299eead` (suprimir forward_n8n) · `5a4aab3` (suprimir APP_EVENTS_HMAC) · `c0ba466` (sync planovoo_hook_secret) |
 | Cloudflare Secrets Store | `default_secrets_store` (ID `23bdc9c2e8ca470d82352c53ec8d2e67`) — **15/15 secrets** |
 
 ## Contexto

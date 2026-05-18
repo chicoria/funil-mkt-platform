@@ -9,7 +9,7 @@
 | Estado | DONE |
 | Started | 2026-05-18 ~08:15 por Claude Code |
 | Completed | 2026-05-18 ~08:17 por Claude Code |
-| Commit final | (incluído no commit de Fase 0.5 final) |
+| Commit final | `6e54f70` |
 
 ## Contexto
 

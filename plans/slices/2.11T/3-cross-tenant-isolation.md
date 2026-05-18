@@ -7,9 +7,10 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | IN_PROGRESS |
+| Estado | DONE |
 | Started | 2026-05-18 ~08:00 por Claude Code |
-| Completed | — |
+| Completed | 2026-05-18 ~08:15 por Claude Code |
+| Commit final | `9fa1c94` |
 
 ## Contexto
 

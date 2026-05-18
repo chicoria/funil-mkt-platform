@@ -9,7 +9,7 @@
 | Estado | DONE |
 | Started | 2026-05-18 ~08:05 por Claude Code |
 | Completed | 2026-05-18 ~08:10 por Claude Code |
-| Commit final | (incluído no commit de Fase 0.5) |
+| Commit final | `9fa1c94` |
 
 ## Contexto
 

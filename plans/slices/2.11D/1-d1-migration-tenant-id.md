@@ -10,7 +10,7 @@
 | Estado | DONE |
 | Started | 2026-05-18 ~07:35 por Claude Code (agent) |
 | Completed | 2026-05-18 ~07:40 por Claude Code (agent) |
-| Commit final | (registrar após commit) |
+| Commit final | `e6f3b9d` |
 
 ## Contexto
 
