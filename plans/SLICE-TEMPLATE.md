@@ -110,6 +110,46 @@ wrangler deploy
 
 Validação pós-rollback: <como saber que voltou ao estado anterior>.
 
+## Revisão G.12 (Code + Architecture + Tests) — preenchido pelo revisor antes de DONE
+
+> Obrigatório para slices da Fase 0.5 em diante. Slices de Fase 0 aceitam auto-revisão com este checklist.
+> Ver PLANO-MASTER seção G.12 para critérios completos.
+
+### YYYY-MM-DD HH:MM by <Revisor — agent-type / human>
+
+**Código TypeScript**
+- [ ] Strict mode respeitado (sem `any` não justificado, sem `!` sem comentário)
+- [ ] Funções puras preferidas; erros tratados explicitamente com mensagem clara
+- [ ] Nomes expressivos; sem abreviações opacas
+- [ ] 0 referências hardcoded a DECOLE, PLANOVOO, ESG, superare, números de tenant/produto
+
+**Arquitetura**
+- [ ] Toda config tenant/produto lida do catálogo (não hardcoded)
+- [ ] `grep -rE "DECOLE|PLANOVOO|..." src/` retorna 0 matches (exceto comentários de design)
+- [ ] Secrets resolvidos via `resolveSecret()` — sem `env.X` direto quando binding disponível
+- [ ] Sem fallback silencioso para tenant default em produção
+- [ ] O mesmo código serviria SUPERARE com config diferente no catálogo (sem code change)
+
+**Testes**
+- [ ] TDD Red verificável (testes escritos antes da implementação)
+- [ ] Happy path + edge cases + fail-fast paths cobertos
+- [ ] Mocks isolados entre testes (sem state compartilhado entre `it()`)
+- [ ] Isolamento entre tenants verificado (tenant A não acessa dado de tenant B)
+- [ ] Nomes de teste descrevem comportamento (não `test 1`, `test 2`)
+- [ ] Sem `it.only` ou `describe.skip` esquecidos
+
+**Slice file**
+- [ ] Seção `Execução` preenchida
+- [ ] Decisões tomadas documentadas
+- [ ] Gotchas registrados
+
+**Resultado:** APROVADO | APROVADO COM RESSALVAS | REPROVADO
+
+Ressalvas / Bloqueios:
+- ...
+
+---
+
 ## Execução (append-only — preenchido AO LONGO da execução)
 
 ### YYYY-MM-DD HH:MM by <agent ID>

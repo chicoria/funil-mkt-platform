@@ -57,11 +57,12 @@ Esta seção define **princípios, processo e gates** que governam tanto a execu
 6. **Cross-tenant isolation TESTADO:** não suposto. `cross-tenant-isolation.test.ts` é critério obrigatório (satélite 1 seção 11.4.3) e roda em CI.
 7. **Naming convention rigorosa:** `{SECRET}_{TENANT}[_{PRODUCT}]`. Auditado por `scripts/audit-secrets.sh`.
 
-### G.2 TDD por slice (Red → Green → Refactor)
+### G.2 TDD por slice (Red → Green → Refactor → **Review**)
 
 - **Red:** cada slice começa com teste falhando documentando o comportamento desejado.
 - **Green:** implementação mínima para passar.
 - **Refactor:** simplificar/melhorar com teste ainda verde.
+- **Review (G.12):** agente especialista revisa código, arquitetura e testes **antes de marcar slice como DONE**. Bloqueante — slice não fecha sem aprovação do revisor.
 - **Golden master** para handlers críticos (emit_tracking, call_product_api, send_template_email): snapshot do payload exato; refactor não muda payload silenciosamente.
 - **Fixtures versionadas** em `test/fixtures/` — payloads reais (anonimizados) de Hotmart, Brevo, GA4, sGTM.
 - **Mocks isolados:** não compartilhar state entre tests (cada `it()` é independente).
@@ -221,6 +222,73 @@ plans/
 - Falha CI se incoerente
 
 **Benefício:** trabalho de meses pode ser dividido entre agentes diferentes / sessões diferentes / humanos diferentes sem perda de contexto. Onboarding de agente novo = 15 min de leitura.
+
+### G.12 Agente especialista revisor (Code + Architecture + Tests)
+
+**Posição no ciclo:** após Refactor (G.2), antes de marcar slice como DONE. **Bloqueante** — sem aprovação do revisor, slice permanece IN_PROGRESS.
+
+**Propósito:** garantir que nenhum slice introduz dívida técnica oculta, viola princípios do catálogo, enfraquece isolamento de tenant, ou deixa testes insuficientes para detectar regressão. O revisor é agnóstico ao contexto da sessão — lê apenas os arquivos modificados e as decisões registradas no slice file.
+
+**Quem é o revisor:** um agente Claude (`claude-code-guide` ou `claude` com system prompt especializado em TypeScript + DDD + Cloudflare Workers). Pode ser o mesmo agente que implementou ou um agente separado — o importante é que a revisão seja feita **depois do Refactor** com os olhos de quem não fez o trabalho.
+
+**O revisor verifica obrigatoriamente:**
+
+1. **Código TypeScript**
+   - Strict mode respeitado (sem `any` não justificado, sem `!` non-null assertion sem comentário)
+   - Funções puras preferidas a side effects ocultos
+   - Nomes expressivos (sem abreviações opacas)
+   - Erros tratados explicitamente (fail-fast, mensagem clara com nome do secret/tenant)
+   - Sem acoplamento a `DECOLE`, `PLANOVOO`, `ESG` ou qualquer tenant/produto (princípio agnostic G.1 + G.8.1 do satélite 1)
+
+2. **Arquitetura**
+   - Catálogo como fonte de verdade: toda config específica de tenant/produto lida do catálogo, não hardcoded
+   - Workers agnósticos: `grep -rE "DECOLE|PLANOVOO|..." src/` deve retornar 0 matches (exceto comentários de design)
+   - Secrets resolvidos via `resolveSecret()` (não `env.X` direto) quando binding disponível
+   - Nenhum fallback silencioso para DECOLE/tenant default em runtime de produção
+   - Isolamento de tenant verificável: o mesmo código que serve DECOLE serviria SUPERARE sem mudança, só com config diferente no catálogo
+
+3. **Testes**
+   - TDD Red verificável no histórico (commit de testes antes da implementação)
+   - Cobertura de happy path + edge cases + fail-fast paths
+   - Mocks isolados entre testes (sem state compartilhado)
+   - Teste de isolamento entre tenants (não serve dado de tenant A para tenant B)
+   - Nomes de testes descrevem comportamento (not `test 1`, `test 2`)
+   - Sem `it.only` ou `describe.skip` esquecidos
+
+4. **Slice file**
+   - Seção `Execução` preenchida (append-only)
+   - Decisões tomadas documentadas (delta vs plano)
+   - Gotchas registrados para próximos agentes
+   - Critério de aceite executável passou
+
+**Como registrar o resultado da revisão:**
+
+O revisor escreve no slice file (append-only na seção `Execução`):
+
+```
+### YYYY-MM-DD HH:MM by Revisor <agent-type>
+
+**REVISÃO G.12**
+
+Código: ✅ OK | ⚠️ Ressalvas (listar) | ❌ Bloqueado (listar)
+Arquitetura: ✅ OK | ⚠️ Ressalvas | ❌ Bloqueado
+Testes: ✅ OK | ⚠️ Ressalvas | ❌ Bloqueado
+
+**Resultado:** APROVADO | APROVADO COM RESSALVAS | REPROVADO
+
+[Se aprovado com ressalvas]: itens a resolver no próximo refactor ou slice seguinte:
+- ...
+
+[Se reprovado]: o que deve ser corrigido antes de marcar DONE:
+- ...
+```
+
+**Critérios de resultado:**
+- **APROVADO:** slice pode ser marcado DONE e slice file commitado.
+- **APROVADO COM RESSALVAS:** marcado DONE, ressalvas viram TODO no próximo slice ou issue no backlog. O humano decide se aceita.
+- **REPROVADO:** slice volta para IN_PROGRESS; agente implementador corrige e solicita nova revisão.
+
+**Exceção para slices de Fase 0 (fundação):** slices 2.11A.0, 2.11A.1, 2.11B.1, 2.11D.1 são não-disruptivos e de baixo risco — revisão informal (agente implementador auto-revisa com checklist G.12) é aceita. A partir da Fase 0.5 e Fase 2, revisão por agente separado é obrigatória.
 
 ---
 

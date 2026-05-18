@@ -171,6 +171,43 @@ Validação pós-rollback: `curl GET /secrets_store/stores` não lista `funilmkt
 - Store confirmado vazio (`GET /secrets` retorna `result: []`) — pronto para popular na Fase 1 (slice 2.11A.2).
 - Próximo passo: documentar decisão no satélite 1 + STATUS + commit + fechar slice.
 
+## Revisão G.12 (Code + Architecture + Tests)
+
+> Este é um slice de Fase 0 (fundação, não-disruptivo) — auto-revisão é aceita conforme exceção em G.12.
+
+### 2026-05-18 ~02:00 by Claude Code (auto-revisão — Fase 0, exceção G.12)
+
+**Código TypeScript**
+- [x] Strict mode respeitado — sem `any`, sem `!` não justificado
+- [x] Funções puras (`resolveSecret` é async pura, sem side effects além do cache); erros com mensagem clara (`${name} not found`, `${name} returned empty value`)
+- [x] Nomes expressivos: `resolveSecret`, `clearSecretCache`, `SecretsStoreBinding`, `SecretValue`
+- [x] 0 referências hardcoded a DECOLE, PLANOVOO ou qualquer tenant/produto
+
+**Arquitetura**
+- [x] Módulo sem dependência do catálogo — propositalmente agnóstico (é infraestrutura, não config)
+- [x] Sem fallback silencioso para tenant default — lança erro explícito
+- [x] Cache module-level é equivalente ao isolate-scoped de Cloudflare Workers — design correto
+- [x] O mesmo wrapper funcionaria para SUPERARE sem mudança de código
+
+**Testes**
+- [x] TDD Red verificado — teste criado antes da implementação (erro `Cannot find module`)
+- [x] 7 testes cobrindo: string OK, binding OK, cache (1× get), undefined throws, empty binding throws, clearCache invalida cache, empty string treat as missing
+- [x] Mocks inline com `vi.fn()` — sem state compartilhado (afterEach `clearSecretCache()`)
+- [x] Isolamento N/A neste slice (wrapper é genérico, sem lógica de tenant)
+- [x] Nomes descrevem comportamento ("returns string value directly when...", "caches binding result across repeated calls")
+- [x] Nenhum `it.only` ou `describe.skip`
+
+**Slice file**
+- [x] Seção `Execução` preenchida com 3 entradas append-only
+- [x] Decisão tomada documentada (1 store global em vez de 2 — limite beta)
+- [x] Gotchas registrados (limite do Secrets Store, `default_secrets_store` não renomeável, cache sem TTL)
+
+**Resultado:** APROVADO
+
+Ressalvas menores (não bloqueantes — registrar no backlog):
+1. **Cache sem TTL:** se um secret for rotacionado sem redeploy, isolates ativos continuarão servindo valor antigo. Aceitável com a política "rotação acompanha redeploy". Se necessário no futuro, adicionar TTL opcional (ex: `resolveSecret(binding, name, { ttlMs: 60_000 })`).
+2. **`clearSecretCache()` é global** (limpa todo o cache, não por secret específico). Para N workers com N secrets, um redeploy limpa tudo — comportamento correto e desejado.
+
 ## Gotchas / lições aprendidas
 
 - **Cloudflare Secrets Store é beta com limite de 1 store por account.** Documentar isso no satélite 1 evita que outros agentes tentem criar `funilmkt-staging-secrets` e batam no mesmo erro.
