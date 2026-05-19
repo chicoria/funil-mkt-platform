@@ -134,6 +134,13 @@ Validação pós-rollback: DOI volta a redirecionar diretamente para `confirmaca
 - O que falhou: nada nesta etapa de planejamento.
 - Próximo passo planejado: implementar rota `/signup` no worker + testes Red/Green.
 
+### 2026-05-19 por Codex (GPT-5)
+
+- O que foi tentado: remover emissão client-side de `sign_up` nas páginas HTML de confirmação (repo DECOLE) após migração para emissão server-side via links worker.
+- O que funcionou: blocos `dataLayer.push({ event: "sign_up", ... })` removidos de `site/confirmacao.html` e `site/planodevoo/confirmacao.html`; grep final sem matches de `sign_up` nessas páginas.
+- O que falhou: nenhum erro técnico.
+- Próximo passo planejado: manter monitoramento de duplicidade de `SIGN_UP` em produção para confirmar redução de eventos duplicados.
+
 ## Gotchas / lições aprendidas
 
 - Definir idempotência do `SIGN_UP` é importante para evitar duplicidade em refresh/retry da URL de confirmação.
