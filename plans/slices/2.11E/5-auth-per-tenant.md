@@ -172,3 +172,10 @@ Testes: ✅ OK
 - Cookie `admin_session` = `{tenantId}:{adminSecret}` — simples, sem JWT, sem signing separado. Adequado para admin-only single-user por tenant.
 - `getActiveTenantId()` async — cascade em 4 callers, mas necessário para leitura correta da sessão.
 - Sessões antigas invalidadas automaticamente (cookie sem tenantId não passa no `decodeSession`).
+
+### 2026-05-19 (2.11E.6) por Claude Sonnet 4.6
+
+Fallback `ADMIN_SECRET` global removido de `lib/auth.ts` e `app/api/auth/route.ts`.
+Auth usa exclusivamente `ADMIN_SECRET_{TENANT}` (Pages secret per-tenant).
+Smoke confirma: decole+certo→/dashboard, decole+errado→/login?error=1, superare→/login?error=1.
+Deploy mkt-dashboard: `1fb59195`. Commit `a1db0e0` (repo mkt-dashboard).
