@@ -10,7 +10,7 @@
 | Estado | DONE |
 | Started | 2026-05-19 11:12 WEST por Claude Sonnet 4.6 |
 | Completed | 2026-05-19 11:22 WEST por Claude Sonnet 4.6 |
-| Commit final | `(ver deploy commit)` |
+| Commit final | `294fc61` |
 | Version ID | `3369c40d-8242-4b06-8d6d-068af0ac11fc` |
 | PR | — |
 | Janela de smoke | 2026-05-19 → 2026-05-21 |
