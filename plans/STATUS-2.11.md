@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-19 por Claude Sonnet 4.6 — 2.11E.4 IN_PROGRESS (deploy mkt-dashboard) — **build OK, bloqueado em wrangler auth expirado**
-> **Fase atual:** Fase 3 — Deploys disruptivos (slice 2.11E.4 em andamento)
-> **Próxima ação:** humano re-autentica wrangler (`npx wrangler login`) → agente continua deploy + smoke
+> **Última atualização:** 2026-05-19 por Claude Sonnet 4.6 — 2.11C.2 DONE (deploy links-redirect + smoke 6/6 URLs) — **Fase 3: 1/7 slices completos**
+> **Fase atual:** Fase 3 — Deploys disruptivos (1/7 slices completos) ⏳
+> **Próxima ação:** humano re-autentica wrangler (`npx wrangler login`) → continuar 2.11E.4 (deploy mkt-dashboard) + demais deploys Fase 3
 
 ---
 
@@ -44,9 +44,9 @@
 | Fase 1 — Popular secrets + bindings | 1/1 | ✅ Completa |
 | Fase 2 — Refactor (workers) | 9/9 | ✅ Completa |
 | Fase 2E — Refactor mkt-dashboard | 4/4 | ✅ Completa |
-| Fase 3 — Deploys disruptivos | 0/7 | ⏸️ Não iniciada |
+| Fase 3 — Deploys disruptivos | 1/7 | ⏳ Em progresso |
 | Fase 4 — Validação cruzada + limpeza | 0/6 | ⏸️ Não iniciada |
-| **Total** | **25/38** | |
+| **Total** | **26/38** | |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
@@ -54,17 +54,17 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Slice em progresso
 
-**2.11E.4** — Deploy mkt-dashboard no Cloudflare Pages ⏳ BLOQUEADO
+**2.11E.4** — Deploy mkt-dashboard no Cloudflare Pages ⏳ BLOQUEADO (aguarda auth)
 - **File:** [`slices/2.11E/4-deploy-mkt-dashboard.md`](./slices/2.11E/4-deploy-mkt-dashboard.md)
 - **Status:** Build OK — deploy bloqueado por wrangler auth expirado (token OAuth expirou 2026-05-15)
 - **Ação necessária:** humano re-autentica: `cd /Users/chicoria/git/mkt-dashboard && npx wrangler login`
 
 ## Último slice concluído
 
-**2.11D.2** — Refatorar dashboard-sync runSync (multi-tenant, SoC) ✅
-- **File:** [`slices/2.11D/2-refactor-sync-runner.md`](./slices/2.11D/2-refactor-sync-runner.md)
-- **Commit:** `1404ceb`
-- **Entregáveis:** monolito de 638 linhas dividido em 5 módulos focados (`types`, `catalog`, `ga4`, `meta`, `sync-runner`); `runSync` itera `catalog.tenants` automaticamente; `?tenant=unknown` → 400; D1 INSERTs incluem `tenant_id`; 24/24 testes verdes; grep 0 matches em `src/`.
+**2.11C.2** — Deploy links-redirect prod + smoke todas URLs ✅
+- **File:** [`slices/2.11C/2-deploy-links-redirect.md`](./slices/2.11C/2-deploy-links-redirect.md)
+- **Deploy Version ID:** `2d156f71-55e5-4d4e-b05e-939a56df5916`
+- **Entregáveis:** Worker `decole-links-redirect` deployado em prod; rota `links.decolesuacarreiraesg.com.br/*` ativa; 6/6 smokes passaram (`/health` 200, `/elizete-wp` 302 wa.me, `/checkout` 302 Hotmart ESG legacy, `/decole-esg/checkout` 302 Hotmart ESG, `/plano-de-voo/checkout` 302 Hotmart PlanoVoo, `/rota-que-nao-existe` 404); G.12 operacional APROVADO.
 
 ## Referência histórica recente
 
@@ -167,7 +167,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - [ ] **2.11B.4** — Publicar versão sGTM workspace em prod + smoke → `slices/2.11B/4-publish-sgtm-prod.md` (a criar)
 - [ ] **2.11A.7** — Deploy api-hotmart-ingress + smoke webhook real → `slices/2.11A/7-deploy-hotmart-ingress.md` (a criar)
 - [ ] **2.11A.8** — Deploy api-funnel-ingress + smoke CORS browser → `slices/2.11A/8-deploy-funnel-ingress.md` (a criar)
-- [ ] **2.11C.2** — Deploy links-redirect + smoke todas URLs conhecidas → `slices/2.11C/2-deploy-links-redirect.md` (a criar)
+- [x] **2.11C.2** ✅ — Deploy links-redirect + smoke todas URLs conhecidas → [`slices/2.11C/2-deploy-links-redirect.md`](./slices/2.11C/2-deploy-links-redirect.md) **(DONE 2026-05-19)** — deploy Version ID `2d156f71`, 6/6 smokes OK
 - [ ] **2.11D.3** — Deploy dashboard-sync + backfill sanity check → `slices/2.11D/3-deploy-dashboard-sync.md` (a criar)
 - [ ] **2.11E.4** ⏳ IN_PROGRESS — Deploy mkt-dashboard + smoke DECOLE → [`slices/2.11E/4-deploy-mkt-dashboard.md`](./slices/2.11E/4-deploy-mkt-dashboard.md) — **build OK, bloqueado em wrangler auth**
 
@@ -205,7 +205,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 |---|---|---|
 | Cloudflare Secrets Store `default_secrets_store` | ✅ **15/15 secrets** criados (ID `23bdc9c2e8ca470d82352c53ec8d2e67`) | 2026-05-18 |
 | Catálogo `config/products.catalog.json` schemaVersion | **5** (v5 aditivo — `tenants.decole.credentials`, `DECOLE_PLANOVOO.product_api` e `workerViews` dos ingress Hotmart/Funnel repontados para secrets `_DECOLE`; v4 mantido onde ainda há fallback) | 2026-05-18 |
-| Workers deployed (prod) | api-funnel-ingress, api-hotmart-ingress, funnel-dispatcher, links-redirect, dashboard-sync — **wrangler.toml com bindings Secrets Store, mas SEM redeploy ainda** (Fase 3) | 2026-05-18 |
+| Workers deployed (prod) | api-funnel-ingress, api-hotmart-ingress, funnel-dispatcher, dashboard-sync — wrangler.toml com bindings Secrets Store, **SEM redeploy** (Fase 3); **links-redirect: NOVO deploy 2026-05-19** (Version ID `2d156f71`, multi-tenant via catálogo) | 2026-05-19 |
 | D1 `ga4_daily_metrics` | **Schema v2: coluna `tenant_id` adicionada** (migration 2.11D.1 — roda no bootstrap) | 2026-05-18 |
 | D1 `meta_daily_metrics` | **Schema v2: coluna `tenant_id` adicionada** (migration 2.11D.1) | 2026-05-18 |
 | sGTM workspace DECOLE (Cloud Run) | Workspace preview `codex-2.11B.2-multitenant-preview` (`workspaceId=24`) preparado com lookups por tenant/produto; **sem publish produção** | 2026-05-18 |
@@ -232,7 +232,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Janelas de smoke ativas
 
-(nenhuma — nenhum deploy disruptivo ainda)
+**2.11C.2** — links-redirect: 2026-05-19 → 2026-05-20 (monitorar logs Cloudflare para erros 500 ou redirecionamentos incorretos)
 
 ---
 
@@ -270,3 +270,4 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - **2026-05-18 (Claude Sonnet 4.6):** 2.11C.1 DONE. `links-redirect` agnóstico — resolve tenant do hostname, rotas/contatos do catálogo, fail-fast 404 para tenant desconhecido; remove todos os hardcodes DECOLE/ELIZETE; 28/28 testes verdes; grep 0 matches em src/. 20/32.
 - **2026-05-18 (Claude Sonnet 4.6):** 2.11D.2 DONE. `dashboard-sync` dividido em 5 módulos (types/catalog/ga4/meta/sync-runner); runSync itera catálogo automaticamente; ?tenant= com fail-fast 400; D1 INSERTs com tenant_id; 24/24 testes verdes; grep 0 matches. **Fase 2 COMPLETA 9/9.** 21/32.
 - **2026-05-19 (Claude Sonnet 4.6):** 2.11E.4 IN_PROGRESS. Build `next-on-pages` OK (7 Edge Functions + 4 Prerendered). Deploy BLOQUEADO — token OAuth wrangler expirou em 2026-05-15, refresh retorna 400. Ação necessária: `npx wrangler login`. Slice file criado em `plans/slices/2.11E/4-deploy-mkt-dashboard.md`.
+- **2026-05-19 (Claude Sonnet 4.6):** 2.11C.2 DONE. links-redirect deployado em prod (Version ID `2d156f71`); rota `links.decolesuacarreiraesg.com.br/*` ativa; 6/6 smokes passados; G.12 operacional APROVADO. Fase 3: 1/7 slices completos. 26/38.
