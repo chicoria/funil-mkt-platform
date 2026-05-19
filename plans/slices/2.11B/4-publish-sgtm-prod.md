@@ -10,7 +10,7 @@
 | Estado | DONE |
 | Started | 2026-05-19 por Claude Sonnet 4.6 |
 | Completed | 2026-05-19 por Claude Sonnet 4.6 |
-| Commit final | — (a preencher após commit) |
+| Commit final | `ccc438f` |
 | PR | — |
 | Janela de smoke | 2026-05-19 → 2026-05-20 |
 

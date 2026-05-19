@@ -1,7 +1,7 @@
 # Plano Master — Multi-Tenant
 
 > **Ponto de entrada autoritativo** para toda mudança no `funil-mkt-platform` que envolva multi-tenancy.
-> **Status:** Em execução — 25/38 slices concluídos · Fases 0, 0.5, 1, 2 e 2E completas · Fase 3 aguardando validação humana G.10 (atualizado em 2026-05-19 por Claude Sonnet 4.6).
+> **Status:** Em execução — 32/38 slices concluídos · Fases 0, 0.5, 1, 2, 2E e 3 completas · Fase 4 não iniciada (0/6) · Próximo: 2.11Z.1 (atualizado em 2026-05-19 por Claude Sonnet 4.6).
 > **Source of truth de progresso:** [`STATUS-2.11.md`](./STATUS-2.11.md)
 
 ---
@@ -532,9 +532,9 @@ Fase 4 ── [Z/A/B/C/D/E: validação cruzada + limpeza + auth smoke]
 
 Para o próximo agente / humano:
 
-1. **Validação humana G.10** — Fase 2 completa → confirmar "ready for Fase 3?".
-2. **Após aprovação:** iniciar `2.11A.6` — deploy funnel-dispatcher prod + smoke E2E.
-3. Sequência Fase 3: `2.11A.6` → `2.11B.4` → `2.11A.7` → `2.11A.8` → `2.11C.2` → `2.11D.3` (janela 48h cada).
+1. **Confirmar recovery point** em `STATUS-2.11.md` e git.
+2. Criar/executar `2.11Z.1` — smoke E2E cross-slice com tenant fake `superare-test`.
+3. Se `2.11Z.1` passar, avançar limpezas Fase 4: `2.11A.9`, `2.11B.5`, `2.11C.3`, `2.11D.4`, `2.11E.6`.
 
 ---
 
@@ -551,3 +551,4 @@ Para o próximo agente / humano:
 - **2026-05-18:** Satélite 2.11E criado — `PLANO-MKT-DASHBOARD-MULTI-TENANT.md`. Rename total `decole-dashboard→mkt-dashboard` (Frente A, Fase 3) + auth por tenant via `ADMIN_SECRET_{TENANT}` no Secrets Store (Frente B, Fase 4). 6 novos slices (2.11E.1–6) adicionados ao plano.
 - **2026-05-19:** Postmortem PM-2026-05-19 registrado. Incidente de User Journey causado por `identity_links` com uma linha única por perfil; correção publicada no dispatcher e dashboard, D1 reparado e smoke prod confirmou os dois emails resolvendo o mesmo `profile_id`.
 - **2026-05-19:** Postmortem PM-2026-05-19B registrado. Incidente de DOI causado por `SMS` duplicado na Brevo e unsubscribe transacional prévio; dispatcher publicado com fallback sem `SMS`, contato desbloqueado com autorização humana e DOI reenviado com novo `requests` no log Brevo.
+- **2026-05-19:** Fase 3 concluída. Deploys prod/smokes de workers, mkt-dashboard e sGTM finalizados; `2.11B.4` publicou o GTM server-side `GTM-K6Q4H6BR` versionId `18`. Progresso `32/38`; próximo `2.11Z.1`.
