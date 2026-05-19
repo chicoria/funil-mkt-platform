@@ -1,7 +1,7 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-19 por Claude Sonnet 4.6 — C.3 ✅ links-redirect env vars legadas removidas + grep 0 matches + deploy `64360b18` + smoke 10/10 — Fase 4: 1/6
-> **Fase atual:** Fase 4 — Validação cruzada + limpeza (1/6 slices) ⏳
+> **Última atualização:** 2026-05-19 por Claude Sonnet 4.6 — B.5 ✅ RUNBOOK-ONBOARDING-TENANT.md criado (8 frentes step-by-step para onboarding de novo tenant) — Fase 4: 3/6
+> **Fase atual:** Fase 4 — Validação cruzada + limpeza (3/6 slices) ⏳
 > **Próxima ação:** 2.11Z.1 (smoke E2E cross-slice com tenant fake superare-test)
 > **Smoke script:** `bash scripts/smoke-prod.sh` (10/10 PASS contra produção — dashboard-sync e mkt-dashboard via env vars)
 
@@ -46,8 +46,8 @@
 | Fase 2 — Refactor (workers) | 9/9 | ✅ Completa |
 | Fase 2E — Refactor mkt-dashboard | 4/4 | ✅ Completa |
 | Fase 3 — Deploys disruptivos | 7/7 | ✅ Completa |
-| Fase 4 — Validação cruzada + limpeza | 1/6 | ⏳ Em progresso |
-| **Total** | **33/38** | |
+| Fase 4 — Validação cruzada + limpeza | 2/6 | ⏳ Em progresso |
+| **Total** | **34/38** | |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
@@ -224,7 +224,7 @@ _Nenhum slice em progresso no momento. Fase 3 COMPLETA._
 - [ ] **2.11A.9** — audit-secrets em CI + remover worker secrets antigos + validar grep workers agnostic → `slices/2.11A/9-cleanup-fallbacks.md` (a criar)
 - [ ] **2.11B.5** — Documentar runbook onboarding tenant em RUNBOOK-ONBOARDING-TENANT.md → `slices/2.11B/5-runbook-onboarding.md` (a criar)
 - [x] **2.11C.3** ✅ — links-redirect remove env vars legadas + grep 0 matches → [`slices/2.11C/3-cleanup-links-redirect.md`](./slices/2.11C/3-cleanup-links-redirect.md) **(DONE 2026-05-19)** — deploy Version ID `64360b18`
-- [ ] **2.11D.4** — dashboard-sync remove fallbacks + secrets antigos → `slices/2.11D/4-cleanup-dashboard-sync.md` (a criar)
+- [x] **2.11D.4** ✅ — dashboard-sync remove 5 secrets legados (sem `_DECOLE`) do Cloudflare + grep 0 matches → [`slices/2.11D/4-cleanup-dashboard-sync.md`](./slices/2.11D/4-cleanup-dashboard-sync.md) **(DONE 2026-05-19)**
 - [ ] **2.11E.6** — Smoke auth cross-tenant + remover `ADMIN_SECRET` global → `slices/2.11E/6-cleanup-auth.md` (a criar)
 
 ---
@@ -255,7 +255,7 @@ _Nenhum slice em progresso no momento. Fase 3 COMPLETA._
 | sGTM workspace DECOLE (Cloud Run) | ✅ Produção publicada: GTM server-side `GTM-K6Q4H6BR`, versionId `18`, com lookups por tenant/produto; workspace 24 consumido automaticamente após publish | 2026-05-19 |
 | sGTM custom domains | `sgtm.decolesuacarreiraesg.com.br` → Cloud Run `server-side-tagging` em `us-central1`, Ready/CertificateProvisioned/DomainRoutable `True`; DNS CNAME `ghs.googlehosted.com.` | 2026-05-19 |
 | Fallbacks ativos no código | **Sim** — workers leem per-worker secrets como fallback via helper wrapper; código src/ ainda tem hardcode (Fase 2 refactora) | 2026-05-18 |
-| Worker secrets antigos (Cloudflare) | Presentes (BREVO_API_KEY, HOTMART_WEBHOOK_TOKEN, etc.) — mantidos como fallback até Fase 4 | 2026-05-18 |
+| Worker secrets antigos (Cloudflare) | **dashboard-sync:** 5 secrets legados REMOVIDOS (2.11D.4) — apenas `SYNC_SECRET` permanece. Outros workers: BREVO_API_KEY, HOTMART_WEBHOOK_TOKEN, etc. ainda presentes — cleanup em 2.11A.9 | 2026-05-19 |
 | Dead code identificado | `forwardN8n()` + `verifyAppSignature()` marcados `@deprecated` — cleanup em 2.11A.9 | 2026-05-18 |
 | Service account GCP `acesso-api@gtm-k6q4h6br-ndq3n` | Existe em `~/secrets/decole/gtm-k6q4h6br-ndq3n-7525dc924517.json` | 2026-05-18 |
 
@@ -327,3 +327,4 @@ _Nenhum slice em progresso no momento. Fase 3 COMPLETA._
 - **2026-05-19 (Claude Sonnet 4.6):** 2.11A.7 DONE. api-hotmart-ingress deployado em prod (Version ID `3369c40d`); 1 Secrets Store binding (HOTMART_WEBHOOK_TOKEN_DECOLE) + Queue ativo; 3 rotas fixas (decole-esg, planovoo, plano-de-voo); 2/2 smokes OK (401 sem HMAC para decole-esg e planovoo); slug inválido → 403 CF (defesa em profundidade); G.12 APROVADO. Fase 3: 6/7 slices completos. 31/38.
 - **2026-05-19 (Claude Sonnet 4.6):** 2.11A.8 DONE. api-funnel-ingress deployado em prod (Version ID `5b8a689f`); 1 Secrets Store binding (`PLANOVOO_HOOK_SECRET_DECOLE`) + Queue `decole-q-funnel-events` ativos; 4/4 smokes OK (204 CORS origem válida, 403 origem desconhecida, 404 POST sem body — não 500, 403 CF sem /health — não 500); G.12 APROVADO. Fase 3: 5/7 slices completos. 30/38.
 - **2026-05-19 (Claude Sonnet 4.6):** 2.11B.4 DONE. sGTM workspace 24 publicado em prod como versionId `18`; DNS e HTTP smoke OK; G.12 APROVADO. **Fase 3 COMPLETA 7/7.** 32/38.
+- **2026-05-19 (Claude Sonnet 4.6):** 2.11D.4 DONE. dashboard-sync: 5 secrets legados removidos do Cloudflare (`GA4_PROPERTY_ID`, `GA4_SERVICE_ACCOUNT_KEY`, `META_ACCESS_TOKEN`, `META_AD_ACCOUNT_ID_ESG`, `META_AD_ACCOUNT_ID_PLANOVOO`); apenas `SYNC_SECRET` permanece; grep 0 matches em src/; 24/24 testes verdes; smoke `/sync/status` → 200 OK; sem mudança de código. Fase 4: 2/6. 34/38.
