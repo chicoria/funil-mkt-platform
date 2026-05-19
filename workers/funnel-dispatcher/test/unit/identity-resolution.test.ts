@@ -22,7 +22,7 @@ function makeEvent(opts: {
     lead: opts.email ? { email: opts.email } : undefined,
     payload: opts.profileId ? { profile_id: opts.profileId } : {},
     attribution: {},
-  } as never;
+  } as unknown as FunnelEvent;
 }
 
 // ── Stub de IDENTITY_KV ───────────────────────────────────────────────────────
@@ -53,6 +53,7 @@ function makeIdentityDb() {
 
 // ── Import da função sob teste (ainda não existe → Red) ───────────────────────
 
+import type { FunnelEvent } from "../../../../packages/shared/src/funnel-event";
 import { resolveIdentityForEvent } from "../../src/handlers/identity";
 
 // ── Testes ────────────────────────────────────────────────────────────────────
@@ -74,7 +75,7 @@ describe("identity resolution — sinais determinísticos vs probabilísticos", 
 
     await resolveIdentityForEvent(event, TENANT, kv as never, null);
 
-    expect(event.payload.profile_id).toBe(existingProfileId);
+    expect((event.payload as Record<string, unknown>).profile_id).toBe(existingProfileId);
   });
 
   it("Regra 2: email NOVO no mesmo device → novo profile_id (não herda do anonymous_id)", async () => {
@@ -88,9 +89,9 @@ describe("identity resolution — sinais determinísticos vs probabilísticos", 
     await resolveIdentityForEvent(event, TENANT, kv as never, null);
 
     // Deve criar novo profile — NÃO reutilizar o de email A
-    expect(event.payload.profile_id).not.toBe(profileIdDeEmailA);
-    expect(typeof event.payload.profile_id).toBe("string");
-    expect(event.payload.profile_id.length).toBeGreaterThan(10);
+    expect((event.payload as Record<string, unknown>).profile_id).not.toBe(profileIdDeEmailA);
+    expect(typeof (event.payload as Record<string, unknown>).profile_id).toBe("string");
+    expect(((event.payload as Record<string, unknown>).profile_id as string).length).toBeGreaterThan(10);
   });
 
   it("Regra 3: sessão anônima (sem email) → continuidade via anonymous_id", async () => {
@@ -102,7 +103,7 @@ describe("identity resolution — sinais determinísticos vs probabilísticos", 
 
     await resolveIdentityForEvent(event, TENANT, kv as never, null);
 
-    expect(event.payload.profile_id).toBe(existingProfileId);
+    expect((event.payload as Record<string, unknown>).profile_id).toBe(existingProfileId);
   });
 
   it("Regra 4: novo usuário anônimo (sem email, anon desconhecido) → gera novo profile_id", async () => {
@@ -111,8 +112,8 @@ describe("identity resolution — sinais determinísticos vs probabilísticos", 
 
     await resolveIdentityForEvent(event, TENANT, kv as never, null);
 
-    expect(typeof event.payload.profile_id).toBe("string");
-    expect(event.payload.profile_id.length).toBeGreaterThan(10);
+    expect(typeof (event.payload as Record<string, unknown>).profile_id).toBe("string");
+    expect(((event.payload as Record<string, unknown>).profile_id as string).length).toBeGreaterThan(10);
   });
 
   it("Regra 5: profile_id explícito no payload → prioridade máxima (não sobrescrever)", async () => {
@@ -124,7 +125,7 @@ describe("identity resolution — sinais determinísticos vs probabilísticos", 
 
     await resolveIdentityForEvent(event, TENANT, kv as never, null);
 
-    expect(event.payload.profile_id).toBe(explicito);
+    expect((event.payload as Record<string, unknown>).profile_id).toBe(explicito);
   });
 
   it("Regra 6: mesmo email, mesmo device → mesmo profile_id (idempotente)", async () => {
@@ -138,7 +139,7 @@ describe("identity resolution — sinais determinísticos vs probabilísticos", 
 
     await resolveIdentityForEvent(event, TENANT, kv as never, null);
 
-    expect(event.payload.profile_id).toBe(existingProfileId);
+    expect((event.payload as Record<string, unknown>).profile_id).toBe(existingProfileId);
   });
 
   it("Isolamento cross-tenant: anonymous_id do tenant A não vaza para tenant B", async () => {
@@ -151,7 +152,7 @@ describe("identity resolution — sinais determinísticos vs probabilísticos", 
 
     await resolveIdentityForEvent(event, "tenant-b", kv as never, null);
 
-    expect(event.payload.profile_id).not.toBe(profileTenantA);
+    expect((event.payload as Record<string, unknown>).profile_id).not.toBe(profileTenantA);
   });
 });
 

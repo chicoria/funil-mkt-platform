@@ -1,5 +1,6 @@
 import { FunnelEvent } from "../../../../packages/shared/src/funnel-event";
 import { resolveSecret, type SecretValue } from "../../../../packages/shared/src/secrets-store-wrapper";
+import { resolveProfileId } from "./identity";
 import bundledCatalogJson from "../../../../config/products.catalog.json";
 import {
   DispatcherEnv,
@@ -556,7 +557,14 @@ async function resolveIdentityState(event: FunnelEvent, env: DispatcherEnv): Pro
     profileIdFromAnon ||= asString((await env.IDENTITY_KV.get(`identity:anon:${state.anonymousId}`)) || "");
     profileIdFromEmail ||= computedEmailHash ? asString((await env.IDENTITY_KV.get(`identity:email:${computedEmailHash}`)) || "") : "";
   }
-  const profileId = state.profileId || profileIdFromEmail || profileIdFromAnon || crypto.randomUUID();
+  // Industry-standard priority: deterministic (email) > probabilistic (device).
+  // Rule: new email on same device → new profile, never inherit from anonymous_id.
+  const profileId = await resolveProfileId({
+    explicitProfileId: state.profileId || "",
+    profileIdFromEmail,
+    profileIdFromAnon,
+    hasEmail: !!computedEmailHash,
+  });
 
   event.identity = {
     ...(event.identity || {}),
