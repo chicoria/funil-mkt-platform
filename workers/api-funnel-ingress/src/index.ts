@@ -258,15 +258,16 @@ export default {
         status: 202,
       });
 
-      // Catalog-driven redirect: forward to checkout URL from catalog with email + attribution params.
-      // Allows links-redirect to create BEGIN_CHECKOUT with email → Brevo funnel step updated.
+      // Catalog-driven checkout redirect: include email + attribution in the URL so
+      // links-redirect creates BEGIN_CHECKOUT with email → Brevo funnel step updated.
+      // Returns redirect_url in JSON (not HTTP 302) — compatible with fetch()-based forms
+      // that cannot follow cross-origin redirects via XHR.
       const checkoutRedirect = buildCheckoutRedirect(catalog, tenantId, event.product_code, payload);
-      if (checkoutRedirect) {
-        logIngress({ stage: "redirect", pathname, tenant_id: tenantId, event_id: event.event_id, redirect_to: checkoutRedirect.pathname, status: 302 });
-        return Response.redirect(checkoutRedirect.toString(), 302);
+      const redirectUrl = checkoutRedirect ? checkoutRedirect.toString() : undefined;
+      if (redirectUrl) {
+        logIngress({ stage: "queued_with_redirect", pathname, tenant_id: tenantId, event_id: event.event_id, redirect_to: checkoutRedirect!.pathname, status: 202 });
       }
-
-      return withCors(jsonResponse({ ok: true, event_id: event.event_id, event_type: event.event_type }, 202), request, catalog, tenantId);
+      return withCors(jsonResponse({ ok: true, event_id: event.event_id, event_type: event.event_type, redirect_url: redirectUrl }, 202), request, catalog, tenantId);
     }
 
     if (pathname === "/funnel/event") {

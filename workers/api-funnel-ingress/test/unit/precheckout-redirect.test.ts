@@ -33,34 +33,36 @@ function precheckoutRequest(body: Record<string, string>, origin = "https://deco
 
 describe("precheckout — catalog-driven redirect", () => {
 
-  it("retorna 302 para checkout PlanoVoo com email no redirect URL", async () => {
+  it("retorna 202 JSON com redirect_url para checkout PlanoVoo com email", async () => {
     const req = precheckoutRequest({
       email: "ana@example.com",
       product_code: "DECOLE_PLANOVOO",
     });
     const res = await worker.fetch(req, makeEnv());
+    const json = await res.json() as Record<string, unknown>;
 
-    expect(res.status).toBe(302);
-    const location = res.headers.get("location") || "";
-    expect(location).toContain("links.decolesuacarreiraesg.com.br");
-    expect(location).toContain("/plano-de-voo/checkout");
-    expect(location).toContain("email=ana%40example.com");
+    expect(res.status).toBe(202);
+    expect(json.ok).toBe(true);
+    expect(typeof json.redirect_url).toBe("string");
+    expect(json.redirect_url as string).toContain("links.decolesuacarreiraesg.com.br");
+    expect(json.redirect_url as string).toContain("/plano-de-voo/checkout");
+    expect(json.redirect_url as string).toContain("email=ana%40example.com");
   });
 
-  it("retorna 302 para checkout ESG Mentoria com email", async () => {
+  it("retorna 202 JSON com redirect_url para checkout ESG Mentoria com email", async () => {
     const req = precheckoutRequest({
       email: "joao@example.com",
       product_code: "DECOLE_ESG_MENTORIA",
     });
     const res = await worker.fetch(req, makeEnv());
+    const json = await res.json() as Record<string, unknown>;
 
-    expect(res.status).toBe(302);
-    const location = res.headers.get("location") || "";
-    expect(location).toContain("/decole-esg/checkout");
-    expect(location).toContain("email=joao%40example.com");
+    expect(res.status).toBe(202);
+    expect(json.redirect_url as string).toContain("/decole-esg/checkout");
+    expect(json.redirect_url as string).toContain("email=joao%40example.com");
   });
 
-  it("propaga UTMs no redirect URL", async () => {
+  it("propaga UTMs no redirect_url do JSON", async () => {
     const req = precheckoutRequest({
       email: "maria@example.com",
       product_code: "DECOLE_PLANOVOO",
@@ -69,14 +71,14 @@ describe("precheckout — catalog-driven redirect", () => {
       utm_campaign: "lancamento",
     });
     const res = await worker.fetch(req, makeEnv());
+    const json = await res.json() as Record<string, unknown>;
 
-    const location = res.headers.get("location") || "";
-    expect(location).toContain("utm_source=instagram");
-    expect(location).toContain("utm_medium=social");
-    expect(location).toContain("utm_campaign=lancamento");
+    expect(json.redirect_url as string).toContain("utm_source=instagram");
+    expect(json.redirect_url as string).toContain("utm_medium=social");
+    expect(json.redirect_url as string).toContain("utm_campaign=lancamento");
   });
 
-  it("propaga fbp e anonymous_id no redirect URL", async () => {
+  it("propaga fbp e anonymous_id no redirect_url do JSON", async () => {
     const req = precheckoutRequest({
       email: "pedro@example.com",
       product_code: "DECOLE_PLANOVOO",
@@ -84,10 +86,10 @@ describe("precheckout — catalog-driven redirect", () => {
       anonymous_id: "anon-abc-123",
     });
     const res = await worker.fetch(req, makeEnv());
+    const json = await res.json() as Record<string, unknown>;
 
-    const location = res.headers.get("location") || "";
-    expect(location).toContain("fbp=fb.1.123456789.987654321");
-    expect(location).toContain("anonymous_id=anon-abc-123");
+    expect(json.redirect_url as string).toContain("fbp=fb.1.123456789.987654321");
+    expect(json.redirect_url as string).toContain("anonymous_id=anon-abc-123");
   });
 
   it("enfileira o evento na queue antes de redirecionar", async () => {
