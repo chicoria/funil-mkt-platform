@@ -5,6 +5,17 @@
 
 set -eo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ENV_FILE="$ROOT_DIR/.env.local"
+
+if [ -z "${CLOUDFLARE_API_TOKEN:-}" ] && [ -f "$ENV_FILE" ]; then
+  set -a
+  # shellcheck source=/dev/null
+  source "$ENV_FILE"
+  set +a
+fi
+
 # Cores ANSI
 GREEN=$'\033[0;32m'
 YELLOW=$'\033[0;33m'
@@ -32,7 +43,7 @@ if [ $# -gt 0 ]; then
   WORKERS=("$@")
 else
   WORKERS=()
-  WORKERS_DIR="$(cd "$(dirname "$0")/../workers" && pwd)"
+  WORKERS_DIR="$ROOT_DIR/workers"
   while IFS= read -r toml; do
     name=$(grep '^name' "$toml" | head -1 | sed 's/name *= *"\(.*\)"/\1/')
     [ -n "$name" ] && WORKERS+=("$name")
