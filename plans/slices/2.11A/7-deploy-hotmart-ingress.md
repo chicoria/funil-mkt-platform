@@ -129,11 +129,27 @@ Validação pós-rollback: smoke → 401 ainda responde (worker ativo), verifica
 - O que falhou: nada.
 - Decisão aplicada: manter `HOTMART_WEBHOOK_TOKEN_DECOLE` como única fonte runtime (sem fallback legado).
 
+### 2026-05-20 00:xx WEST by Codex — correção de 401 intermitente após rotação
+
+- O que foi tentado: validar webhook `PURCHASE_APPROVED` real com token atualizado.
+- O que funcionou:
+  - Reproduzido comportamento intermitente em produção no mesmo endpoint (`/webhooks/v1/plano-de-voo/hotmart/purchase`): alternância entre `202` e `401`.
+  - Causa raiz confirmada: cache em memória por isolate no helper `resolveSecret()` (token antigo persistindo em isolates quentes após rotação do secret no Store).
+  - Mitigação operacional aplicada: redeploy do worker `decole-api-hotmart-ingress` para reciclar isolates.
+  - Deploy concluído: Version ID `6f846f04-7852-44bc-8bc4-cb65d76a6c69`.
+  - Re-smoke pós-redeploy (autenticado com `x-hotmart-hottok`):
+    - `/webhooks/v1/plano-de-voo/hotmart/purchase`: `12/12` HTTP `202`
+    - `/webhooks/v1/planovoo/hotmart/purchase`: `12/12` HTTP `202`
+    - `/webhooks/v1/decole-esg/hotmart/purchase`: `12/12` HTTP `202`
+- O que falhou: nada após redeploy.
+- Decisão aplicada: sempre que houver rotação de `HOTMART_WEBHOOK_TOKEN_DECOLE`, executar redeploy do `api-hotmart-ingress` na mesma janela de mudança.
+
 ## Gotchas / lições aprendidas
 
 - Não há rota `/health` no `wrangler.toml` — smoke deve usar uma das rotas de webhook registradas.
 - `workers_dev = false` — sem `.workers.dev` URL disponível; deploy só via rotas custom.
 - Token para autenticação wrangler: usar `CLOUDFLARE_API_TOKEN` do `.env.local` (OAuth expirou).
+- Rotação de secret em Secrets Store sem redeploy pode causar 401 intermitente por cache de isolate; procedimento correto é `update secret` + `redeploy` + smoke autenticado.
 
 ## Decisões tomadas (delta vs plano original)
 
