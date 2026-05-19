@@ -19,13 +19,6 @@ id = "88989e2e3492459eadb06e9da523dfae"
   enabled = false
   invocation_logs = true
 
-[vars]
-ELIZETE_WHATSAPP_NUMBER = "351915787088"
-ELIZETE_WHATSAPP_DEFAULT_TEXT = "Olá Elizete, estou no site do decolesuacarreiraesg.com.br e tenho uma dúvida. :)"
-DECOLE_MENTORIA_CHECKOUT_URL = "https://pay.hotmart.com/K98068530F?off=3j6lto4t"
-PLANO_DE_VOO_CHECKOUT_URL = "https://pay.hotmart.com/R105463680A?off=f3yweqek"
-LINKS_PRODUCTS = "[{\"checkoutPath\":\"/decole-esg/checkout\",\"checkoutBaseUrl\":\"https://pay.hotmart.com/K98068530F?off=3j6lto4t\",\"productCode\":\"DECOLE_ESG_MENTORIA\"},{\"checkoutPath\":\"/plano-de-voo/checkout\",\"checkoutBaseUrl\":\"https://pay.hotmart.com/R105463680A?off=f3yweqek\",\"productCode\":\"DECOLE_PLANOVOO\"}]"
-
 # ── Cloudflare Secrets Store bindings (Slice 2.11A.2) ──────────────────────
-# links-redirect não tem secrets críticos de tenant ainda (Slice 2.11C os trata)
-# Placeholder para ambiente de staging — sem bindings por enquanto
+# links-redirect não usa secrets de tenant — configuração vem do catálogo bundled
+# (Slice 2.11C.3: env vars legadas removidas; catálogo é a única fonte de verdade)

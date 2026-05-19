@@ -1,7 +1,7 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-19 por Claude Sonnet 4.6 — B.4 ✅ sGTM workspace 24 publicado em prod (versionId=18, GTM-K6Q4H6BR, DNS OK) — Fase 3: 7/7 COMPLETA
-> **Fase atual:** Fase 4 — Validação cruzada + limpeza (0/6 slices) ⏸️
+> **Última atualização:** 2026-05-19 por Claude Sonnet 4.6 — C.3 ✅ links-redirect env vars legadas removidas + grep 0 matches + deploy `64360b18` + smoke 10/10 — Fase 4: 1/6
+> **Fase atual:** Fase 4 — Validação cruzada + limpeza (1/6 slices) ⏳
 > **Próxima ação:** 2.11Z.1 (smoke E2E cross-slice com tenant fake superare-test)
 > **Smoke script:** `bash scripts/smoke-prod.sh` (10/10 PASS contra produção — dashboard-sync e mkt-dashboard via env vars)
 
@@ -46,8 +46,8 @@
 | Fase 2 — Refactor (workers) | 9/9 | ✅ Completa |
 | Fase 2E — Refactor mkt-dashboard | 4/4 | ✅ Completa |
 | Fase 3 — Deploys disruptivos | 7/7 | ✅ Completa |
-| Fase 4 — Validação cruzada + limpeza | 0/6 | ⏸️ Não iniciada |
-| **Total** | **32/38** | |
+| Fase 4 — Validação cruzada + limpeza | 1/6 | ⏳ Em progresso |
+| **Total** | **33/38** | |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
@@ -223,7 +223,7 @@ _Nenhum slice em progresso no momento. Fase 3 COMPLETA._
 - [ ] **2.11Z.1** — Smoke E2E cross-slice com tenant fake superare-test → `slices/2.11Z/1-cross-tenant-e2e-validation.md` (a criar)
 - [ ] **2.11A.9** — audit-secrets em CI + remover worker secrets antigos + validar grep workers agnostic → `slices/2.11A/9-cleanup-fallbacks.md` (a criar)
 - [ ] **2.11B.5** — Documentar runbook onboarding tenant em RUNBOOK-ONBOARDING-TENANT.md → `slices/2.11B/5-runbook-onboarding.md` (a criar)
-- [ ] **2.11C.3** — links-redirect remove env vars antigas + validar grep → `slices/2.11C/3-cleanup-links-redirect.md` (a criar)
+- [x] **2.11C.3** ✅ — links-redirect remove env vars legadas + grep 0 matches → [`slices/2.11C/3-cleanup-links-redirect.md`](./slices/2.11C/3-cleanup-links-redirect.md) **(DONE 2026-05-19)** — deploy Version ID `64360b18`
 - [ ] **2.11D.4** — dashboard-sync remove fallbacks + secrets antigos → `slices/2.11D/4-cleanup-dashboard-sync.md` (a criar)
 - [ ] **2.11E.6** — Smoke auth cross-tenant + remover `ADMIN_SECRET` global → `slices/2.11E/6-cleanup-auth.md` (a criar)
 
@@ -249,7 +249,7 @@ _Nenhum slice em progresso no momento. Fase 3 COMPLETA._
 |---|---|---|
 | Cloudflare Secrets Store `default_secrets_store` | ✅ **15/15 secrets** criados (ID `23bdc9c2e8ca470d82352c53ec8d2e67`) | 2026-05-18 |
 | Catálogo `config/products.catalog.json` schemaVersion | **5** (v5 aditivo — `tenants.decole.credentials`, `DECOLE_PLANOVOO.product_api` e `workerViews` dos ingress Hotmart/Funnel repontados para secrets `_DECOLE`; v4 mantido onde ainda há fallback) | 2026-05-18 |
-| Workers deployed (prod) | api-hotmart-ingress: NOVO deploy 2026-05-19 (Version ID `3369c40d`, 1 Secrets Store binding + Queue, 3 rotas fixas); **links-redirect: NOVO deploy 2026-05-19** (Version ID `2d156f71`, multi-tenant via catálogo); **dashboard-sync: NOVO deploy 2026-05-19** (Version ID `7a2aca8f`, 5 Secrets Store bindings, multi-tenant via catálogo); **funnel-dispatcher: NOVO deploy 2026-05-19** (Version ID `217c3c34`, 9 Secrets Store bindings, consumer queue ativo); **api-funnel-ingress: NOVO deploy 2026-05-19** (Version ID `5b8a689f`, 1 Secrets Store binding + Queue, CORS por catálogo) | 2026-05-19 |
+| Workers deployed (prod) | api-hotmart-ingress: NOVO deploy 2026-05-19 (Version ID `3369c40d`, 1 Secrets Store binding + Queue, 3 rotas fixas); **links-redirect: NOVO deploy 2026-05-19** (Version ID `64360b18`, multi-tenant via catálogo, sem env vars legadas — 2.11C.3); **dashboard-sync: NOVO deploy 2026-05-19** (Version ID `7a2aca8f`, 5 Secrets Store bindings, multi-tenant via catálogo); **funnel-dispatcher: NOVO deploy 2026-05-19** (Version ID `217c3c34`, 9 Secrets Store bindings, consumer queue ativo); **api-funnel-ingress: NOVO deploy 2026-05-19** (Version ID `5b8a689f`, 1 Secrets Store binding + Queue, CORS por catálogo) | 2026-05-19 |
 | D1 `ga4_daily_metrics` | **Schema v2: coluna `tenant_id` adicionada** (migration 2.11D.1 — roda no bootstrap) | 2026-05-18 |
 | D1 `meta_daily_metrics` | **Schema v2: coluna `tenant_id` adicionada** (migration 2.11D.1) | 2026-05-18 |
 | sGTM workspace DECOLE (Cloud Run) | ✅ Produção publicada: GTM server-side `GTM-K6Q4H6BR`, versionId `18`, com lookups por tenant/produto; workspace 24 consumido automaticamente após publish | 2026-05-19 |
