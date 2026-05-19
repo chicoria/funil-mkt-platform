@@ -226,7 +226,7 @@ describe("funnel-dispatcher", () => {
                   brevoConfig: {
                     listId: "7",
                     doiTemplateId: "1",
-                    doiRedirectUrl: "https://decolesuacarreiraesg.com.br/confirmacao.html",
+                    doiRedirectUrl: "https://links.decolesuacarreiraesg.com.br/decole-esg/signup",
                   },
                 },
               ],
@@ -265,7 +265,7 @@ describe("funnel-dispatcher", () => {
     expect(body.email).toBe("qa.doi@example.com");
     expect(body.includeListIds).toEqual([7]);
     expect(body.templateId).toBe(1);
-    expect(body.redirectionUrl).toBe("https://decolesuacarreiraesg.com.br/confirmacao.html");
+    expect(body.redirectionUrl).toBe("https://links.decolesuacarreiraesg.com.br/decole-esg/signup");
     expect(body.attributes?.FIRSTNAME).toBe("Ana");
     expect(body.attributes?.LASTNAME).toBe("Silva");
     expect(body.attributes?.SMS).toBe("+5511999999999");
@@ -303,7 +303,7 @@ describe("funnel-dispatcher", () => {
                   brevoConfig: {
                     listId: "7",
                     doiTemplateId: "1",
-                    doiRedirectUrl: "https://decolesuacarreiraesg.com.br/confirmacao.html",
+                    doiRedirectUrl: "https://links.decolesuacarreiraesg.com.br/decole-esg/signup",
                   },
                 },
               ],
@@ -375,7 +375,7 @@ describe("funnel-dispatcher", () => {
                   checkoutBaseUrl: "https://pay.hotmart.com/R105463680A?off=f3yweqek",
                 },
                 brevo: {
-                  doiRedirectUrl: "https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html",
+                  doiRedirectUrl: "https://links.decolesuacarreiraesg.com.br/plano-de-voo/signup",
                   lists: { precheckout: { id: "8" } },
                   templates: { doi: { id: "10" } },
                   funnelFields: {
@@ -555,7 +555,7 @@ describe("funnel-dispatcher", () => {
         products: {
           DECOLE_PLANOVOO: {
             brevo: {
-              doiRedirectUrl: "https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html",
+              doiRedirectUrl: "https://links.decolesuacarreiraesg.com.br/plano-de-voo/signup",
               lists: {
                 precheckout: { id: "8" },
               },
@@ -599,7 +599,7 @@ describe("funnel-dispatcher", () => {
     };
     expect(body.templateId).toBe(10);
     expect(body.includeListIds).toEqual([8]);
-    expect(body.redirectionUrl).toBe("https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html");
+    expect(body.redirectionUrl).toBe("https://links.decolesuacarreiraesg.com.br/plano-de-voo/signup");
     expect(body.attributes?.PRODUCT_CODE).toBe("DECOLE_PLANOVOO");
 
     vi.unstubAllGlobals();

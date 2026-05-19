@@ -1,6 +1,6 @@
 {
   "schemaVersion": 5,
-  "updatedAt": "2026-05-18",
+  "updatedAt": "2026-05-19",
   "description": "Catálogo central multi-tenant — tenants.{id}.products.{code} declara cada produto. Schema v5 adiciona tracking/integrations/dashboard/links/allowedOrigins por tenant e urlSlugs/n8nForward/links/dashboard por produto (aditivo — campos v4 mantidos para compatibilidade durante Fase 2).",
   "global": {
     "hotmart": {
@@ -124,6 +124,18 @@
             "legacy": true,
             "deprecated": true,
             "_note": "Rota legada sem prefixo de produto — manter até confirmar zero tráfego (30 dias)"
+          },
+          {
+            "path": "/decole-esg/signup",
+            "type": "doi_confirmation",
+            "productCode": "DECOLE_ESG_MENTORIA",
+            "redirectUrl": "https://decolesuacarreiraesg.com.br/confirmacao.html"
+          },
+          {
+            "path": "/plano-de-voo/signup",
+            "type": "doi_confirmation",
+            "productCode": "DECOLE_PLANOVOO",
+            "redirectUrl": "https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html"
           }
         ],
         "contacts": {
@@ -198,7 +210,7 @@
                 "triggerEvent": "GENERATE_LEAD",
                 "endpoint": "/contacts/doubleOptinConfirmation",
                 "includeListId": "7",
-                "redirectionUrl": "https://decolesuacarreiraesg.com.br/confirmacao.html",
+                "redirectionUrl": "https://links.decolesuacarreiraesg.com.br/decole-esg/signup",
                 "templatePlaceholder": "{{ params.DOIurl }}",
                 "description": "Confirmação Double Opt-In nativa da Brevo para lead de precheckout.",
                 "managedVia": "api",
@@ -310,7 +322,7 @@
                 "brevoConfig": {
                   "listId": "7",
                   "doiTemplateId": "1",
-                  "doiRedirectUrl": "https://decolesuacarreiraesg.com.br/confirmacao.html",
+                  "doiRedirectUrl": "https://links.decolesuacarreiraesg.com.br/decole-esg/signup",
                   "funnelPrefix": "DECOLE_ESG"
                 },
                 "trackingConfigRef": "products.DECOLE_ESG_MENTORIA.tracking"
@@ -831,7 +843,7 @@
                 "triggerEvent": "GENERATE_LEAD",
                 "endpoint": "/contacts/doubleOptinConfirmation",
                 "includeListId": "8",
-                "redirectionUrl": "https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html",
+                "redirectionUrl": "https://links.decolesuacarreiraesg.com.br/plano-de-voo/signup",
                 "templatePlaceholder": "{{ params.DOIurl }}",
                 "description": "Confirmação Double Opt-In nativa da Brevo para lead de precheckout Plano de Voo.",
                 "managedVia": "api",
@@ -967,7 +979,7 @@
                 "brevoConfig": {
                   "listId": "8",
                   "doiTemplateId": "10",
-                  "doiRedirectUrl": "https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html",
+                  "doiRedirectUrl": "https://links.decolesuacarreiraesg.com.br/plano-de-voo/signup",
                   "funnelPrefix": "DECOLE_PLANOVOO"
                 },
                 "trackingConfigRef": "products.DECOLE_PLANOVOO.tracking"

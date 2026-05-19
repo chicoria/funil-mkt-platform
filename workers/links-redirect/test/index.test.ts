@@ -201,6 +201,67 @@ describe("links-redirect worker", () => {
     expect(url.searchParams.get("fbp")).toBe("fb.2.scoped");
   });
 
+  it("redireciona confirmacao DOI ESG via links worker", async () => {
+    const res = await worker.fetch(makeRequest("decole-esg/signup?utm_source=brevo"), makeEnv());
+    expect(res.status).toBe(302);
+    const location = res.headers.get("location") || "";
+    const url = new URL(location);
+    expect(url.origin).toBe("https://decolesuacarreiraesg.com.br");
+    expect(url.pathname).toBe("/confirmacao.html");
+    expect(url.searchParams.get("utm_source")).toBe("brevo");
+  });
+
+  it("enfileira SIGN_UP ao confirmar DOI com rid", async () => {
+    const sent: unknown[] = [];
+    const res = await worker.fetch(
+      makeRequest("plano-de-voo/signup?rid=doi-rec-1&utm_campaign=doi"),
+      makeEnv({
+        IDENTITY_KV: {
+          get: async (key: string) =>
+            key === "decole:checkout_recovery:doi-rec-1"
+              ? JSON.stringify({
+                  params: {
+                    email: "lead@exemplo.com",
+                    phonenumber: "11999999999",
+                    anonymous_id: "anon-doi-1",
+                    fbp: "fb.1.doi",
+                  },
+                })
+              : null,
+        },
+        FUNNEL_EVENTS: {
+          send: async (body: unknown) => {
+            sent.push(body);
+          },
+        },
+      })
+    );
+
+    expect(res.status).toBe(302);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({
+      event_id: "sign_up:DECOLE_PLANOVOO:lead@exemplo.com",
+      event_type: "SIGN_UP",
+      product_code: "DECOLE_PLANOVOO",
+      source: "site",
+      lead: {
+        email: "lead@exemplo.com",
+        phone: "11999999999",
+      },
+      identity: {
+        anonymous_id: "anon-doi-1",
+      },
+      attribution: {
+        fbp: "fb.1.doi",
+        utm_campaign: "doi",
+      },
+      payload: {
+        confirmation_path: "plano-de-voo/signup",
+        recovery_id: undefined,
+      },
+    });
+  });
+
   it("redireciona /plano-de-voo/checkout/offer/:codigo com oferta da rota", async () => {
     const res = await worker.fetch(makeRequest("plano-de-voo/checkout/offer/novo123?utm_source=ig"), makeEnv());
     const location = res.headers.get("location") || "";

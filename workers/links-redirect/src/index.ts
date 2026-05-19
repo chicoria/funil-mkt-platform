@@ -20,6 +20,8 @@ type HandlerResult = {
   cacheControl?: string;
   checkoutPath?: string;
   productCode?: string;
+  confirmationPath?: string;
+  eventType?: "BEGIN_CHECKOUT" | "SIGN_UP";
 };
 
 interface LinksProductConfig {
@@ -33,7 +35,14 @@ interface LinksCatalog {
     domains?: readonly string[];
     links?: {
       linksDomain?: string;
-      routes?: ReadonlyArray<{ readonly path: string; readonly type: string; readonly productCode: string; readonly legacy?: boolean; readonly deprecated?: boolean }>;
+      routes?: ReadonlyArray<{
+        readonly path: string;
+        readonly type: string;
+        readonly productCode: string;
+        readonly redirectUrl?: string;
+        readonly legacy?: boolean;
+        readonly deprecated?: boolean;
+      }>;
       contacts?: Record<string, { readonly type: string; readonly number?: string; readonly defaultText?: string }>;
     };
     products?: Record<string, { links?: { readonly checkoutBaseUrl?: string } }>;
@@ -232,6 +241,28 @@ function handleCheckoutPath(url: URL, checkoutPath: string, tenantId: string): H
     ...result,
     checkoutPath: product?.checkoutPath || lowercasePath(normalizePath(checkoutPath)),
     productCode: product?.productCode,
+    eventType: "BEGIN_CHECKOUT",
+  };
+}
+
+function resolveTenantRoute(catalog: LinksCatalog, tenantId: string, path: string) {
+  const normalizedPath = "/" + lowercasePath(normalizePath(path));
+  const tenant = catalog.tenants[tenantId];
+  if (!tenant) return null;
+  return (tenant.links?.routes ?? []).find((route) => lowercasePath(route.path) === normalizedPath) || null;
+}
+
+function handleDoiConfirmationPath(url: URL, routePath: string, tenantId: string): HandlerResult | null {
+  const route = resolveTenantRoute(bundledCatalogJson as LinksCatalog, tenantId, routePath);
+  if (!route || route.type !== "doi_confirmation") return null;
+  const redirectUrl = asTrimmedString(route.redirectUrl);
+  if (!redirectUrl) return null;
+  return {
+    location: appendQueryParams(redirectUrl, url.searchParams, ["rid", "recovery_id", "recoveryId"]),
+    cacheControl: "no-store",
+    productCode: route.productCode,
+    confirmationPath: lowercasePath(normalizePath(route.path)),
+    eventType: "SIGN_UP",
   };
 }
 
@@ -318,6 +349,79 @@ async function enqueueBeginCheckout(request: Request, url: URL, result: HandlerR
   }
 }
 
+function buildSignUpEvent(request: Request, url: URL, result: HandlerResult): FunnelEvent | null {
+  const clientIp =
+    request.headers.get("cf-connecting-ip") ||
+    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
+    "";
+  const productCode = asTrimmedString(result.productCode).toUpperCase();
+  if (!productCode) return null;
+
+  const rid = firstSearchParam(url.searchParams, ["rid", "recovery_id", "recoveryId"]);
+  const email = firstSearchParam(url.searchParams, ["email", "EMAIL"]).toLowerCase();
+  const phone = firstSearchParam(url.searchParams, ["phone", "PHONE", "SMS", "phonenumber", "phoneNumber"]);
+  const leadId = firstSearchParam(url.searchParams, ["lead_id", "leadId", "LEAD_ID"]);
+  const anonymousId = firstSearchParam(url.searchParams, ["anonymous_id", "anonymousId", "client_id", "clientId"]);
+  const sessionId = firstSearchParam(url.searchParams, ["session_id", "sessionId"]);
+
+  const eventId =
+    firstSearchParam(url.searchParams, ["event_id", "eventId"]) ||
+    (rid ? `sign_up:${productCode}:${rid}` : email ? `sign_up:${productCode}:${email}` : `sign_up:${productCode}:${crypto.randomUUID()}`);
+
+  return {
+    event_id: eventId,
+    event_type: "SIGN_UP",
+    product_code: productCode,
+    source: "site",
+    occurred_at: new Date().toISOString(),
+    identity: {
+      anonymous_id: anonymousId || undefined,
+      session_id: sessionId || undefined,
+      lead_id: leadId || undefined,
+    },
+    attribution: {
+      fbp: firstSearchParam(url.searchParams, ["fbp", "FBP"]) || undefined,
+      fbc: firstSearchParam(url.searchParams, ["fbc", "FBC"]) || undefined,
+      gclid: firstSearchParam(url.searchParams, ["gclid"]) || undefined,
+      wbraid: firstSearchParam(url.searchParams, ["wbraid"]) || undefined,
+      gbraid: firstSearchParam(url.searchParams, ["gbraid"]) || undefined,
+      utm_source: firstSearchParam(url.searchParams, ["utm_source"]) || undefined,
+      utm_medium: firstSearchParam(url.searchParams, ["utm_medium"]) || undefined,
+      utm_campaign: firstSearchParam(url.searchParams, ["utm_campaign"]) || undefined,
+      client_ip: clientIp || undefined,
+    },
+    lead: {
+      email: email || undefined,
+      phone: phone || undefined,
+      lead_id: leadId || undefined,
+    },
+    payload: {
+      confirmation_path: result.confirmationPath,
+      redirect_url: result.location,
+      link_url: url.toString(),
+      recovery_id: rid || undefined,
+    },
+  };
+}
+
+async function enqueueSignUp(request: Request, url: URL, result: HandlerResult, env: Env): Promise<void> {
+  if (!env.FUNNEL_EVENTS) {
+    console.log(JSON.stringify({ stage: "sign_up_skip", reason: "missing_queue" }));
+    return;
+  }
+  const event = buildSignUpEvent(request, url, result);
+  if (!event) {
+    console.log(JSON.stringify({ stage: "sign_up_skip", reason: "missing_product_code" }));
+    return;
+  }
+  try {
+    await env.FUNNEL_EVENTS.send(event);
+    console.log(JSON.stringify({ stage: "sign_up_queued", event_id: event.event_id, product_code: event.product_code }));
+  } catch (error) {
+    console.log(JSON.stringify({ stage: "sign_up_error", reason: error instanceof Error ? error.message : "queue_send_failed" }));
+  }
+}
+
 async function redirectResponse(
   request: Request,
   url: URL,
@@ -325,8 +429,13 @@ async function redirectResponse(
   env: Env,
   options: { emitBeginCheckout?: boolean } = {}
 ): Promise<Response> {
-  if (options.emitBeginCheckout && request.method === "GET") {
-    await enqueueBeginCheckout(request, url, result, env);
+  if (request.method === "GET") {
+    if (options.emitBeginCheckout) {
+      await enqueueBeginCheckout(request, url, result, env);
+    }
+    if (result.eventType === "SIGN_UP") {
+      await enqueueSignUp(request, url, result, env);
+    }
   }
   return new Response(null, {
     status: 302,
@@ -377,6 +486,15 @@ const worker = {
           return jsonResponse({ ok: false, error: "link_not_configured" }, 500);
         }
         return redirectResponse(request, requestUrl, result, env, { emitBeginCheckout: true });
+      }
+
+      const confirmationResult = handleDoiConfirmationPath(url, rawPath, tenantId);
+      if (confirmationResult) {
+        if (!confirmationResult.location) {
+          return jsonResponse({ ok: false, error: "link_not_configured" }, 500);
+        }
+        const requestUrl = await withCheckoutRecoveryParams(url, tenantId, env);
+        return redirectResponse(request, requestUrl, confirmationResult, env);
       }
 
       // Contact handler — lookup dinâmico do catálogo

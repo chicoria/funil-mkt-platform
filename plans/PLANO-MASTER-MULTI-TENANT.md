@@ -1,7 +1,7 @@
 # Plano Master — Multi-Tenant
 
 > **Ponto de entrada autoritativo** para toda mudança no `funil-mkt-platform` que envolva multi-tenancy.
-> **Status:** ✅ **CONCLUÍDO** — 38/38 slices · Fases 0, 0.5, 1, 2, 2E, 3 e 4 completas (atualizado em 2026-05-19 por Claude Sonnet 4.6).
+> **Status:** ✅ **CONCLUÍDO (baseline 2.11)** — 38/38 slices · Fases 0, 0.5, 1, 2, 2E, 3 e 4 completas. ⏳ **Extensão em andamento:** Slice 2.11C.4 (DOI signup via links worker), iniciado em 2026-05-19 por Codex (GPT-5).
 > **Source of truth de progresso:** [`STATUS-2.11.md`](./STATUS-2.11.md)
 
 ---

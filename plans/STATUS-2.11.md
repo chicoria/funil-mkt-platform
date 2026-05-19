@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-19 por Claude Sonnet 4.6 — B.5 ✅ RUNBOOK-ONBOARDING-TENANT.md criado (8 frentes step-by-step para onboarding de novo tenant) — Fase 4: 3/6
-> **Fase atual:** Fase 4 — Validação cruzada + limpeza (3/6 slices) ⏳
-> **Próxima ação:** 2.11Z.1 (smoke E2E cross-slice com tenant fake superare-test)
+> **Última atualização:** 2026-05-19 por Codex (GPT-5) — 2.11C.4 iniciado (DOI signup via links worker)
+> **Fase atual:** Pós-2.11 — Extensões incrementais (2.11C.4 IN_PROGRESS) ⏳
+> **Próxima ação:** Implementar 2.11C.4 (`slices/2.11C/4-doi-signup-via-links-worker.md`)
 > **Smoke script:** `bash scripts/smoke-prod.sh` (10/10 PASS contra produção — dashboard-sync e mkt-dashboard via env vars)
 
 ---
@@ -55,7 +55,9 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Slice em progresso
 
-_Nenhum slice em progresso no momento. Fase 3 COMPLETA._
+**2.11C.4** — DOI signup via links worker ⏳
+- **File:** [`slices/2.11C/4-doi-signup-via-links-worker.md`](./slices/2.11C/4-doi-signup-via-links-worker.md)
+- **Objetivo:** mover confirmação DOI para URL do links worker e emitir `SIGN_UP` server-side
 
 ## Último slice concluído
 
@@ -226,6 +228,9 @@ _Nenhum slice em progresso no momento. Fase 3 COMPLETA._
 - [x] **2.11C.3** ✅ — links-redirect remove env vars legadas + grep 0 matches → [`slices/2.11C/3-cleanup-links-redirect.md`](./slices/2.11C/3-cleanup-links-redirect.md) **(DONE 2026-05-19)** — deploy Version ID `64360b18`
 - [x] **2.11D.4** ✅ — dashboard-sync remove 5 secrets legados (sem `_DECOLE`) do Cloudflare + grep 0 matches → [`slices/2.11D/4-cleanup-dashboard-sync.md`](./slices/2.11D/4-cleanup-dashboard-sync.md) **(DONE 2026-05-19)**
 - [ ] **2.11E.6** — Smoke auth cross-tenant + remover `ADMIN_SECRET` global → `slices/2.11E/6-cleanup-auth.md` (a criar)
+
+### Pós-2.11 — Extensões incrementais
+- [ ] **2.11C.4** — DOI signup via links worker (redirecionamento + emissão server-side de `SIGN_UP`) → [`slices/2.11C/4-doi-signup-via-links-worker.md`](./slices/2.11C/4-doi-signup-via-links-worker.md) **(IN_PROGRESS 2026-05-19)**
 
 ---
 
