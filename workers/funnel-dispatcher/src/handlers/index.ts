@@ -18,7 +18,7 @@ import {
   type ParsedCatalog,
 } from "../catalog-adapter";
 import { HandlerContext } from "../handler-context";
-import { DEFAULT_TENANT_ID, resolveEventTenantId, tenantScopedKey } from "../tenant-scope";
+import { resolveEventTenantId, tenantScopedKey } from "../tenant-scope";
 import { callProductApi, type ProductApiConfig } from "./call-product-api";
 import { sendTemplateEmail, type TemplateEmailConfig } from "./send-template-email";
 
@@ -547,12 +547,8 @@ async function resolveIdentityState(event: FunnelEvent, env: DispatcherEnv): Pro
 
   const anonKey = tenantScopedKey(tenantId, `identity:anon:${state.anonymousId}`);
   const emailKey = computedEmailHash ? tenantScopedKey(tenantId, `identity:email:${computedEmailHash}`) : "";
-  let profileIdFromAnon = asString((await env.IDENTITY_KV?.get(anonKey)) || "");
-  let profileIdFromEmail = emailKey ? asString((await env.IDENTITY_KV?.get(emailKey)) || "") : "";
-  if (env.IDENTITY_KV && tenantId === DEFAULT_TENANT_ID) {
-    profileIdFromAnon ||= asString((await env.IDENTITY_KV.get(`identity:anon:${state.anonymousId}`)) || "");
-    profileIdFromEmail ||= computedEmailHash ? asString((await env.IDENTITY_KV.get(`identity:email:${computedEmailHash}`)) || "") : "";
-  }
+  const profileIdFromAnon = asString((await env.IDENTITY_KV?.get(anonKey)) || "");
+  const profileIdFromEmail = emailKey ? asString((await env.IDENTITY_KV?.get(emailKey)) || "") : "";
   // Industry-standard priority: deterministic (email) > probabilistic (device).
   // Rule: new email on same device → new profile, never inherit from anonymous_id.
   const profileId = await resolveProfileId({
@@ -779,27 +775,24 @@ async function resolveTrackingConfig(event: FunnelEvent, env: DispatcherEnv): Pr
     tenantSgtmEndpointUrl ||
     (allowLegacyFallback
       ? await secretEnvString(env, tracking?.sgtm?.endpointEnvVar, { ...secretContext, field: "product.tracking.sgtm.endpointEnvVar" }) ||
-        asString(tracking?.sgtm?.endpointUrl) ||
-        await secretEnvString(env, "SGTM_ENDPOINT_URL", { ...secretContext, field: "legacy.SGTM_ENDPOINT_URL" })
+        asString(tracking?.sgtm?.endpointUrl)
       : "");
   const ga4MeasurementId =
     tenantGa4MeasurementId ||
     (allowLegacyFallback
       ? await secretEnvString(env, tracking?.ga4?.measurementIdEnvVar, { ...secretContext, field: "product.tracking.ga4.measurementIdEnvVar" }) ||
-        asString(tracking?.ga4?.measurementId) ||
-        await secretEnvString(env, "GA4_MEASUREMENT_ID", { ...secretContext, field: "legacy.GA4_MEASUREMENT_ID" })
+        asString(tracking?.ga4?.measurementId)
       : "");
   const ga4ApiSecret =
     tenantGa4ApiSecret ||
     (allowLegacyFallback
       ? await secretEnvString(env, tracking?.ga4?.apiSecretEnvVar, { ...secretContext, field: "product.tracking.ga4.apiSecretEnvVar" }) ||
-        await secretEnvString(env, "GA4_API_SECRET", { ...secretContext, field: "legacy.GA4_API_SECRET" })
+        ""
       : "");
   const metaTestEventCode =
     (allowLegacyFallback
       ? await secretEnvString(env, tracking?.metaPixel?.testEventCodeEnvVar, { ...secretContext, field: "product.tracking.metaPixel.testEventCodeEnvVar" }) ||
-        await secretEnvString(env, fallbackMeta?.testEventCodeEnvVar, { ...secretContext, field: "product.meta.testEventCodeEnvVar" }) ||
-        await secretEnvString(env, "META_TEST_EVENT_CODE", { ...secretContext, field: "legacy.META_TEST_EVENT_CODE" })
+        await secretEnvString(env, fallbackMeta?.testEventCodeEnvVar, { ...secretContext, field: "product.meta.testEventCodeEnvVar" })
       : "");
   const productDimensionValue =
     asString(tracking?.differentiation?.produto) ||
@@ -965,14 +958,6 @@ function checkoutRecoveryTokenKey(tenantId: string, recoveryId: string): string 
   return tenantScopedKey(tenantId, `${CHECKOUT_RECOVERY_KEY_PREFIX}${normalized}`);
 }
 
-function legacyCheckoutRecoveryTokenKey(recoveryId: string): string {
-  const normalized = asString(recoveryId);
-  if (!normalized) return "";
-  return normalized.startsWith(CHECKOUT_RECOVERY_KEY_PREFIX)
-    ? normalized
-    : `${CHECKOUT_RECOVERY_KEY_PREFIX}${normalized}`;
-}
-
 function parseRecoveryIndexToken(raw: string | null): string {
   const value = asString(raw);
   if (!value) return "";
@@ -987,7 +972,7 @@ function parseRecoveryIndexToken(raw: string | null): string {
   return value;
 }
 
-function parseRecoveryRecordIndexKeys(raw: string | null, tenantId: string, includeLegacyKeys = false): string[] {
+function parseRecoveryRecordIndexKeys(raw: string | null, tenantId: string): string[] {
   const value = asString(raw);
   if (!value) return [];
   try {
@@ -1001,10 +986,7 @@ function parseRecoveryRecordIndexKeys(raw: string | null, tenantId: string, incl
         keys.add(entry);
         continue;
       }
-      if (tenantId === DEFAULT_TENANT_ID && entry.startsWith(CHECKOUT_RECOVERY_INDEX_PREFIX)) {
-        keys.add(tenantScopedKey(tenantId, entry));
-        if (includeLegacyKeys) keys.add(entry);
-      }
+      // Ignore legacy unscoped keys after 2.11A.9 cleanup.
     }
     return [...keys];
   } catch {
@@ -1084,19 +1066,11 @@ async function deleteCheckoutRecoveryToken(
   if (!tokenKey) return false;
 
   let recordRaw = await kv.get(tokenKey);
-  let keyToDelete = tokenKey;
-  let includeLegacyIndexKeys = false;
-  if (!recordRaw && tenantId === DEFAULT_TENANT_ID) {
-    const legacyKey = legacyCheckoutRecoveryTokenKey(recoveryId);
-    recordRaw = await kv.get(legacyKey);
-    keyToDelete = legacyKey;
-    includeLegacyIndexKeys = Boolean(recordRaw);
-  }
-  for (const indexKey of parseRecoveryRecordIndexKeys(recordRaw, tenantId, includeLegacyIndexKeys)) {
+  for (const indexKey of parseRecoveryRecordIndexKeys(recordRaw, tenantId)) {
     indexKeysToDelete.add(indexKey);
   }
 
-  await deleteKvKey(kv, keyToDelete);
+  await deleteKvKey(kv, tokenKey);
   return Boolean(recordRaw);
 }
 
@@ -1168,11 +1142,6 @@ async function invalidatePurchaseToken(event: FunnelEvent, env: DispatcherEnv): 
   for (const indexKey of indexKeys) {
     const recoveryId = parseRecoveryIndexToken(await env.IDENTITY_KV.get(indexKey));
     if (recoveryId) recoveryIds.add(recoveryId);
-    if (tenantId === DEFAULT_TENANT_ID && indexKey.startsWith(`${DEFAULT_TENANT_ID}:`)) {
-      const legacyIndexKey = indexKey.slice(`${DEFAULT_TENANT_ID}:`.length);
-      const legacyRecoveryId = parseRecoveryIndexToken(await env.IDENTITY_KV.get(legacyIndexKey));
-      if (legacyRecoveryId) recoveryIds.add(legacyRecoveryId);
-    }
   }
 
   let deletedTokens = 0;
@@ -1791,27 +1760,6 @@ async function resolveContextSecret(
   });
 }
 
-async function resolveContextSecretWithFallback(
-  env: DispatcherEnv,
-  key: string | undefined,
-  fallbackKey: string,
-  context: { tenantId: string; productCode: string; field: string; fallbackField: string }
-): Promise<string> {
-  const primary = await resolveContextSecret(env, key, {
-    tenantId: context.tenantId,
-    productCode: context.productCode,
-    field: context.field,
-  });
-  if (primary) return primary;
-
-  if (asString(key) === fallbackKey) return "";
-  return resolveContextSecret(env, fallbackKey, {
-    tenantId: context.tenantId,
-    productCode: context.productCode,
-    field: context.fallbackField,
-  });
-}
-
 async function resolveContextCredentials(
   tenant: CatalogTenantConfig | undefined,
   env: DispatcherEnv,
@@ -1826,36 +1774,34 @@ async function resolveContextCredentials(
     const hotmartTokenEnv = asString(credentials.hotmart_token_env);
     const replyToEmail = asString(credentials.replyToEmail);
     return {
-      brevoApiKey: await resolveContextSecretWithFallback(env, brevoApiKeyEnv, "BREVO_API_KEY", {
+      brevoApiKey: await resolveContextSecret(env, brevoApiKeyEnv, {
         tenantId,
         productCode,
         field: "tenant.credentials.brevo_api_key_env",
-        fallbackField: "legacy.BREVO_API_KEY",
       }),
-      hotmartToken: await resolveContextSecretWithFallback(env, hotmartTokenEnv, "HOTMART_WEBHOOK_TOKEN", {
+      hotmartToken: await resolveContextSecret(env, hotmartTokenEnv, {
         tenantId,
         productCode,
         field: "tenant.credentials.hotmart_token_env",
-        fallbackField: "legacy.HOTMART_WEBHOOK_TOKEN",
       }),
       ...(replyToEmail ? { replyToEmail } : {}),
     };
   }
 
-  if (hasTenantCatalog) {
+  if (!hasTenantCatalog) {
     return {
-      brevoApiKey: "",
+      brevoApiKey: await resolveContextSecret(env, "BREVO_API_KEY", {
+        tenantId,
+        productCode,
+        field: "legacy.BREVO_API_KEY",
+      }),
       hotmartToken: "",
       replyToEmail: "",
     };
   }
 
   return {
-    brevoApiKey: await resolveContextSecret(env, "BREVO_API_KEY", {
-      tenantId,
-      productCode,
-      field: "legacy.BREVO_API_KEY",
-    }),
+    brevoApiKey: "",
     hotmartToken: "",
     replyToEmail: "",
   };

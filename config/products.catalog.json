@@ -1,7 +1,7 @@
 {
   "schemaVersion": 5,
   "updatedAt": "2026-05-19",
-  "description": "Catálogo central multi-tenant — tenants.{id}.products.{code} declara cada produto. Schema v5 adiciona tracking/integrations/dashboard/links/allowedOrigins por tenant e urlSlugs/n8nForward/links/dashboard por produto (aditivo — campos v4 mantidos para compatibilidade durante Fase 2).",
+  "description": "Catálogo central multi-tenant — tenants.{id}.products.{code} declara cada produto. Fonte única para tracking, integrações, links e dashboard por tenant/produto.",
   "global": {
     "hotmart": {
       "auth": {
@@ -21,10 +21,6 @@
         "purchaseWebhook": "https://developers.hotmart.com/docs/pt-BR/2.0.0/webhook/purchase-webhook/",
         "cartAbandonmentWebhook": "https://developers.hotmart.com/docs/pt-BR/2.0.0/webhook/cart-abandonment-webhook/"
       }
-    },
-    "n8n": {
-      "_deprecated": "Slice 2.11A.1 (2026-05-18) — workers devem ler via tenants.{id}.integrations.n8n a partir da Fase 2. Este campo global será removido no slice 2.11A.9.",
-      "baseUrl": "https://n8n.decolesuacarreiraesg.com.br"
     },
     "brevo": {
       "replyToEmail": "contato@decolesuacarreiraesg.com.br",
@@ -54,7 +50,7 @@
         "hotmart_token_env": "HOTMART_WEBHOOK_TOKEN_DECOLE",
         "replyToEmail": "contato@decolesuacarreiraesg.com.br"
       },
-      "_v5_note": "Campos abaixo são novos no schema v5 (2026-05-18). Campos v4 dentro de products.*.tracking foram mantidos para compatibilidade. Serão removidos na Fase 2 após refactor dos workers.",
+      "_v5_note": "Campos v5 ativos no runtime multi-tenant. Legados v4 removidos no cleanup pós-migração.",
       "allowedOrigins": [
         "https://decolesuacarreiraesg.com.br"
       ],
@@ -120,7 +116,6 @@
           {
             "path": "/checkout",
             "type": "checkout",
-            "productCode": "DECOLE_ESG_MENTORIA",
             "legacy": true,
             "deprecated": true,
             "_note": "Rota legada sem prefixo de produto — manter até confirmar zero tráfego (30 dias)"
@@ -134,7 +129,6 @@
           {
             "path": "/plano-de-voo/signup",
             "type": "doi_confirmation",
-            "productCode": "DECOLE_PLANOVOO",
             "redirectUrl": "https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html"
           }
         ],
@@ -162,8 +156,10 @@
             "urlSlugs": ["decole-esg"]
           },
           "links": {
+            "checkoutPath": "/decole-esg/checkout",
             "checkoutBaseUrl": "https://pay.hotmart.com/K98068530F?off=3j6lto4t",
-            "offerPathTemplate": "/decole-esg/checkout/offer/{offerCode}"
+            "offerPathTemplate": "/decole-esg/checkout/offer/{offerCode}",
+            "checkoutOfferPathTemplate": "/decole-esg/checkout/offer/{offerCode}"
           },
           "dashboard": {
             "metaAds": {
@@ -620,11 +616,6 @@
               "differentiationValue": "1329973348435032"
             }
           },
-          "links": {
-            "checkoutPath": "/decole-esg/checkout",
-            "checkoutOfferPathTemplate": "/decole-esg/checkout/offer/{offerCode}",
-            "checkoutBaseUrl": "https://pay.hotmart.com/K98068530F?off=3j6lto4t"
-          },
           "landingPages": [
             {
               "name": "Bio Instagram",
@@ -772,8 +763,10 @@
             "urlSlugs": ["planodevoo", "planovoo", "plano-de-voo"]
           },
           "links": {
+            "checkoutPath": "/plano-de-voo/checkout",
             "checkoutBaseUrl": "https://pay.hotmart.com/R105463680A?off=f3yweqek",
-            "offerPathTemplate": "/plano-de-voo/checkout/offer/{offerCode}"
+            "offerPathTemplate": "/plano-de-voo/checkout/offer/{offerCode}",
+            "checkoutOfferPathTemplate": "/plano-de-voo/checkout/offer/{offerCode}"
           },
           "dashboard": {
             "metaAds": {
@@ -1438,11 +1431,6 @@
               "differentiationValue": "2220600768748665"
             }
           },
-          "links": {
-            "checkoutPath": "/plano-de-voo/checkout",
-            "checkoutOfferPathTemplate": "/plano-de-voo/checkout/offer/{offerCode}",
-            "checkoutBaseUrl": "https://pay.hotmart.com/R105463680A?off=f3yweqek"
-          },
           "landingPages": [
             {
               "name": "Landing page Plano de Voo",
@@ -1592,19 +1580,19 @@
         "EVENT_STORE_DB"
       ],
       "secrets": [
-        "BREVO_API_KEY",
+        "BREVO_API_KEY_DECOLE",
         "BREVO_BASE_URL",
-        "BREVO_DOI_TEMPLATE_ID",
-        "BREVO_CART_ABANDONMENT_TEMPLATE_ID",
         "BREVO_TIMEOUT_MS",
-        "N8N_WEBHOOK_URL",
-        "SGTM_ENDPOINT_URL",
-        "SGTM_ENDPOINT_URL_DECOLE_ESG",
-        "SGTM_ENDPOINT_URL_PLANOVOO",
         "BREVO_SANDBOX",
-        "N8N_DISABLE_FORWARD",
-        "PLANOVOO_API_BASE_URL",
-        "PLANOVOO_HOOK_SECRET"
+        "HOTMART_WEBHOOK_TOKEN_DECOLE",
+        "SGTM_ENDPOINT_URL_DECOLE",
+        "GA4_MEASUREMENT_ID_DECOLE",
+        "GA4_API_SECRET_DECOLE",
+        "META_CAPI_ACCESS_TOKEN_DECOLE",
+        "META_PIXEL_ID_DECOLE_ESG",
+        "META_PIXEL_ID_DECOLE_PLANOVOO",
+        "PLANOVOO_API_BASE_URL_DECOLE",
+        "PLANOVOO_HOOK_SECRET_DECOLE"
       ]
     },
     "api-precheckout": {
@@ -1614,7 +1602,6 @@
     "links-redirect": {
       "description": "Redirects de checkout. Emite BEGIN_CHECKOUT antes do redirect para a Hotmart.",
       "envVarMapping": {
-        "LINKS_PRODUCTS": "Para cada produto → {checkoutPath, checkoutBaseUrl, productCode}",
         "FUNNEL_EVENTS": "Fila canônica para BEGIN_CHECKOUT",
         "DECOLE_MENTORIA_CHECKOUT_URL": "products.DECOLE_ESG_MENTORIA.links.checkoutBaseUrl",
         "PLANO_DE_VOO_CHECKOUT_URL": "products.DECOLE_PLANOVOO.links.checkoutBaseUrl"
@@ -1678,11 +1665,6 @@
       "binding": "BREVO_API_KEY",
       "endpoint": "/smtp/email"
     },
-    "forward_n8n": {
-      "_deprecated": "2026-05-18 — forward_n8n não está em nenhuma chain de evento. Código morto. Remover em 2.11A.9 (Fase 4): handler forwardN8n(), buildN8nForwardPayload(), N8N_WEBHOOK_URL env var, N8N_DISABLE_FORWARD env var.",
-      "worker": "funnel-dispatcher",
-      "binding": "N8N_WEBHOOK_URL"
-    },
     "enrich_attribution": {
       "worker": "funnel-dispatcher",
       "binding": "EVENT_STORE_DB",
@@ -1692,9 +1674,9 @@
       "worker": "funnel-dispatcher",
       "status": "active_via_sgtm",
       "bindings": [
-        "SGTM_ENDPOINT_URL",
-        "SGTM_ENDPOINT_URL_DECOLE_ESG",
-        "SGTM_ENDPOINT_URL_PLANOVOO"
+        "SGTM_ENDPOINT_URL_DECOLE",
+        "GA4_MEASUREMENT_ID_DECOLE",
+        "GA4_API_SECRET_DECOLE"
       ]
     },
     "sync_brevo_segments": {

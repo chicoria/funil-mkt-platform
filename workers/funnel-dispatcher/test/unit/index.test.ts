@@ -1047,8 +1047,8 @@ describe("funnel-dispatcher", () => {
       env
     );
 
-    expect(env.IDENTITY_KV.delete).toHaveBeenCalledWith("checkout_recovery:rec-legacy");
-    expect(env.IDENTITY_KV.delete).toHaveBeenCalledWith("checkout_recovery_index:transaction:DECOLE_PLANOVOO:hp-legacy");
+    expect(env.IDENTITY_KV.delete).not.toHaveBeenCalledWith("checkout_recovery:rec-legacy");
+    expect(env.IDENTITY_KV.delete).not.toHaveBeenCalledWith("checkout_recovery_index:transaction:DECOLE_PLANOVOO:hp-legacy");
     expect(env.IDENTITY_KV.delete).toHaveBeenCalledWith("decole:checkout_recovery_index:transaction:DECOLE_PLANOVOO:hp-legacy");
   });
 
@@ -1283,6 +1283,7 @@ describe("funnel-dispatcher", () => {
 
     const env = makeEnv({
       BREVO_API_KEY: "set",
+      BREVO_API_KEY_DECOLE: "set",
       N8N_WEBHOOK_URL: "https://n8n.example.com/webhook/plano-de-voo/hotmart",
       SGTM_ENDPOINT_URL: "https://sgtm.example.com/g/collect",
     });
@@ -1341,6 +1342,7 @@ describe("funnel-dispatcher", () => {
 
     const env = makeEnv({
       BREVO_API_KEY: "set",
+      BREVO_API_KEY_DECOLE: "set",
       N8N_WEBHOOK_URL: "https://n8n.example.com/webhook/plano-de-voo/hotmart",
       SGTM_ENDPOINT_URL: "https://sgtm.example.com/g/collect",
     });
@@ -1888,6 +1890,7 @@ describe("funnel-dispatcher", () => {
       PLANOVOO_HOOK_SECRET: "test-secret",
       PLANOVOO_HOOK_SECRET_DECOLE: "test-secret",
       BREVO_API_KEY: "xkeysib-test",
+      BREVO_API_KEY_DECOLE: "xkeysib-test",
     });
 
     // Hotmart event without fbp — enrich_attribution should recover from D1

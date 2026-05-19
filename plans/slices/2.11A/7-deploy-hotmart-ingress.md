@@ -119,6 +119,16 @@ Validação pós-rollback: smoke → 401 ainda responde (worker ativo), verifica
 - G.12 revisão operacional: APROVADO.
 - Próximo passo planejado: registrar no STATUS-2.11.md + commit.
 
+### 2026-05-19 23:xx WEST by Codex — correção de drift de token
+
+- O que foi tentado: revalidar token Hotmart após 401 em webhook real de carrinho abandonado.
+- O que funcionou:
+  - Secret `hotmart_webhook_token_decole` no `default_secrets_store` foi sincronizado novamente a partir do valor atual de `HOTMART_WEBHOOK_TOKEN` (`.env.local`) via API Cloudflare (DELETE + POST, padrão 2.11A.2).
+  - Smoke de autenticação em produção com `x-hotmart-hottok` correto:
+    - `POST /webhooks/v1/decole-esg/hotmart/purchase` → HTTP `202` `{"ok":true,"event_id":"auth-test-2026-05-19","event_type":"PURCHASE_OUT_OF_SHOPPING_CART"}`.
+- O que falhou: nada.
+- Decisão aplicada: manter `HOTMART_WEBHOOK_TOKEN_DECOLE` como única fonte runtime (sem fallback legado).
+
 ## Gotchas / lições aprendidas
 
 - Não há rota `/health` no `wrangler.toml` — smoke deve usar uma das rotas de webhook registradas.

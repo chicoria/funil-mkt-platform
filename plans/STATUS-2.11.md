@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-19 por Codex (GPT-5) — 2.11C.4 iniciado (DOI signup via links worker)
-> **Fase atual:** Pós-2.11 — Extensões incrementais (2.11C.4 IN_PROGRESS) ⏳
-> **Próxima ação:** Implementar 2.11C.4 (`slices/2.11C/4-doi-signup-via-links-worker.md`)
+> **Última atualização:** 2026-05-19 por Codex (GPT-5) — 2.11A.9 cleanup legado avançado (Fase A runtime + Fase B catálogo, testes verdes)
+> **Fase atual:** Pós-2.11 — Extensões incrementais + cleanup final de legado (2.11A.9 e 2.11C.4 IN_PROGRESS) ⏳
+> **Próxima ação:** fechar 2.11A.9 (deploy + smoke) e concluir 2.11C.4
 > **Smoke script:** `bash scripts/smoke-prod.sh` (10/10 PASS contra produção — dashboard-sync e mkt-dashboard via env vars)
 
 ---
@@ -54,6 +54,10 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 ---
 
 ## Slice em progresso
+
+**2.11A.9** — Remover dead code + secrets antigos + audit grep ⏳
+- **File:** [`slices/2.11A/9-cleanup-fallbacks.md`](./slices/2.11A/9-cleanup-fallbacks.md)
+- **Objetivo:** concluir cleanup de fallbacks legados no dispatcher e catálogo
 
 **2.11C.4** — DOI signup via links worker ⏳
 - **File:** [`slices/2.11C/4-doi-signup-via-links-worker.md`](./slices/2.11C/4-doi-signup-via-links-worker.md)
@@ -334,3 +338,4 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - **2026-05-19 (Claude Sonnet 4.6):** 2.11B.4 DONE. sGTM workspace 24 publicado em prod como versionId `18`; DNS e HTTP smoke OK; G.12 APROVADO. **Fase 3 COMPLETA 7/7.** 32/38.
 - **2026-05-19 (Claude Sonnet 4.6):** 2.11D.4 DONE. dashboard-sync: 5 secrets legados removidos do Cloudflare (`GA4_PROPERTY_ID`, `GA4_SERVICE_ACCOUNT_KEY`, `META_ACCESS_TOKEN`, `META_AD_ACCOUNT_ID_ESG`, `META_AD_ACCOUNT_ID_PLANOVOO`); apenas `SYNC_SECRET` permanece; grep 0 matches em src/; 24/24 testes verdes; smoke `/sync/status` → 200 OK; sem mudança de código. Fase 4: 2/6. 34/38.
 - **2026-05-19 (Claude Sonnet 4.6):** 2.11B.5 DONE. `plans/RUNBOOK-ONBOARDING-TENANT.md` criado — runbook step-by-step com 8 frentes (DNS, catálogo, sGTM, Secrets Store, workers wrangler.toml, CF Pages secret, Cloud Run domain mapping, smoke checklist); exemplo concreto SUPERARE; todos os IDs reais referenciados; checklist executável final; G.12 auto-revisão APROVADO. Fase 4: 3/6. 35/38.
+- **2026-05-19 (Codex):** Drift operacional corrigido pós-2.11A.7: `hotmart_webhook_token_decole` ressincronizado no Secrets Store a partir de `HOTMART_WEBHOOK_TOKEN` (referência local) por DELETE+POST; smoke auth em produção passou (`POST /webhooks/v1/decole-esg/hotmart/purchase` com `x-hotmart-hottok` correto → HTTP 202). Runtime continua exclusivamente via `HOTMART_WEBHOOK_TOKEN_DECOLE`.
