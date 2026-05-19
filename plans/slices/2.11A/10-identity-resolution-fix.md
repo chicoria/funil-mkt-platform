@@ -7,10 +7,10 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | TODO |
-| Started | — |
-| Completed | — |
-| Commit final | — |
+| Estado | DONE |
+| Started | 2026-05-19 por Claude Sonnet 4.6 |
+| Completed | 2026-05-19 por Claude Sonnet 4.6 |
+| Commit final | `3bb7afd` (Red: `8436b18`) · deploy `5f002ddb` |
 
 ## Contexto
 
@@ -116,12 +116,12 @@ bash ../../scripts/audit-workers-agnostic.sh
 
 ## Smoke checklist
 
-- [ ] Testes Green (incluindo os 6 casos acima)
-- [ ] `tsc --noEmit` limpo
-- [ ] Audit grep 0 matches
-- [ ] Testar manualmente: buscar dois emails distintos no dashboard → `profile_id` diferentes
-- [ ] Nenhum perfil DECOLE real afetado negativamente (dados históricos preservados)
-- [ ] Deploy em produção (slice separado 2.11A.11 ou inline aqui)
+- [x] Testes Green — **185/185 passed**
+- [x] `tsc --noEmit` limpo
+- [x] Audit grep 0 matches
+- [ ] Testar manualmente: buscar dois emails distintos no dashboard → `profile_id` diferentes (validação pós-deploy)
+- [x] Dados históricos preservados (fix não é retroativo)
+- [x] Deploy em produção — Version ID `5f002ddb`
 
 ## Rollback
 
@@ -138,7 +138,70 @@ Validação pós-rollback: `identity_links` com múltiplos emails por profile_id
 > Revisão obrigatória = lançar agente separado antes de marcar DONE.
 > Este slice afeta lógica de identidade crítica — revisão por agente externo é especialmente importante.
 
-(a preencher pelo revisor externo)
+### 2026-05-19 17:59 by Revisor — Claude Sonnet 4.6 (agente separado)
+
+**REVISÃO G.12**
+
+Código: ✅ OK
+Arquitetura: ⚠️ Ressalvas (ver item 1 abaixo)
+Testes: ✅ OK
+
+**Resultado:** APROVADO COM RESSALVAS
+
+---
+
+**Verificações realizadas:**
+
+**1. Correção da lógica (Regra 2 — email novo no mesmo device)**
+`resolveProfileId` em `identity.ts:31–35`:
+```typescript
+if (hasEmail) {
+  if (profileIdFromEmail) return profileIdFromEmail;   // Regra 2: determinístico
+  return crypto.randomUUID();                           // Regra 3: email novo → nova identidade
+}
+```
+Implementação correta. Email novo no mesmo device gera UUID novo sem herdar `anonymous_id`. Alinhado com padrão Segment/mParticle/RudderStack.
+
+**2. Casos de borda — todos os campos vazios**
+Quando `explicitProfileId=""`, `profileIdFromEmail=""` e `profileIdFromAnon=""`:
+- Se `hasEmail=false` → cai em `return profileIdFromAnon || crypto.randomUUID()` → gera UUID. Correto.
+- Se `hasEmail=true` e email desconhecido → `return crypto.randomUUID()`. Correto.
+Nenhum caminho retorna string vazia ou undefined.
+
+**3. Padrão de mercado**
+Ordem de prioridade está correta: explícito > determinístico (email) > probabilístico (device). A nomenclatura nos comentários do código usa explicitamente os termos do padrão de mercado ("deterministic signals always win over probabilistic signals").
+
+**4. Agnóstico de tenant/produto**
+`identity.ts` é 100% agnóstico — sem qualquer referência a `DECOLE`, `PLANOVOO`, `ESG` ou tenant hardcoded. `resolveProfileId` e `resolveIdentityForEvent` recebem `tenantId` como parâmetro e usam `tenantScopedKey()` para escopo. ✅
+
+**5. Pureza de `identity.ts` (SoC)**
+O módulo `identity.ts` não executa nenhum IO de D1. Todo IO de D1 (`INSERT INTO identity_links`) permanece exclusivamente em `resolveIdentityState` dentro de `index.ts`. KV IO existe em `resolveIdentityForEvent` (auxiliar de testes), mas `resolveProfileId` em si é função pura (sem IO). Separação adequada. ✅
+
+**6. Testes — 7 casos**
+Confirmado: `test/unit/identity-resolution.test.ts` cobre Regras 1–6 + isolamento cross-tenant (7 testes). TDD Red commit `8436b18` (17:54) é anterior ao Green `3bb7afd` (17:57). Mocks isolados via `beforeEach(() => { vi.clearAllMocks(); })`. Nomes descrevem comportamento. Sem `it.only` ou `describe.skip`. ✅
+
+**7. Suite completa**
+`npx vitest run` executado: **185/185 passed**, 0 failed. ✅
+`npx tsc --noEmit`: **0 errors**. ✅
+
+---
+
+**Ressalva (Arquitetura):**
+
+`resolveIdentityState` em `index.ts:556` contém bloco legado de compatibilidade retroativa:
+```typescript
+if (env.IDENTITY_KV && tenantId === DEFAULT_TENANT_ID) {
+  profileIdFromAnon ||= asString((await env.IDENTITY_KV.get(`identity:anon:${state.anonymousId}`)) || "");
+  profileIdFromEmail ||= ...
+}
+```
+Este bloco lê chaves KV **sem prefixo de tenant** (`identity:anon:X` em vez de `decole:identity:anon:X`), condicionado a `tenantId === DEFAULT_TENANT_ID` (que é `"decole"` hardcoded em `tenant-scope.ts:4`). Este padrão:
+- Não viola o fix deste slice (o bloco é de fallback para dados legados, não cria merges incorretos)
+- Viola o princípio agnóstico: `DEFAULT_TENANT_ID = "decole"` é hardcoded
+- Criar um TODO para remover este bloco assim que a migração de chaves legadas for concluída
+
+**Item a resolver no próximo slice ou issue no backlog:**
+- Remover o bloco legado `if (tenantId === DEFAULT_TENANT_ID)` em `resolveIdentityState` após confirmar que não há mais chaves KV sem prefixo de tenant no KV de produção. Criar slice `2.11A.12` ou issue para limpeza pós-migração.
 
 ---
 
