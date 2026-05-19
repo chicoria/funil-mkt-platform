@@ -60,10 +60,15 @@ Esta seção define **princípios, processo e gates** que governam tanto a execu
 
 ### G.2 TDD por slice (Red → Green → Refactor → **Review**)
 
-- **Red:** cada slice começa com teste falhando documentando o comportamento desejado.
+- **Red:** cada slice começa com teste falhando documentando o comportamento desejado. **Commit Red separado do Green** — TDD verificável no histórico.
 - **Green:** implementação mínima para passar.
 - **Refactor:** simplificar/melhorar com teste ainda verde.
 - **Review (G.12):** agente especialista revisa código, arquitetura e testes **antes de marcar slice como DONE**. Bloqueante — slice não fecha sem aprovação do revisor.
+
+> ⛔ **GUARD RAIL — não avançar para próximo slice sem revisão G.12 completa.**
+> O agente implementador NÃO pode auto-aprovar slices de Fase 0.5 em diante.
+> Revisão obrigatória = lançar agente separado via `Agent(subagent_type="claude", run_in_background=true)`.
+> Se a revisão não tiver sido executada, o próximo slice não começa. Sem exceções.
 - **Golden master** para handlers críticos (emit_tracking, call_product_api, send_template_email): snapshot do payload exato; refactor não muda payload silenciosamente.
 - **Fixtures versionadas** em `test/fixtures/` — payloads reais (anonimizados) de Hotmart, Brevo, GA4, sGTM.
 - **Mocks isolados:** não compartilhar state entre tests (cada `it()` é independente).

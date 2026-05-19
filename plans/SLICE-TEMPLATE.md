@@ -112,7 +112,9 @@ Validação pós-rollback: <como saber que voltou ao estado anterior>.
 
 ## Revisão G.12 (Code + Architecture + Tests) — preenchido pelo revisor antes de DONE
 
-> Obrigatório para slices da Fase 0.5 em diante. Slices de Fase 0 aceitam auto-revisão com este checklist.
+> ⛔ **GUARD RAIL:** agente implementador NÃO pode auto-aprovar este bloco (Fase 0.5 em diante).
+> Revisão obrigatória = lançar agente separado (`Agent(run_in_background=true)`) com leitura fria dos arquivos.
+> O próximo slice só começa após resultado APROVADO ou APROVADO COM RESSALVAS neste bloco.
 > Ver PLANO-MASTER seção G.12 para critérios completos.
 
 ### YYYY-MM-DD HH:MM by <Revisor — agent-type / human>
