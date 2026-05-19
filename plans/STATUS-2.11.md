@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-19 por Claude Sonnet 4.6 — Batch 1 completo: C.2 ✅ D.3 ✅ E.4 ✅ — Fase 3: 3/7
-> **Fase atual:** Fase 3 — Deploys disruptivos (3/7 slices completos) ⏳
-> **Próxima ação:** Batch 2 em paralelo: A.6 (funnel-dispatcher) + A.7 (api-hotmart) + A.8 (api-funnel) + B.4 (sGTM)
+> **Última atualização:** 2026-05-19 por Claude Sonnet 4.6 — A.6 ✅ funnel-dispatcher deployado — Fase 3: 4/7
+> **Fase atual:** Fase 3 — Deploys disruptivos (4/7 slices completos) ⏳
+> **Próxima ação:** A.7 (api-hotmart-ingress) + A.8 (api-funnel-ingress) + B.4 (sGTM)
 > **Smoke script:** `bash scripts/smoke-prod.sh` (10/10 PASS contra produção — dashboard-sync e mkt-dashboard via env vars)
 
 ---
@@ -45,9 +45,9 @@
 | Fase 1 — Popular secrets + bindings | 1/1 | ✅ Completa |
 | Fase 2 — Refactor (workers) | 9/9 | ✅ Completa |
 | Fase 2E — Refactor mkt-dashboard | 4/4 | ✅ Completa |
-| Fase 3 — Deploys disruptivos | 3/7 | ⏳ Em progresso |
+| Fase 3 — Deploys disruptivos | 4/7 | ⏳ Em progresso |
 | Fase 4 — Validação cruzada + limpeza | 0/6 | ⏸️ Não iniciada |
-| **Total** | **28/38** | |
+| **Total** | **29/38** | |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
@@ -55,12 +55,24 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Slice em progresso
 
-**2.11E.4** — Deploy mkt-dashboard no Cloudflare Pages ⏳ BLOQUEADO (aguarda auth)
-- **File:** [`slices/2.11E/4-deploy-mkt-dashboard.md`](./slices/2.11E/4-deploy-mkt-dashboard.md)
-- **Status:** Build OK — deploy bloqueado por wrangler auth expirado (token OAuth expirou 2026-05-15)
-- **Ação necessária:** humano re-autentica: `cd /Users/chicoria/git/mkt-dashboard && npx wrangler login`
+_Nenhum slice em progresso no momento._
 
 ## Último slice concluído
+
+**2.11A.6** — Deploy funnel-dispatcher prod + smoke ✅
+- **File:** [`slices/2.11A/6-deploy-dispatcher.md`](./slices/2.11A/6-deploy-dispatcher.md)
+- **Deploy Version ID:** `217c3c34-0b2f-4c66-b26c-c91040b20f79`
+- **URL:** `https://decole-funnel-dispatcher.chicoria.workers.dev`
+- **Entregáveis:** Worker `decole-funnel-dispatcher` deployado em prod com 9 Secrets Store bindings + 2 KV + 2 D1 + consumer queue `decole-q-funnel-events`; 2/2 smokes críticos passaram (`GET /health` 200 + body `{"ok":true,"worker":"funnel-dispatcher"}`); G.12 APROVADO COM RESSALVAS (POST /health retorna 200 — handler não verifica método, by design para worker Queue).
+- **Gotcha:** warnings `duplicate-object-key` no catálogo são não-bloqueantes; monitorar em 2.11A.9.
+
+## Referência histórica recente
+
+**2.11E.4** — Deploy mkt-dashboard no Cloudflare Pages ✅ (desbloqueado)
+- **File:** [`slices/2.11E/4-deploy-mkt-dashboard.md`](./slices/2.11E/4-deploy-mkt-dashboard.md)
+- **Status:** Concluído em 2026-05-19 (commit `5f64c97`)
+
+## Referência histórica recente
 
 **2.11D.3** — Deploy dashboard-sync prod + smoke ✅
 - **File:** [`slices/2.11D/3-deploy-dashboard-sync.md`](./slices/2.11D/3-deploy-dashboard-sync.md)
@@ -173,7 +185,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - [x] **2.11E.5** ✅ — Auth por tenant: `ADMIN_SECRET_{TENANT}` + session cookie + login UI → [`slices/2.11E/5-auth-per-tenant.md`](./slices/2.11E/5-auth-per-tenant.md) **(DONE 2026-05-19)** — commits `781301c` + `7517e42` (repo mkt-dashboard)
 
 ### Fase 3 — Deploys disruptivos (janela 48h cada)
-- [ ] **2.11A.6** — Deploy funnel-dispatcher prod + smoke E2E → `slices/2.11A/6-deploy-dispatcher.md` (a criar)
+- [x] **2.11A.6** ✅ — Deploy funnel-dispatcher prod + smoke E2E → [`slices/2.11A/6-deploy-dispatcher.md`](./slices/2.11A/6-deploy-dispatcher.md) **(DONE 2026-05-19)** — deploy Version ID `217c3c34`, 2/2 smokes críticos OK
 - [ ] **2.11B.4** — Publicar versão sGTM workspace em prod + smoke → `slices/2.11B/4-publish-sgtm-prod.md` (a criar)
 - [ ] **2.11A.7** — Deploy api-hotmart-ingress + smoke webhook real → `slices/2.11A/7-deploy-hotmart-ingress.md` (a criar)
 - [ ] **2.11A.8** — Deploy api-funnel-ingress + smoke CORS browser → `slices/2.11A/8-deploy-funnel-ingress.md` (a criar)
@@ -215,7 +227,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 |---|---|---|
 | Cloudflare Secrets Store `default_secrets_store` | ✅ **15/15 secrets** criados (ID `23bdc9c2e8ca470d82352c53ec8d2e67`) | 2026-05-18 |
 | Catálogo `config/products.catalog.json` schemaVersion | **5** (v5 aditivo — `tenants.decole.credentials`, `DECOLE_PLANOVOO.product_api` e `workerViews` dos ingress Hotmart/Funnel repontados para secrets `_DECOLE`; v4 mantido onde ainda há fallback) | 2026-05-18 |
-| Workers deployed (prod) | api-funnel-ingress, api-hotmart-ingress, funnel-dispatcher — wrangler.toml com bindings Secrets Store, **SEM redeploy** (Fase 3); **links-redirect: NOVO deploy 2026-05-19** (Version ID `2d156f71`, multi-tenant via catálogo); **dashboard-sync: NOVO deploy 2026-05-19** (Version ID `7a2aca8f`, 5 Secrets Store bindings, multi-tenant via catálogo) | 2026-05-19 |
+| Workers deployed (prod) | api-funnel-ingress, api-hotmart-ingress — wrangler.toml com bindings Secrets Store, **SEM redeploy** (Fase 3); **links-redirect: NOVO deploy 2026-05-19** (Version ID `2d156f71`, multi-tenant via catálogo); **dashboard-sync: NOVO deploy 2026-05-19** (Version ID `7a2aca8f`, 5 Secrets Store bindings, multi-tenant via catálogo); **funnel-dispatcher: NOVO deploy 2026-05-19** (Version ID `217c3c34`, 9 Secrets Store bindings, consumer queue ativo) | 2026-05-19 |
 | D1 `ga4_daily_metrics` | **Schema v2: coluna `tenant_id` adicionada** (migration 2.11D.1 — roda no bootstrap) | 2026-05-18 |
 | D1 `meta_daily_metrics` | **Schema v2: coluna `tenant_id` adicionada** (migration 2.11D.1) | 2026-05-18 |
 | sGTM workspace DECOLE (Cloud Run) | Workspace preview `codex-2.11B.2-multitenant-preview` (`workspaceId=24`) preparado com lookups por tenant/produto; **sem publish produção** | 2026-05-18 |
@@ -245,6 +257,8 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 **2.11C.2** — links-redirect: 2026-05-19 → 2026-05-20 (monitorar logs Cloudflare para erros 500 ou redirecionamentos incorretos)
 
 **2.11D.3** — dashboard-sync: 2026-05-19 → 2026-05-21 (monitorar logs; próxima cron 04:00 UTC valida sync real GA4 + Meta)
+
+**2.11A.6** — funnel-dispatcher: 2026-05-19 → 2026-05-21 (monitorar logs Cloudflare para erros de processamento de eventos de compra; consumer queue `decole-q-funnel-events` deve processar sem `handler_warn`)
 
 ---
 
@@ -284,3 +298,4 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - **2026-05-19 (Claude Sonnet 4.6):** 2.11E.4 IN_PROGRESS. Build `next-on-pages` OK (7 Edge Functions + 4 Prerendered). Deploy BLOQUEADO — token OAuth wrangler expirou em 2026-05-15, refresh retorna 400. Ação necessária: `npx wrangler login`. Slice file criado em `plans/slices/2.11E/4-deploy-mkt-dashboard.md`.
 - **2026-05-19 (Claude Sonnet 4.6):** 2.11C.2 DONE. links-redirect deployado em prod (Version ID `2d156f71`); rota `links.decolesuacarreiraesg.com.br/*` ativa; 6/6 smokes passados; G.12 operacional APROVADO. Fase 3: 1/7 slices completos. 26/38.
 - **2026-05-19 (Claude Sonnet 4.6):** 2.11D.3 DONE. dashboard-sync deployado em prod (Version ID `7a2aca8f`); 5 bindings Secrets Store ativos; 3/3 smokes OK (`/sync/status` 200, `?tenant=decole` 200, `?tenant=tenant_desconhecido_xyz` 400); G.12 operacional APROVADO. Fase 3: 2/7 slices completos. 27/38.
+- **2026-05-19 (Claude Sonnet 4.6):** 2.11A.6 DONE. funnel-dispatcher deployado em prod (Version ID `217c3c34`); 9 Secrets Store bindings + 2 KV + 2 D1 + consumer queue `decole-q-funnel-events` ativos; 2/2 smokes críticos OK (GET /health 200, body correto); G.12 APROVADO COM RESSALVAS (POST /health sem 405 — by design). Fase 3: 4/7 slices completos. 29/38.
