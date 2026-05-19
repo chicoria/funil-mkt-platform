@@ -418,6 +418,116 @@ Fase 4 ── [Z/A/B/C/D/E: validação cruzada + limpeza + auth smoke]
 
 ---
 
+## Postmortems e Incidentes
+
+### PM-2026-05-19 — identity_links sobrescrevia email anterior no mesmo browser
+
+**Status:** RESOLVIDO em produção em 2026-05-19.
+
+**Resumo:** um submit novo com `adilsonchicoriajardim@gmail.com`, no mesmo browser e com o mesmo telefone usado anteriormente por `chicoria@gmail.com`, fez o dashboard deixar de encontrar a jornada por `chicoria@gmail.com`. Os eventos antigos não foram perdidos: continuavam em `funnel_events` no mesmo `profile_id`, mas o lookup por email no dashboard dependia de `identity_links.email_hash`, que tinha sido trocado pelo hash do email novo.
+
+**Impacto:**
+- Busca de User Journey por email antigo retornava "Perfil não encontrado".
+- Journey por email novo apontava para o `profile_id` com toda a timeline histórica.
+- Escopo observado: tenant `decole`, `profile_id=207223d0-2ee9-455e-a337-0390815c7640`.
+- Sem evidência de perda de eventos em `funnel_events`; o incidente foi de índice/lookup de identidade.
+
+**Causa raiz:**
+- `identity_links` estava modelada como uma linha única por `(tenant_id, profile_id)`.
+- `resolve_identity` dava prioridade ao `anonymous_id` do browser e fazia upsert da mesma linha, substituindo `email_hash`.
+- O modelo permitia "um perfil tem um email atual", mas o comportamento real exige "um perfil pode ter múltiplos aliases de email e anonymous_id".
+- `findProfileByEmailHash` no `mkt-dashboard` buscava só em `identity_links`; quando o alias antigo sumia, não havia fallback para `funnel_events`.
+
+**Correção aplicada:**
+- `identity_links` passou a armazenar aliases independentes:
+  - linha por `(tenant_id, anonymous_id)` apontando para `profile_id`
+  - linha por `(tenant_id, email_hash)` apontando para `profile_id`
+- `idx_identity_links_tenant_profile` deixou de ser único; `anonymous_id` e `email_hash` continuam únicos por tenant.
+- `resolve_identity` passou a preservar aliases antigos e inserir/atualizar alias de email separadamente.
+- `mkt-dashboard` passou a consultar `identity_links` com `tenant_id` e usar `funnel_events` como fallback para hashes históricos.
+- D1 remoto reparado manualmente:
+  - backup criado: `identity_links_backup_20260519`
+  - migration registrada: `2026-05-19_identity_links_alias_rows`
+  - alias de `chicoria@gmail.com` reinserido para o mesmo `profile_id`.
+
+**Deploy/validação executada:**
+- `decole-funnel-dispatcher` publicado com a correção: version ID `7467338d-8b6f-454d-8eed-6d6672b36802`.
+- `mkt-dashboard` publicado no projeto Pages ativo `decole-dashboard`.
+- Testes:
+  - `workers/funnel-dispatcher`: `npm test` → 177 passed.
+  - `workers/funnel-dispatcher`: `npm run test:migration` → cobre mesmo browser + dois emails, 2 passed.
+  - `workers/funnel-dispatcher`: `npm run typecheck` → OK.
+  - `mkt-dashboard`: `npx vitest run lib/d1.test.ts` → 11 passed.
+  - `mkt-dashboard`: `npx tsc --noEmit` → OK.
+- Smoke prod:
+  - busca por `chicoria@gmail.com` redireciona para `/dashboard/user/207223d0-2ee9-455e-a337-0390815c7640`
+  - busca por `adilsonchicoriajardim@gmail.com` redireciona para o mesmo `profile_id`
+  - página final da journey retorna HTTP 200.
+
+**Slices relacionados:**
+- **2.11D.1 — Migration D1 tenant_id em métricas:** não causou o bug diretamente, mas deixou explícito que migrations D1 precisam cobrir invariantes semânticos, não só isolamento por tenant.
+- **2.11T.3 — cross-tenant-isolation.test.ts:** continua essencial para isolamento entre tenants, mas não cobria identidade intra-tenant com múltiplos emails no mesmo browser. O caso deve entrar como regressão de identity stitching.
+- **2.11E.2 — mkt-dashboard D1 queries com tenant_id:** a decisão original dizia que `findProfileByEmailHash` ficaria sem `tenant_id` por tratar `IDENTITY_DB` como cross-tenant; este incidente invalida essa premissa. Lookup de identidade no dashboard deve ser sempre tenant-scoped.
+- **2.11A.6 — Deploy funnel-dispatcher prod + smoke E2E:** deve incorporar smoke de identity aliasing antes de avançar Fase 3.
+- **2.11E.4 — Deploy mkt-dashboard + smoke DECOLE:** deve incluir busca de User Journey por email antigo e email novo que apontem ao mesmo `profile_id`.
+- **2.11Z.1 — Smoke E2E cross-slice:** deve cobrir o fluxo completo: lead email A → novo submit email B no mesmo browser → ambos os emails resolvem a mesma jornada sem apagar aliases.
+
+**Ações preventivas:**
+- [ ] Criar slice/teste de regressão para identity aliasing intra-tenant: mesmo `anonymous_id`, emails diferentes, mesma jornada acessível pelos dois hashes.
+- [ ] Atualizar o slice `2.11E.2` ou criar adendo registrando que `findProfileByEmailHash` agora é tenant-scoped.
+- [ ] Atualizar smoke checklist de `2.11A.6`, `2.11E.4` e `2.11Z.1` com o caso de múltiplos aliases.
+- [ ] Criar audit D1 periódico: emails presentes em `funnel_events.email_hash` sem alias correspondente em `identity_links`.
+- [ ] Decidir retenção/remoção do backup `identity_links_backup_20260519` após janela de observação.
+
+### PM-2026-05-19B — DOI bloqueado por SMS duplicado e unsubscribe transacional
+
+**Status:** RESOLVIDO em produção em 2026-05-19.
+
+**Resumo:** após o submit de `adilsonchicoriajardim@gmail.com`, o lead foi gravado e processado, mas o email de cadastro/DOI não chegou. O evento `BEGIN_CHECKOUT` existia no site, mas não havia webhook Hotmart `PURCHASE_OUT_OF_SHOPPING_CART`; portanto não havia gatilho real de abandono de carrinho para esse email.
+
+**Impacto:**
+- O contato `adilsonchicoriajardim@gmail.com` foi criado na Brevo sem entrar na lista DOI `7`.
+- O email de cadastro ficou bloqueado inicialmente por erro de contato e, depois, por unsubscribe transacional prévio.
+- O email de abandono de carrinho não deveria ter sido enviado porque não existia evento `PURCHASE_OUT_OF_SHOPPING_CART` em `funnel_events` para esse email.
+
+**Causa raiz:**
+- `buildBrevoDoiAttributes` incluía `SMS` no payload do DOI.
+- A Brevo rejeita criação/DOI quando o mesmo `SMS` já está associado a outro contato; neste caso, o telefone estava no contato `chicoria@gmail.com`.
+- O handler `send_brevo_doi` registrava warning e seguia a cadeia; depois, `update_brevo_funnel` criava/atualizava o contato sem lista DOI, mascarando a falha operacional.
+- Após reenvio manual sem `SMS`, a Brevo ainda bloqueou o envio porque `adilsonchicoriajardim@gmail.com` estava em `smtp/blockedContacts` com `unsubscribedViaEmail`, confirmado pelo humano como clique próprio em unsubscribe anterior.
+
+**Correção aplicada:**
+- `createBrevoDoiContact` agora detecta erro Brevo `duplicate_parameter` relacionado a `SMS` e refaz o DOI sem o atributo `SMS`, preservando `email`, `includeListIds`, `redirectionUrl`, `templateId` e demais atributos de funil.
+- Novo teste unitário cobre a regressão: primeira chamada DOI falha por `SMS` duplicado e a segunda chamada é enviada sem `SMS`.
+- `decole-funnel-dispatcher` republicado com a correção: version ID `0b862b4e-225b-49b1-9fab-10fdc73236d8`.
+- Com autorização humana, o bloqueio transacional de `adilsonchicoriajardim@gmail.com` foi removido na Brevo e o DOI foi reenviado sem `SMS`.
+
+**Validação executada:**
+- D1 remoto confirmou eventos para `adilsonchicoriajardim@gmail.com`: `GENERATE_LEAD` e `BEGIN_CHECKOUT` em 2026-05-19; nenhum `PURCHASE_OUT_OF_SHOPPING_CART`.
+- Brevo retornou `204` no desbloqueio transacional e `204` no reenvio DOI.
+- `smtp/blockedContacts` deixou de listar `adilsonchicoriajardim@gmail.com`.
+- Eventos SMTP Brevo passaram a mostrar novo `requests` para template `1` em `2026-05-19T11:00:00.922-03:00`, sem novo `blocked`.
+- Testes:
+  - `workers/funnel-dispatcher`: `npx vitest run test/unit/index.test.ts -t "DOI"` → 5 passed.
+  - `workers/funnel-dispatcher`: `npm run typecheck` → OK.
+  - `workers/funnel-dispatcher`: `npm test` → 178 passed.
+
+**Slices relacionados:**
+- **2.11A.4 — Refactor handlers Brevo:** deve tratar erros recuperáveis de APIs externas sem mascarar falhas críticas de consentimento/lista.
+- **2.11A.6 — Deploy funnel-dispatcher prod + smoke E2E:** smoke deve validar DOI com telefone já usado por outro contato e conferir eventos Brevo, não só fila/D1.
+- **2.11T.4 — emit-tracking-payload.test.ts/golden masters:** complementar com golden de payload DOI Brevo para garantir atributos sensíveis como `SMS` não quebrem fluxos multi-contato.
+- **2.11T.5 — Atualizar mocks existentes:** mocks Brevo devem incluir `duplicate_parameter` e blocked/unsubscribed para cobrir caminhos reais.
+- **2.11Z.1 — Smoke E2E cross-slice:** fluxo completo deve distinguir `BEGIN_CHECKOUT` de site e `PURCHASE_OUT_OF_SHOPPING_CART` de Hotmart antes de esperar email de abandono.
+
+**Ações preventivas:**
+- [ ] Criar audit/alerta para `handler_warn` em `brevo_doi`, especialmente `duplicate_parameter`, `unsubscribedViaEmail` e falhas de lista DOI.
+- [ ] Criar smoke Brevo DOI que use telefone duplicado controlado e confirme fallback sem `SMS`.
+- [ ] Documentar runbook de resubscribe transacional: só remover `smtp/blockedContacts` com autorização explícita do titular/humano responsável.
+- [ ] Adicionar dashboard/relatório de leads com `GENERATE_LEAD` processado mas sem entrada na lista DOI esperada após janela definida.
+- [ ] Rever templates/IDs de carrinho abandonado no catálogo versus Brevo (`8` no catálogo ESG; eventos antigos observados com template `9`) antes de fechar o smoke de abandono.
+
+---
+
 ## Próxima ação concreta
 
 Para o próximo agente / humano:
@@ -439,3 +549,5 @@ Para o próximo agente / humano:
 - **2026-05-18:** 2.11C.1 concluído. `links-redirect` agnóstico — resolve tenant do hostname, rotas e contatos do catálogo; remove todos os hardcodes DECOLE/ELIZETE; 28/28 testes verdes; grep 0 matches.
 - **2026-05-18:** 2.11D.2 concluído. `dashboard-sync` dividido em 5 módulos SoC (types/catalog/ga4/meta/sync-runner); runSync itera catálogo; ?tenant= fail-fast 400; 24/24 testes verdes; grep 0 matches. **Fase 2 completa (9/9).** Próximo: validação humana G.10 → Fase 3.
 - **2026-05-18:** Satélite 2.11E criado — `PLANO-MKT-DASHBOARD-MULTI-TENANT.md`. Rename total `decole-dashboard→mkt-dashboard` (Frente A, Fase 3) + auth por tenant via `ADMIN_SECRET_{TENANT}` no Secrets Store (Frente B, Fase 4). 6 novos slices (2.11E.1–6) adicionados ao plano.
+- **2026-05-19:** Postmortem PM-2026-05-19 registrado. Incidente de User Journey causado por `identity_links` com uma linha única por perfil; correção publicada no dispatcher e dashboard, D1 reparado e smoke prod confirmou os dois emails resolvendo o mesmo `profile_id`.
+- **2026-05-19:** Postmortem PM-2026-05-19B registrado. Incidente de DOI causado por `SMS` duplicado na Brevo e unsubscribe transacional prévio; dispatcher publicado com fallback sem `SMS`, contato desbloqueado com autorização humana e DOI reenviado com novo `requests` no log Brevo.

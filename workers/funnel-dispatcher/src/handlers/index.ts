@@ -436,8 +436,7 @@ async function ensureIdentitySchema(db: D1DatabaseLike): Promise<void> {
         profile_id TEXT NOT NULL,
         anonymous_id TEXT,
         email_hash TEXT,
-        updated_at TEXT NOT NULL,
-        PRIMARY KEY (tenant_id, profile_id)
+        updated_at TEXT NOT NULL
       )`
     )
     .run();
@@ -462,7 +461,33 @@ async function ensureIdentitySchema(db: D1DatabaseLike): Promise<void> {
     `DROP TABLE identity_links`,
     `ALTER TABLE identity_links_tenant_migration RENAME TO identity_links`,
   ]);
-  await runD1(db, `CREATE UNIQUE INDEX IF NOT EXISTS idx_identity_links_tenant_profile ON identity_links(tenant_id, profile_id)`);
+  await runD1MigrationOnce(db, "2026-05-19_identity_links_alias_rows", [
+    `DROP INDEX IF EXISTS idx_identity_links_tenant_profile`,
+    `DROP INDEX IF EXISTS idx_identity_links_tenant_anonymous_id`,
+    `DROP INDEX IF EXISTS idx_identity_links_tenant_email_hash`,
+    `CREATE TABLE IF NOT EXISTS identity_links_alias_migration (
+      tenant_id TEXT NOT NULL DEFAULT 'decole',
+      profile_id TEXT NOT NULL,
+      anonymous_id TEXT,
+      email_hash TEXT,
+      updated_at TEXT NOT NULL
+    )`,
+    `INSERT INTO identity_links_alias_migration (
+      tenant_id, profile_id, anonymous_id, email_hash, updated_at
+    )
+    SELECT COALESCE(tenant_id, 'decole'), profile_id, anonymous_id, NULL, updated_at
+    FROM identity_links
+    WHERE profile_id IS NOT NULL AND anonymous_id IS NOT NULL`,
+    `INSERT INTO identity_links_alias_migration (
+      tenant_id, profile_id, anonymous_id, email_hash, updated_at
+    )
+    SELECT COALESCE(tenant_id, 'decole'), profile_id, NULL, email_hash, updated_at
+    FROM identity_links
+    WHERE profile_id IS NOT NULL AND email_hash IS NOT NULL`,
+    `DROP TABLE identity_links`,
+    `ALTER TABLE identity_links_alias_migration RENAME TO identity_links`,
+  ]);
+  await runD1(db, `CREATE INDEX IF NOT EXISTS idx_identity_links_tenant_profile ON identity_links(tenant_id, profile_id)`);
   await runD1(db, `CREATE UNIQUE INDEX IF NOT EXISTS idx_identity_links_tenant_anonymous_id ON identity_links(tenant_id, anonymous_id)`);
   await runD1(db, `CREATE UNIQUE INDEX IF NOT EXISTS idx_identity_links_tenant_email_hash ON identity_links(tenant_id, email_hash)`);
 }
@@ -531,7 +556,7 @@ async function resolveIdentityState(event: FunnelEvent, env: DispatcherEnv): Pro
     profileIdFromAnon ||= asString((await env.IDENTITY_KV.get(`identity:anon:${state.anonymousId}`)) || "");
     profileIdFromEmail ||= computedEmailHash ? asString((await env.IDENTITY_KV.get(`identity:email:${computedEmailHash}`)) || "") : "";
   }
-  const profileId = state.profileId || profileIdFromAnon || profileIdFromEmail || crypto.randomUUID();
+  const profileId = state.profileId || profileIdFromEmail || profileIdFromAnon || crypto.randomUUID();
 
   event.identity = {
     ...(event.identity || {}),
@@ -556,14 +581,25 @@ async function resolveIdentityState(event: FunnelEvent, env: DispatcherEnv): Pro
   await identityDb
     .prepare(
       `INSERT INTO identity_links (tenant_id, profile_id, anonymous_id, email_hash, updated_at)
-       VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT(tenant_id, profile_id) DO UPDATE SET
-         anonymous_id = excluded.anonymous_id,
-         email_hash = COALESCE(excluded.email_hash, identity_links.email_hash),
+       VALUES (?, ?, ?, NULL, ?)
+       ON CONFLICT(tenant_id, anonymous_id) DO UPDATE SET
+         profile_id = excluded.profile_id,
          updated_at = excluded.updated_at`
     )
-    .bind(tenantId, profileId, state.anonymousId, computedEmailHash || null, now)
+    .bind(tenantId, profileId, state.anonymousId, now)
     .run();
+  if (computedEmailHash) {
+    await identityDb
+      .prepare(
+        `INSERT INTO identity_links (tenant_id, profile_id, anonymous_id, email_hash, updated_at)
+         VALUES (?, ?, NULL, ?, ?)
+         ON CONFLICT(tenant_id, email_hash) DO UPDATE SET
+           profile_id = excluded.profile_id,
+           updated_at = excluded.updated_at`
+      )
+      .bind(tenantId, profileId, computedEmailHash, now)
+      .run();
+  }
 }
 
 async function upsertEventStoreRecord(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
@@ -682,6 +718,11 @@ async function postJson(url: string, init: RequestInit): Promise<void> {
     const body = await response.text();
     throw new Error(`http_error:${response.status}:${body.slice(0, 300)}`);
   }
+}
+
+function isBrevoDuplicateSmsError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return message.includes("duplicate_parameter") && message.includes("SMS");
 }
 
 function getCatalog(env: DispatcherEnv): ParsedCatalog {
@@ -1513,6 +1554,14 @@ async function createBrevoDoiContact(event: FunnelEvent, env: DispatcherEnv): Pr
   }
 
   const url = `${asString(env.BREVO_BASE_URL) || BREVO_BASE_URL}/contacts/doubleOptinConfirmation`;
+  const attributes = buildBrevoDoiAttributes(event, env);
+  const body = {
+    email,
+    includeListIds,
+    redirectionUrl,
+    templateId,
+    attributes,
+  };
   try {
     await postJson(url, {
       method: "POST",
@@ -1520,13 +1569,7 @@ async function createBrevoDoiContact(event: FunnelEvent, env: DispatcherEnv): Pr
         "content-type": "application/json",
         "api-key": apiKey,
       },
-      body: JSON.stringify({
-        email,
-        includeListIds,
-        redirectionUrl,
-        templateId,
-        attributes: buildBrevoDoiAttributes(event, env),
-      }),
+      body: JSON.stringify(body),
     });
     console.log(
       JSON.stringify({
@@ -1538,6 +1581,43 @@ async function createBrevoDoiContact(event: FunnelEvent, env: DispatcherEnv): Pr
       })
     );
   } catch (err) {
+    if (attributes.SMS && isBrevoDuplicateSmsError(err)) {
+      const retryAttributes = { ...attributes };
+      delete retryAttributes.SMS;
+      try {
+        await postJson(url, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "api-key": apiKey,
+          },
+          body: JSON.stringify({ ...body, attributes: retryAttributes }),
+        });
+        console.log(
+          JSON.stringify({
+            stage: "handler_ok",
+            handler: "brevo_doi",
+            event_id: event.event_id,
+            templateId,
+            includeListIds,
+            retry: "without_sms",
+            reason: "duplicate_sms",
+          })
+        );
+        return;
+      } catch (retryErr) {
+        console.log(
+          JSON.stringify({
+            stage: "handler_warn",
+            handler: "brevo_doi",
+            event_id: event.event_id,
+            retry: "without_sms",
+            error: retryErr instanceof Error ? retryErr.message : String(retryErr),
+          })
+        );
+        return;
+      }
+    }
     // Non-fatal: Brevo errors must not cause queue retries that block event store and identity steps.
     console.log(
       JSON.stringify({

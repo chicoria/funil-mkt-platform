@@ -1,6 +1,8 @@
-import { DatabaseSync } from "node:sqlite";
+import { createRequire } from "node:module";
 import { describe, expect, it, vi } from "vitest";
 import worker from "../../src/index";
+
+const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite");
 
 function makeSqliteD1(db) {
   return {
@@ -124,7 +126,7 @@ describe("D1 tenant migrations", () => {
       env
     );
 
-    expect(identityDb.prepare("SELECT COUNT(*) AS count FROM identity_links").get().count).toBe(2);
+    expect(identityDb.prepare("SELECT COUNT(*) AS count FROM identity_links").get().count).toBe(4);
     expect(eventStoreDb.prepare("SELECT COUNT(*) AS count FROM funnel_events WHERE event_id = 'evt-shared'").get().count).toBe(2);
     expect(
       identityDb.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_identity_links_anonymous_id'").get()
@@ -132,5 +134,66 @@ describe("D1 tenant migrations", () => {
     expect(
       eventStoreDb.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_funnel_events_profile'").get()
     ).toBeUndefined();
+  });
+
+  it("preserves previous email aliases when the same anonymous_id submits a new email", async () => {
+    const identityDb = new DatabaseSync(":memory:");
+    const eventStoreDb = createLegacyEventStoreDb();
+    const env = {
+      DEDUPE_KV: makeKv(),
+      IDENTITY_KV: makeKv(),
+      IDENTITY_DB: makeSqliteD1(identityDb),
+      EVENT_STORE_DB: makeSqliteD1(eventStoreDb),
+      CATALOG_JSON: JSON.stringify({
+        products: {
+          DECOLE_ESG_MENTORIA: {
+            funnelEventArchitecture: {
+              events: [{ eventType: "GENERATE_LEAD", chain: ["resolve_identity", "upsert_event_store"] }],
+            },
+          },
+        },
+      }),
+    };
+
+    const base = {
+      event_type: "GENERATE_LEAD",
+      product_code: "DECOLE_ESG_MENTORIA",
+      source: "site",
+      occurred_at: "2026-05-19T10:00:00.000Z",
+      identity: { anonymous_id: "anon-same-browser" },
+      payload: {},
+    };
+    const firstEvent = {
+      ...base,
+      event_id: "evt-old-email",
+      lead: { email: "old@example.com" },
+      payload: {},
+    };
+    const secondEvent = {
+      ...base,
+      event_id: "evt-new-email",
+      occurred_at: "2026-05-19T10:01:00.000Z",
+      lead: { email: "new@example.com" },
+      payload: {},
+    };
+
+    await worker.queue({ messages: [{ body: firstEvent }, { body: secondEvent }] }, env);
+
+    const eventProfiles = eventStoreDb
+      .prepare("SELECT DISTINCT profile_id FROM funnel_events WHERE event_id IN ('evt-old-email', 'evt-new-email')")
+      .all();
+    expect(eventProfiles).toHaveLength(1);
+
+    const aliasRows = identityDb
+      .prepare(
+        `SELECT profile_id, anonymous_id, email_hash
+         FROM identity_links
+         WHERE tenant_id = 'decole'
+         ORDER BY anonymous_id IS NULL, email_hash`
+      )
+      .all();
+    expect(aliasRows).toHaveLength(3);
+    expect(aliasRows.filter((row) => row.email_hash)).toHaveLength(2);
+    expect(new Set(aliasRows.map((row) => row.profile_id))).toEqual(new Set([eventProfiles[0].profile_id]));
   });
 });

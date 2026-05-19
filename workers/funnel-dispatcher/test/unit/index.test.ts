@@ -274,6 +274,79 @@ describe("funnel-dispatcher", () => {
     vi.unstubAllGlobals();
   });
 
+  it("reenvia DOI sem SMS quando Brevo rejeita telefone duplicado", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            code: "duplicate_parameter",
+            message: "Unable to create contact, SMS is already associated with another Contact",
+            metadata: { duplicate_identifiers: ["SMS"] },
+          }),
+          { status: 400 }
+        )
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const env = makeEnv({
+      BREVO_API_KEY: "set",
+      CATALOG_JSON: JSON.stringify({
+        products: {
+          DECOLE_ESG_MENTORIA: {
+            funnelEventArchitecture: {
+              events: [
+                {
+                  eventType: "GENERATE_LEAD",
+                  chain: ["send_brevo_doi"],
+                  brevoConfig: {
+                    listId: "7",
+                    doiTemplateId: "1",
+                    doiRedirectUrl: "https://decolesuacarreiraesg.com.br/confirmacao.html",
+                  },
+                },
+              ],
+            },
+          },
+        },
+      }),
+    });
+
+    const event: any = {
+      event_id: "evt-doi-duplicate-sms-1",
+      event_type: "GENERATE_LEAD",
+      product_code: "DECOLE_ESG_MENTORIA",
+      source: "site",
+      occurred_at: new Date().toISOString(),
+      lead: { email: "qa.doi.duplicate-sms@example.com" },
+      payload: {
+        FIRSTNAME: "Ana",
+        SMS__COUNTRY_CODE: "+351",
+        SMS: "351915787088",
+      },
+    };
+
+    await worker.queue({ messages: [{ body: event }] }, env);
+
+    const doiCalls = fetchMock.mock.calls.filter((call) => String(call[0]).includes("/contacts/doubleOptinConfirmation"));
+    expect(doiCalls).toHaveLength(2);
+    const firstBody = JSON.parse(String((doiCalls[0]?.[1] as RequestInit)?.body || "{}")) as { attributes?: Record<string, string> };
+    const retryBody = JSON.parse(String((doiCalls[1]?.[1] as RequestInit)?.body || "{}")) as {
+      email?: string;
+      includeListIds?: number[];
+      attributes?: Record<string, string>;
+    };
+    expect(firstBody.attributes?.SMS).toBe("+351915787088");
+    expect(retryBody.email).toBe("qa.doi.duplicate-sms@example.com");
+    expect(retryBody.includeListIds).toEqual([7]);
+    expect(retryBody.attributes?.SMS).toBeUndefined();
+    expect(retryBody.attributes?.FIRSTNAME).toBe("Ana");
+    expect(retryBody.attributes?.PRODUCT_CODE).toBe("DECOLE_ESG_MENTORIA");
+
+    vi.unstubAllGlobals();
+  });
+
   it("usa credenciais Brevo do tenant para DOI, funil e carrinho", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
