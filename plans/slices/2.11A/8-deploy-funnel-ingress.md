@@ -10,7 +10,7 @@
 | Estado | DONE |
 | Started | 2026-05-19 10:10 WEST por Claude Sonnet 4.6 |
 | Completed | 2026-05-19 10:14 WEST por Claude Sonnet 4.6 |
-| Commit final | `<hash pós-commit>` |
+| Commit final | `239f279` |
 | PR | — |
 | Version ID deploy | `5b8a689f-f7da-4c1b-8260-5a1a3eed2dbf` |
 | Janela de smoke | 2026-05-19 → 2026-05-20 |
