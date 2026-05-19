@@ -7,10 +7,10 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | IN_PROGRESS |
+| Estado | DONE |
 | Started | 2026-05-19 por Claude Sonnet 4.6 |
-| Completed | — |
-| Commit final | — |
+| Completed | 2026-05-19 por Claude Sonnet 4.6 |
+| Commit final | `bb53c4f2` (deployment ID Cloudflare Pages) |
 | PR | — |
 | Janela de smoke | 2026-05-19 → 2026-05-20 |
 

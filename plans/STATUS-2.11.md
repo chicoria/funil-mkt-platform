@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-19 por Claude Sonnet 4.6 — Batch 1 Fase 3: 2.11C.2 ✅ + 2.11D.3 ✅ · 2.11E.4 ⛔ bloqueado (wrangler auth)
-> **Fase atual:** Fase 3 — Deploys disruptivos (2/7 slices completos) ⏳
-> **Próxima ação:** `npx wrangler login` em `/git/mkt-dashboard` → deploy mkt-dashboard (2.11E.4) → Batch 2: A.6, A.7, A.8, B.4
+> **Última atualização:** 2026-05-19 por Claude Sonnet 4.6 — Batch 1 completo: C.2 ✅ D.3 ✅ E.4 ✅ — Fase 3: 3/7
+> **Fase atual:** Fase 3 — Deploys disruptivos (3/7 slices completos) ⏳
+> **Próxima ação:** Batch 2 em paralelo: A.6 (funnel-dispatcher) + A.7 (api-hotmart) + A.8 (api-funnel) + B.4 (sGTM)
 > **Smoke script:** `bash scripts/smoke-prod.sh` (10/10 PASS contra produção — dashboard-sync e mkt-dashboard via env vars)
 
 ---
@@ -45,9 +45,9 @@
 | Fase 1 — Popular secrets + bindings | 1/1 | ✅ Completa |
 | Fase 2 — Refactor (workers) | 9/9 | ✅ Completa |
 | Fase 2E — Refactor mkt-dashboard | 4/4 | ✅ Completa |
-| Fase 3 — Deploys disruptivos | 2/7 | ⏳ Em progresso |
+| Fase 3 — Deploys disruptivos | 3/7 | ⏳ Em progresso |
 | Fase 4 — Validação cruzada + limpeza | 0/6 | ⏸️ Não iniciada |
-| **Total** | **27/38** | |
+| **Total** | **28/38** | |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
