@@ -131,14 +131,14 @@ echo "════════════════════════�
 status=$(http_status -X OPTIONS \
   -H "Origin: https://decolesuacarreiraesg.com.br" \
   -H "Access-Control-Request-Method: POST" \
-  "$API_BASE/funnel/events")
-check "OPTIONS /funnel/events (CORS preflight DECOLE)" "204" "$status"
+  "$API_BASE/funnel/event")
+check "OPTIONS /funnel/event (CORS preflight DECOLE)" "204" "$status"
 
 status=$(http_status -X OPTIONS \
   -H "Origin: https://origem-nao-autorizada.example.com" \
   -H "Access-Control-Request-Method: POST" \
-  "$API_BASE/funnel/events")
-check "OPTIONS /funnel/events (origem não autorizada) → 4xx" "403" "$status"
+  "$API_BASE/funnel/event")
+check "OPTIONS /funnel/event (origem não autorizada) → 4xx" "403" "$status"
 
 # ── 3. api-hotmart-ingress ────────────────────────────────────────────────────
 
