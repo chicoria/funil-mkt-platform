@@ -100,7 +100,14 @@ Modelo B escolhido sobre:
 3. Publicar nova versão do workspace
 4. Adicionar `tenants.{id}.tracking.sgtm.endpointEnvVar` no catálogo da `funil-mkt-platform` apontando para o novo domínio
 5. Criar secret `SGTM_ENDPOINT_URL_{TENANT}` nos workers (via Secrets Store)
-6. Smoke E2E com test event
+6. Criar secret `ADMIN_SECRET_{TENANT_UPPERCASE}` no Cloudflare Pages (`decole-dashboard`) — senha de acesso ao dashboard para este tenant:
+   ```bash
+   echo "SENHA_DO_TENANT" | wrangler pages secret put ADMIN_SECRET_{TENANT_UPPERCASE} --project-name decole-dashboard
+   ```
+   Salvar também em `.env.local` como `ADMIN_SECRET_{TENANT_UPPERCASE}=SENHA_DO_TENANT`.
+   Redeploy do `mkt-dashboard` para ativar o novo secret.
+7. Smoke E2E com test event
+8. Smoke login dashboard: tenant={tenant_id}, senha=ADMIN_SECRET_{TENANT_UPPERCASE} → redireciona para /dashboard
 
 ## 7. Riscos e mitigações
 

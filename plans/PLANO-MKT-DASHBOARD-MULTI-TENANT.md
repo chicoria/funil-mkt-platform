@@ -153,7 +153,28 @@ Secrets Store (account-level):
 5. Se válido: seta cookie `admin_session` = `{tenantId}:{hash_da_senha}`
 6. Middleware `/dashboard/*` valida cookie + extrai `tenantId` para filtrar queries
 
-**Onboarding de novo tenant:** criar `ADMIN_SECRET_{TENANT}` no Secrets Store (via wrangler ou CF API). Zero code change na app.
+**Onboarding de novo tenant — passos obrigatórios para acesso ao dashboard:**
+
+```bash
+# 1. Criar secret no Cloudflare Pages (não no Secrets Store — é um Pages secret)
+echo "SENHA_DO_TENANT" | wrangler pages secret put ADMIN_SECRET_{TENANT_UPPERCASE} \
+  --project-name decole-dashboard
+
+# Exemplos:
+# echo "senha123" | wrangler pages secret put ADMIN_SECRET_SUPERARE --project-name decole-dashboard
+
+# 2. Salvar em .env.local para referência local
+echo "ADMIN_SECRET_{TENANT_UPPERCASE}=SENHA_DO_TENANT" >> /Users/chicoria/git/funil-mkt-platform/.env.local
+
+# 3. Redeploy do mkt-dashboard para ativar o novo secret
+cd /Users/chicoria/git/mkt-dashboard && wrangler pages deploy --project-name decole-dashboard
+
+# 4. Smoke: login no dashboard com tenant={tenant_id} + senha definida acima
+```
+
+> ⚠️ **Importante:** `ADMIN_SECRET_{TENANT}` é um **Cloudflare Pages secret** (não Secrets Store de Workers).
+> Deve ser criado via `wrangler pages secret put`, não via Secrets Store API.
+> Zero code change — só criar o secret + redeploy.
 
 ### 5.2 Mudanças no código (Slice 2.11E.5)
 
