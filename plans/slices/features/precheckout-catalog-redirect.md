@@ -38,6 +38,28 @@
 ## Revisão G.12
 > ⛔ GUARD RAIL: agente separado obrigatório antes de DONE.
 
+### 2026-05-19 by Claude Sonnet 4.6 (revisor)
+
+**REVISÃO G.12**
+
+Código: ✅ OK
+Arquitetura: ✅ OK
+Testes: ✅ OK
+
+**Resultado:** APROVADO
+
+**Evidências verificadas:**
+
+- `buildCheckoutRedirect` (linha 183–201 de `src/index.ts`) é 100% parametrizada via `catalog.tenants[tenantId].links` — zero hardcode de tenant ou produto. O cast explícito ao tipo `{ links?: { linksDomain?: string; routes?: Array<...> } }` é necessário por limitação de tipo do `CatalogV5` e está localizado e justificável.
+- Open redirect impossível: a `URL` é construída sobre `linksDomain` do catálogo + `route.path` do catálogo; nenhuma parte vem do payload do usuário. Os params do payload são apenas appended como query strings (não constroem o host/path).
+- `CHECKOUT_FORWARD_PARAMS` (linhas 177–181) inclui todos os params requeridos pelo slice: `email`, `anonymous_id`, `session_id`, `utm_*` (5), `fbp`, `fbc`, `fbclid`, `gclid`, `wbraid`, `gbraid`. Valores vazios/ausentes são filtrados antes do `url.searchParams.set`.
+- Fallback 202 JSON presente e correto (linha 269): executado apenas quando `buildCheckoutRedirect` retorna `null` (produto sem rota no catálogo).
+- `grep -rE "DECOLE|PLANOVOO|ESG" src/index.ts` retorna 0 matches — worker agnóstico.
+- Strict mode: sem `any` não justificado, sem `!` não comentado. `tsc --noEmit` limpo (0 erros).
+- TDD Red (`201b025`, 2026-05-19T22:01) anterior a Green (`200ff17`, 2026-05-19T22:03) — sequência correta confirmada no log.
+- 7/7 testes passando (vitest run): redirect PlanoVoo, redirect ESG Mentoria, UTMs, fbp/anon_id, queue enfileirada antes do redirect, fallback 202 produto sem rota, sem email vazio no URL.
+- Sem `it.only` ou `describe.skip` presentes nos testes.
+
 ---
 
 ## Execução (append-only)
