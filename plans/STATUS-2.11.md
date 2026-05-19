@@ -46,8 +46,8 @@
 | Fase 2 — Refactor (workers) | 9/9 | ✅ Completa |
 | Fase 2E — Refactor mkt-dashboard | 4/4 | ✅ Completa |
 | Fase 3 — Deploys disruptivos | 7/7 | ✅ Completa |
-| Fase 4 — Validação cruzada + limpeza | 2/6 | ⏳ Em progresso |
-| **Total** | **34/38** | |
+| Fase 4 — Validação cruzada + limpeza | 3/6 | ⏳ Em progresso |
+| **Total** | **35/38** | |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
@@ -222,7 +222,7 @@ _Nenhum slice em progresso no momento. Fase 3 COMPLETA._
 ### Fase 4 — Validação cruzada + limpeza
 - [ ] **2.11Z.1** — Smoke E2E cross-slice com tenant fake superare-test → `slices/2.11Z/1-cross-tenant-e2e-validation.md` (a criar)
 - [ ] **2.11A.9** — audit-secrets em CI + remover worker secrets antigos + validar grep workers agnostic → `slices/2.11A/9-cleanup-fallbacks.md` (a criar)
-- [ ] **2.11B.5** — Documentar runbook onboarding tenant em RUNBOOK-ONBOARDING-TENANT.md → `slices/2.11B/5-runbook-onboarding.md` (a criar)
+- [x] **2.11B.5** ✅ — Documentar runbook onboarding tenant em RUNBOOK-ONBOARDING-TENANT.md → [`slices/2.11B/5-runbook-onboarding.md`](./slices/2.11B/5-runbook-onboarding.md) **(DONE 2026-05-19)**
 - [x] **2.11C.3** ✅ — links-redirect remove env vars legadas + grep 0 matches → [`slices/2.11C/3-cleanup-links-redirect.md`](./slices/2.11C/3-cleanup-links-redirect.md) **(DONE 2026-05-19)** — deploy Version ID `64360b18`
 - [x] **2.11D.4** ✅ — dashboard-sync remove 5 secrets legados (sem `_DECOLE`) do Cloudflare + grep 0 matches → [`slices/2.11D/4-cleanup-dashboard-sync.md`](./slices/2.11D/4-cleanup-dashboard-sync.md) **(DONE 2026-05-19)**
 - [ ] **2.11E.6** — Smoke auth cross-tenant + remover `ADMIN_SECRET` global → `slices/2.11E/6-cleanup-auth.md` (a criar)
@@ -328,3 +328,4 @@ _Nenhum slice em progresso no momento. Fase 3 COMPLETA._
 - **2026-05-19 (Claude Sonnet 4.6):** 2.11A.8 DONE. api-funnel-ingress deployado em prod (Version ID `5b8a689f`); 1 Secrets Store binding (`PLANOVOO_HOOK_SECRET_DECOLE`) + Queue `decole-q-funnel-events` ativos; 4/4 smokes OK (204 CORS origem válida, 403 origem desconhecida, 404 POST sem body — não 500, 403 CF sem /health — não 500); G.12 APROVADO. Fase 3: 5/7 slices completos. 30/38.
 - **2026-05-19 (Claude Sonnet 4.6):** 2.11B.4 DONE. sGTM workspace 24 publicado em prod como versionId `18`; DNS e HTTP smoke OK; G.12 APROVADO. **Fase 3 COMPLETA 7/7.** 32/38.
 - **2026-05-19 (Claude Sonnet 4.6):** 2.11D.4 DONE. dashboard-sync: 5 secrets legados removidos do Cloudflare (`GA4_PROPERTY_ID`, `GA4_SERVICE_ACCOUNT_KEY`, `META_ACCESS_TOKEN`, `META_AD_ACCOUNT_ID_ESG`, `META_AD_ACCOUNT_ID_PLANOVOO`); apenas `SYNC_SECRET` permanece; grep 0 matches em src/; 24/24 testes verdes; smoke `/sync/status` → 200 OK; sem mudança de código. Fase 4: 2/6. 34/38.
+- **2026-05-19 (Claude Sonnet 4.6):** 2.11B.5 DONE. `plans/RUNBOOK-ONBOARDING-TENANT.md` criado — runbook step-by-step com 8 frentes (DNS, catálogo, sGTM, Secrets Store, workers wrangler.toml, CF Pages secret, Cloud Run domain mapping, smoke checklist); exemplo concreto SUPERARE; todos os IDs reais referenciados; checklist executável final; G.12 auto-revisão APROVADO. Fase 4: 3/6. 35/38.
