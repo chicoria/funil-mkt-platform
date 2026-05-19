@@ -172,6 +172,34 @@ async function verifyAppWebhookSignature(
   return asString(request.headers.get("x-app-signature")) === required ? "ok" : "unauthorized";
 }
 
+// Params forwarded from precheckout form to checkout URL so links-redirect can
+// create BEGIN_CHECKOUT with email and attribution — enabling Brevo funnel updates.
+const CHECKOUT_FORWARD_PARAMS = [
+  "email", "anonymous_id", "session_id", "lead_id",
+  "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
+  "fbp", "fbc", "fbclid", "gclid", "wbraid", "gbraid",
+];
+
+function buildCheckoutRedirect(
+  catalog: CatalogV5,
+  tenantId: string,
+  productCode: string,
+  payload: Record<string, unknown>
+): URL | null {
+  const tenantLinks = (catalog.tenants as Record<string, { links?: { linksDomain?: string; routes?: Array<{ path: string; productCode: string }> } }>)[tenantId]?.links;
+  if (!tenantLinks?.linksDomain || !tenantLinks.routes) return null;
+
+  const route = tenantLinks.routes.find((r) => r.productCode === productCode);
+  if (!route) return null;
+
+  const url = new URL(`https://${tenantLinks.linksDomain}${route.path}`);
+  for (const key of CHECKOUT_FORWARD_PARAMS) {
+    const val = typeof payload[key] === "string" && payload[key] ? payload[key] as string : "";
+    if (val) url.searchParams.set(key, val);
+  }
+  return url;
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const { pathname } = new URL(request.url);
@@ -229,6 +257,15 @@ export default {
         product_code: event.product_code,
         status: 202,
       });
+
+      // Catalog-driven redirect: forward to checkout URL from catalog with email + attribution params.
+      // Allows links-redirect to create BEGIN_CHECKOUT with email → Brevo funnel step updated.
+      const checkoutRedirect = buildCheckoutRedirect(catalog, tenantId, event.product_code, payload);
+      if (checkoutRedirect) {
+        logIngress({ stage: "redirect", pathname, tenant_id: tenantId, event_id: event.event_id, redirect_to: checkoutRedirect.pathname, status: 302 });
+        return Response.redirect(checkoutRedirect.toString(), 302);
+      }
+
       return withCors(jsonResponse({ ok: true, event_id: event.event_id, event_type: event.event_type }, 202), request, catalog, tenantId);
     }
 

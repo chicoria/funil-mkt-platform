@@ -99,7 +99,7 @@ describe("precheckout — catalog-driven redirect", () => {
     await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send: sendMock } }));
 
     expect(sendMock).toHaveBeenCalledOnce();
-    const event = sendMock.mock.calls[0][0] as Record<string, unknown>;
+    const event = (sendMock.mock.calls as unknown as Array<[Record<string, unknown>]>)[0][0];
     expect(event.event_type).toBe("GENERATE_LEAD");
     expect(event.product_code).toBe("DECOLE_PLANOVOO");
   });
