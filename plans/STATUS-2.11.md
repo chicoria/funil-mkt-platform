@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-19 por Claude Sonnet 4.6 — 2.11E.5 DONE (auth por tenant) — **Fase 2E COMPLETA**
-> **Fase atual:** Fase 2E — Refactor mkt-dashboard (4/4 slices completos) ✅
-> **Próxima ação:** validação humana (G.10) → Fase 3 (deploys disruptivos)
+> **Última atualização:** 2026-05-19 por Claude Sonnet 4.6 — 2.11E.4 IN_PROGRESS (deploy mkt-dashboard) — **build OK, bloqueado em wrangler auth expirado**
+> **Fase atual:** Fase 3 — Deploys disruptivos (slice 2.11E.4 em andamento)
+> **Próxima ação:** humano re-autentica wrangler (`npx wrangler login`) → agente continua deploy + smoke
 
 ---
 
@@ -54,7 +54,10 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Slice em progresso
 
-(nenhum)
+**2.11E.4** — Deploy mkt-dashboard no Cloudflare Pages ⏳ BLOQUEADO
+- **File:** [`slices/2.11E/4-deploy-mkt-dashboard.md`](./slices/2.11E/4-deploy-mkt-dashboard.md)
+- **Status:** Build OK — deploy bloqueado por wrangler auth expirado (token OAuth expirou 2026-05-15)
+- **Ação necessária:** humano re-autentica: `cd /Users/chicoria/git/mkt-dashboard && npx wrangler login`
 
 ## Último slice concluído
 
@@ -166,7 +169,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - [ ] **2.11A.8** — Deploy api-funnel-ingress + smoke CORS browser → `slices/2.11A/8-deploy-funnel-ingress.md` (a criar)
 - [ ] **2.11C.2** — Deploy links-redirect + smoke todas URLs conhecidas → `slices/2.11C/2-deploy-links-redirect.md` (a criar)
 - [ ] **2.11D.3** — Deploy dashboard-sync + backfill sanity check → `slices/2.11D/3-deploy-dashboard-sync.md` (a criar)
-- [ ] **2.11E.4** — Deploy mkt-dashboard + smoke DECOLE → `slices/2.11E/4-deploy-mkt-dashboard.md` (a criar)
+- [ ] **2.11E.4** ⏳ IN_PROGRESS — Deploy mkt-dashboard + smoke DECOLE → [`slices/2.11E/4-deploy-mkt-dashboard.md`](./slices/2.11E/4-deploy-mkt-dashboard.md) — **build OK, bloqueado em wrangler auth**
 
 ### Fase 4 — Validação cruzada + limpeza
 - [ ] **2.11Z.1** — Smoke E2E cross-slice com tenant fake superare-test → `slices/2.11Z/1-cross-tenant-e2e-validation.md` (a criar)
@@ -180,7 +183,11 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 
 ## Bloqueios
 
-(nenhum)
+**2026-05-19 — 2.11E.4 BLOQUEADO: wrangler auth expirado**
+- Token OAuth `~/Library/Preferences/.wrangler/config/default.toml` expirou em 2026-05-15
+- Refresh token retorna 400 Bad Request
+- **Resolução:** `npx wrangler login` (abre browser para re-autenticar) **ou** exportar `CLOUDFLARE_API_TOKEN`
+- Build `next-on-pages` já concluiu com sucesso — artefato em `.vercel/output/static/`
 
 ---
 
@@ -262,3 +269,4 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - **2026-05-18 (Claude Sonnet 4.6):** 2.11B.3 DONE. Workspace 24 validado com 5 lookup tables completas para DECOLE e `superare-test`; 2 entradas faltantes (`Meta CAPI Token` e `Meta Test Event Code`) adicionadas; isolamento cross-tenant verificado por script (0 vazamentos); quick_preview sem compilerError; preview server Cloud Run ativo. 19/32.
 - **2026-05-18 (Claude Sonnet 4.6):** 2.11C.1 DONE. `links-redirect` agnóstico — resolve tenant do hostname, rotas/contatos do catálogo, fail-fast 404 para tenant desconhecido; remove todos os hardcodes DECOLE/ELIZETE; 28/28 testes verdes; grep 0 matches em src/. 20/32.
 - **2026-05-18 (Claude Sonnet 4.6):** 2.11D.2 DONE. `dashboard-sync` dividido em 5 módulos (types/catalog/ga4/meta/sync-runner); runSync itera catálogo automaticamente; ?tenant= com fail-fast 400; D1 INSERTs com tenant_id; 24/24 testes verdes; grep 0 matches. **Fase 2 COMPLETA 9/9.** 21/32.
+- **2026-05-19 (Claude Sonnet 4.6):** 2.11E.4 IN_PROGRESS. Build `next-on-pages` OK (7 Edge Functions + 4 Prerendered). Deploy BLOQUEADO — token OAuth wrangler expirou em 2026-05-15, refresh retorna 400. Ação necessária: `npx wrangler login`. Slice file criado em `plans/slices/2.11E/4-deploy-mkt-dashboard.md`.
