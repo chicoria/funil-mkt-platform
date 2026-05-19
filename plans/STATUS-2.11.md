@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-19 por Claude Sonnet 4.6 — 2.11E.3 DONE (?tenant= passthrough)
-> **Fase atual:** Fase 2E — Refactor mkt-dashboard (3/4 slices completos) ⏳
-> **Próxima ação:** 2.11E.5 — auth por tenant (ADMIN_SECRET_{TENANT} + login com seleção)
+> **Última atualização:** 2026-05-19 por Claude Sonnet 4.6 — 2.11E.5 DONE (auth por tenant) — **Fase 2E COMPLETA**
+> **Fase atual:** Fase 2E — Refactor mkt-dashboard (4/4 slices completos) ✅
+> **Próxima ação:** validação humana (G.10) → Fase 3 (deploys disruptivos)
 
 ---
 
@@ -43,10 +43,10 @@
 | Fase 0.5 — Testes de regressão | 7/7 | ✅ Completa |
 | Fase 1 — Popular secrets + bindings | 1/1 | ✅ Completa |
 | Fase 2 — Refactor (workers) | 9/9 | ✅ Completa |
-| Fase 2E — Refactor mkt-dashboard | 3/4 | ⏳ Em andamento |
+| Fase 2E — Refactor mkt-dashboard | 4/4 | ✅ Completa |
 | Fase 3 — Deploys disruptivos | 0/7 | ⏸️ Não iniciada |
 | Fase 4 — Validação cruzada + limpeza | 0/6 | ⏸️ Não iniciada |
-| **Total** | **24/38** | |
+| **Total** | **25/38** | |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
@@ -157,7 +157,7 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - [x] **2.11E.1** ✅ — Rename total decole-dashboard → mkt-dashboard → [`slices/2.11E/1-rename-mkt-dashboard.md`](./slices/2.11E/1-rename-mkt-dashboard.md) **(DONE 2026-05-18)** — commit `5ac0432` (repo mkt-dashboard)
 - [x] **2.11E.2** ✅ — `lib/d1.ts`: tenant_id + fix SQL injection + lib/tenant.ts → [`slices/2.11E/2-d1-queries-tenant-id.md`](./slices/2.11E/2-d1-queries-tenant-id.md) **(DONE 2026-05-18)** — commit `dc8aeab` (repo mkt-dashboard)
 - [x] **2.11E.3** ✅ — API routes: `?tenant=` passthrough via helpers puros → [`slices/2.11E/3-api-tenant-passthrough.md`](./slices/2.11E/3-api-tenant-passthrough.md) **(DONE 2026-05-19)** — commit `874baea` (repo mkt-dashboard)
-- [ ] **2.11E.5** — Auth por tenant: `ADMIN_SECRET_{TENANT}` + login com seleção de tenant → `slices/2.11E/5-auth-per-tenant.md` (a criar)
+- [x] **2.11E.5** ✅ — Auth por tenant: `ADMIN_SECRET_{TENANT}` + session cookie + login UI → [`slices/2.11E/5-auth-per-tenant.md`](./slices/2.11E/5-auth-per-tenant.md) **(DONE 2026-05-19)** — commits `781301c` + `7517e42` (repo mkt-dashboard)
 
 ### Fase 3 — Deploys disruptivos (janela 48h cada)
 - [ ] **2.11A.6** — Deploy funnel-dispatcher prod + smoke E2E → `slices/2.11A/6-deploy-dispatcher.md` (a criar)
