@@ -56,6 +56,11 @@ binding = "PLANOVOO_API_BASE_URL_DECOLE"
 store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
 secret_name = "planovoo_api_base_url_decole"
 
+[[secrets_store_secrets]]
+binding = "PLANOVOO_HOOK_SECRET_DECOLE"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "planovoo_hook_secret_decole"
+
 # N8N_WEBHOOK_URL removido: forward_n8n não está em nenhuma chain do catálogo
 # (código morto). Cleanup completo programado no slice 2.11A.9 (Fase 4).
 
