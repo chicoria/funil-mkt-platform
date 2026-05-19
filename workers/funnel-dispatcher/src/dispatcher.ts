@@ -31,19 +31,6 @@ export interface DispatcherEnv {
   BREVO_DOI_REDIRECT_URL?: string;
   BREVO_CART_ABANDON_TEMPLATE_ID?: string;
   BREVO_CART_ABANDONMENT_TEMPLATE_ID?: string;
-  /** @deprecated forward_n8n não está em nenhuma chain do catálogo — código morto.
-   *  Remover em 2.11A.9 junto com forwardN8n() e buildN8nForwardPayload(). */
-  N8N_WEBHOOK_URL?: string;
-  /** @deprecated junto com N8N_WEBHOOK_URL */
-  N8N_DISABLE_FORWARD?: string;
-  GA4_MEASUREMENT_ID?: string;
-  GA4_API_SECRET?: string;
-  META_PIXEL_ID?: string;
-  META_CAPI_ACCESS_TOKEN?: string;
-  META_TEST_EVENT_CODE?: string;
-  SGTM_ENDPOINT_URL?: string;
-  PLANOVOO_API_BASE_URL?: string;
-  PLANOVOO_HOOK_SECRET?: string;
 }
 
 export type HandlerFn = (event: FunnelEvent, env: DispatcherEnv) => Promise<void>;

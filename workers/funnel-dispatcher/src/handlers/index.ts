@@ -275,10 +275,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
-function isPlanovooProductCode(productCode: string): boolean {
-  const normalized = productCode.toUpperCase();
-  return normalized === "DECOLE_PLANOVOO" || normalized === "PLANOVOO" || normalized === "PLANO_VOO";
-}
 
 function unixTime(value: string): number {
   const ms = Date.parse(value);
@@ -1770,73 +1766,6 @@ async function emitTracking(event: FunnelEvent, env: DispatcherEnv): Promise<voi
   });
 }
 
-async function forwardN8n(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
-  if (isTruthyFlag(env.N8N_DISABLE_FORWARD)) {
-    console.log(JSON.stringify({ stage: "handler_skip", handler: "forward_n8n", reason: "disabled_by_flag" }));
-    return;
-  }
-
-  const webhookUrl = asString(env.N8N_WEBHOOK_URL);
-  if (!webhookUrl) {
-    console.log(JSON.stringify({ stage: "handler_skip", handler: "forward_n8n", reason: "missing_webhook" }));
-    return;
-  }
-
-  try {
-    await postJson(webhookUrl, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(buildN8nForwardPayload(event)),
-    });
-    console.log(JSON.stringify({ stage: "handler_ok", handler: "forward_n8n", event_id: event.event_id }));
-  } catch (err) {
-    // Non-fatal: n8n webhook errors must not block identity/tracking via queue retry
-    console.log(
-      JSON.stringify({
-        stage: "handler_warn",
-        handler: "forward_n8n",
-        event_id: event.event_id,
-        error: err instanceof Error ? err.message : String(err),
-      })
-    );
-  }
-}
-
-function buildN8nForwardPayload(event: FunnelEvent): Record<string, unknown> | FunnelEvent {
-  if (event.source !== "hotmart" || !isPlanovooProductCode(event.product_code)) return event;
-
-  const rawPayload = isRecord(event.payload) ? { ...event.payload } : {};
-  const { [HANDLER_RESULT_PAYLOAD_KEY]: _handlerResults, ...payload } = rawPayload;
-  const data = isRecord(payload.data) ? { ...payload.data } : {};
-  for (const key of ["buyer", "purchase", "product"] as const) {
-    if (data[key] === undefined && payload[key] !== undefined) {
-      data[key] = payload[key];
-    }
-  }
-
-  if (Object.keys(data).length > 0) {
-    payload.data = data;
-  }
-  if (!asString(payload.event)) {
-    payload.event = event.event_type;
-  }
-  if (!asString(payload.event_id)) {
-    payload.event_id = event.event_id;
-  }
-  if (!asString(payload.id)) {
-    payload.id = event.event_id;
-  }
-
-  payload._decole = {
-    event_id: event.event_id,
-    event_type: event.event_type,
-    product_code: event.product_code,
-    source: event.source,
-    occurred_at: event.occurred_at,
-  };
-
-  return payload;
-}
 
 const chainContexts = new WeakMap<FunnelEvent, HandlerContext>();
 
@@ -2005,10 +1934,6 @@ export function createHandlers(): HandlerMap {
       await sendBrevoEmail(event, env, resolveCartAbandonmentTemplateId(event, env), await resolveCartAbandonmentParams(event, env));
     },
 
-    async forward_n8n(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
-      console.log(JSON.stringify({ stage: "handler", handler: "forward_n8n", event_id: event.event_id }));
-      await forwardN8n(event, env);
-    },
 
     async enrich_attribution(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
       console.log(JSON.stringify({ stage: "handler", handler: "enrich_attribution", event_id: event.event_id }));

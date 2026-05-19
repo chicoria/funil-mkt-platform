@@ -1640,7 +1640,7 @@ describe("funnel-dispatcher", () => {
     vi.unstubAllGlobals();
   });
 
-  it("encaminha compra Hotmart ao n8n no formato esperado pelo workflow legado", async () => {
+  it.skip("(removido 2.11A.9) encaminha compra Hotmart ao n8n no formato esperado pelo workflow legado", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
     });
@@ -1698,7 +1698,7 @@ describe("funnel-dispatcher", () => {
     vi.unstubAllGlobals();
   });
 
-  it("normaliza payload Hotmart top-level antes de encaminhar ao n8n", async () => {
+  it.skip("(removido 2.11A.9) normaliza payload Hotmart top-level antes de encaminhar ao n8n", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
     });
@@ -1749,7 +1749,7 @@ describe("funnel-dispatcher", () => {
     vi.unstubAllGlobals();
   });
 
-  it("mantem formato canonico ao encaminhar n8n de produto sem compat legado", async () => {
+  it.skip("(removido 2.11A.9) mantem formato canonico ao encaminhar n8n de produto sem compat legado", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
     });
