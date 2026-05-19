@@ -80,7 +80,7 @@ git remote set-url origin https://github.com/chicoria/decole-dashboard.git
 
 ## Revisão G.12
 
-### 2026-05-18 by Claude Sonnet 4.6 — auto-revisão
+### 2026-05-18 by Claude Sonnet 4.6 — auto-revisão (implementador)
 
 **REVISÃO G.12**
 
@@ -89,6 +89,49 @@ Arquitetura: ✅ OK — product codes DECOLE_* não tocados (escopo correto, fic
 Slice file: ✅ preenchido
 
 **Resultado:** APROVADO
+
+---
+
+### 2026-05-19 by Claude Sonnet 4.6 — revisão independente (agente separado)
+
+**REVISÃO G.12**
+
+Auditoria executada independentemente sobre os arquivos do repo `mkt-dashboard` (commit `5ac0432`).
+
+**Grep audit primário (critério de aceite do slice):**
+`grep -rE "decole-dashboard|DECOLE Dashboard|DECOLE · Funil|DECOLE sua Carreira"` → **0 matches** confirmado. Strings de identidade UI/branding totalmente removidas.
+
+**Grep audit ampliado (strings residuais fora do escopo declarado):**
+- `wrangler.toml`: `decole-d1-event-store`, `decole-d1-identity` — D1 database names, **explicitamente fora do escopo** (infra Cloudflare, não código).
+- `README.md`: secret names `GA4_SERVICE_ACCOUNT_KEY_DECOLE`, tenant example `"tenant": "decole"` — referências operacionais a recursos existentes, não strings de identidade de produto; aceitável em documentação de infra.
+- `lib/tenant.ts`: fallback `"decole"` com comentário `// Transitional` — **fora do escopo deste slice** (config de tenant, não rename de identidade).
+- `lib/*.test.ts`: valor `"decole"` como tenant ID nos testes — dados de teste, não strings de identidade.
+- `app/dashboard/page.tsx`: `DECOLE_ESG_MENTORIA`, `DECOLE_PLANOVOO` — **product codes, explicitamente delegados a 2.11E.2**.
+
+**Arquivos verificados individualmente:**
+- `package.json` → `name: "mkt-dashboard"` ✅
+- `wrangler.toml` → `name = "mkt-dashboard"` ✅ (database names mantidos conforme decisão registrada)
+- `app/layout.tsx` → title `"MKT Dashboard"`, description `"MKT Platform Dashboard"` ✅
+- `app/login/page.tsx` → H1 `"MKT Dashboard"` ✅
+- `app/dashboard/page.tsx` → H1 `"MKT · Funil"` ✅ (product codes DECOLE_* presentes e fora do escopo)
+- `README.md` → título e descrição migrados para MKT ✅
+
+**Slice file:**
+- Seção `Execução` preenchida com recovery point, passos executados e commit hash ✅
+- Decisões documentadas (D1 database names, product codes) ✅
+- Escopo delimitado explicitamente (fora do escopo listado) ✅
+- Critério de aceite executável definido e marcado como passado ✅
+- Gotchas: campo presente porém vazio — ressalva menor (não bloqueia)
+
+Código: ✅ OK — rename puro, sem lógica de negócio introduzida
+Arquitetura: ✅ OK — product codes DECOLE_* intactos e escopo 2.11E.2 preservado; D1 database names mantidos por decisão fundamentada; `lib/tenant.ts` fallback `"decole"` é dívida técnica conhecida, não regressão deste slice
+Testes: ✅ N/A — slice de rename puro sem nova lógica; testes existentes mantidos e continuam válidos como cobertura de isolamento de tenant
+
+**Resultado:** APROVADO
+
+Itens recomendados para slices seguintes (não bloqueantes):
+- Preencher seção `Gotchas` do slice file com a decisão de manter D1 database names (já está em `Decisões tomadas`, mas gotchas seria mais visível para próximos agentes)
+- `lib/tenant.ts` fallback `"decole"` marcado `// Transitional` — verificar se 2.11E.2 ou slice posterior endereça a remoção deste fallback hardcoded
 
 ---
 

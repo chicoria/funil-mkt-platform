@@ -41,7 +41,45 @@ npx vitest run lib/sync-client.test.ts
 
 ## Revisão G.12
 
-(a preencher — agente separado)
+### 2026-05-19 07:35 by Revisor Claude Sonnet 4.6
+
+**REVISÃO G.12**
+
+Código: ✅ OK
+Arquitetura: ✅ OK
+Testes: ✅ OK
+
+**Resultado:** APROVADO
+
+---
+
+**Detalhes da revisão:**
+
+**1. Código TypeScript**
+- `buildSyncStatusUrl` e `buildSyncRunBody` são funções puras: sem IO, sem side effects, sem dependência de módulo externo — apenas transformações de string/objeto.
+- Sem `any` não justificado. O único cast explícito está em `resolveSyncConfig()` (`as { DASHBOARD_SYNC_URL?: string; ... }`) para tipar o env de edge runtime — padrão aceitável para Cloudflare Pages.
+- Nomes expressivos e sem abreviações opacas.
+- Erros tratados com fail-fast explícito: `missing_sync_config` com lista dos secrets esperados retornado com status 500.
+- Sem hardcode de tenant/produto: nenhuma string `"DECOLE"`, `"PLANOVOO"` ou similar no código de produção. Strings como `"decole"` presentes apenas nos testes como fixture — correto.
+
+**2. Arquitetura**
+- `getActiveTenantId()` resolve o tenant ativo — sem fallback silencioso hardcoded no código da route.
+- Catálogo não é fonte de verdade aqui (worker URL/secret vêm de env bindings, não de catálogo), mas este é o padrão correto para secrets de infra — não viola o princípio de agnosticidade.
+- O mesmo código serviria qualquer tenant apenas mudando o env binding `DASHBOARD_SYNC_URL` e o cookie de sessão — isolamento verificado.
+- `getRequestContext().env` usado corretamente para edge runtime (diferente de `process.env`).
+
+**3. Testes**
+- TDD Red verificável: commit `edbf9b5` (testes) antecede `874baea` (implementação) no histórico git — separação correta.
+- 7/7 testes verdes confirmados pela execução `npx vitest run lib/sync-client.test.ts`.
+- Isolamento entre tenants verificado explicitamente nos testes: `urlA ≠ urlB`, `bodyA.tenant ≠ bodyB.tenant`, com tenants `"decole"` e `"superare"`.
+- Cobertura: happy path, params opcionais, default de `part`, caracteres especiais na URL, isolamento cross-tenant.
+- Sem `it.only` ou `describe.skip`.
+- Nomes de testes descrevem comportamento em português claro.
+
+**4. Slice file**
+- Seção `Execução` preenchida com recovery points, design decision e commits Red/Green.
+- Gotcha registrado (`process.env.ADMIN_SECRET` no `auth/route.ts` — escopo separado, correto não ter corrigido aqui).
+- Critério de aceite executável passou (16/16 testes no smoke checklist, 7/7 nos testes do módulo).
 
 ---
 

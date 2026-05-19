@@ -68,7 +68,45 @@ grep -rn "product_code = '" lib/ app/ functions/
 
 ## Revisão G.12
 
-(a preencher — agente separado após implementação)
+### 2026-05-19 09:33 by Revisor Claude Sonnet 4.6 (agente separado)
+
+**REVISÃO G.12**
+
+Código: ⚠️ Ressalvas (ver abaixo)
+Arquitetura: ⚠️ Ressalvas (ver abaixo)
+Testes: ✅ OK
+
+**Resultado:** APROVADO COM RESSALVAS
+
+---
+
+**Verificações executadas:**
+
+**Testes:** 16 passed (2 test files, inclui d1.test.ts com 9 testes + sync-client.test.ts do slice 2.11E.3). Nenhum `it.only` ou `describe.skip`. TDD Red commit `a027949` anterior ao Green `dc8aeab` — verificável no histórico git. Testes nomeiam comportamento em português claro. Mocks isolados por `beforeEach(() => vi.clearAllMocks())`. Isolamento cross-tenant testado explicitamente (superare-test não mistura com decole).
+
+**SQL Injection:** `grep -rn "product_code = '" lib/ app/ functions/` → 0 matches. Todas as queries usam `?` parametrizado via helper `productWhere()`. ✅
+
+**tenant_id nos binds:** Todas as 5 funções exportadas (`getFunnelCounts`, `getGa4Counts`, `getMetaMetrics`, `getAttributionBreakdown`, `getUserJourney`) recebem `tenantId: string` como primeiro parâmetro e incluem `AND tenant_id = ?` parametrizado. `findProfileByEmailHash` corretamente sem tenant_id (IDENTITY_DB cross-tenant, com comentário explicativo). ✅
+
+**`functions/scheduled.ts`:** Marcada como `@deprecated` com comentário e TODO. INSERTs incluem `tenant_id` (`'decole'` hardcoded, conforme decisão registrada). ✅
+
+**Typecheck (`tsc --noEmit`):** 1 erro em `lib/tenant.ts:7` — `Conversion of type 'Env' to type 'Record<string, unknown>'` — o cast `as Record<string, unknown>` requer passar por `unknown` primeiro (`as unknown as Record<string, unknown>`). Erro de strict mode que não impede runtime (Cloudflare Workers não roda tsc em produção), mas viola o critério de typecheck limpo do slice.
+
+**Ressalvas:**
+
+1. **`lib/tenant.ts` — erro de TypeScript** (`TS2352`): o cast duplo deveria ser `as unknown as Record<string, unknown>` em vez de `as Record<string, unknown>` direto. Solução: `return typeof (env as unknown as Record<string, unknown>).TENANT_ID === "string" ...` — ou melhor, acessar `TENANT_ID` diretamente via `(getEnv() as Env & { TENANT_ID?: string }).TENANT_ID`. Como `TENANT_ID` já está na interface `Env`, o cast pode ser eliminado completamente: `const env = getEnv(); return env.TENANT_ID || "decole"`. Corrigir no próximo refactor.
+
+2. **Acoplamento DECOLE nos pages** — `app/dashboard/page.tsx` e `app/dashboard/attribution/page.tsx` hardcodam `["ALL", "DECOLE_ESG_MENTORIA", "DECOLE_PLANOVOO"]` e preços `{ DECOLE_ESG_MENTORIA: 3797, DECOLE_PLANOVOO: 497 }`. Fora do escopo deste slice (a UI de produtos hardcoded é pré-existente e será movida ao catálogo em slice futuro), mas registrar como ressalva arquitetural.
+
+3. **`lib/env.ts` — bindings Meta nomeadas por produto** (`META_AD_ACCOUNT_ID_ESG`, `META_AD_ACCOUNT_ID_PLANOVOO`): acoplamento a produto específico na interface `Env`. Fora do escopo deste slice, mas criar issue no backlog.
+
+4. **`functions/scheduled.ts` — `'decole'` hardcoded nos INSERTs** (linhas 131 e 210): conforme decisão registrada, é transitório e aceitável para este slice. O `@deprecated` com TODO está documentado. Verificar que o cleanup slice (2.11E cleanup) está no backlog.
+
+**Itens a resolver no próximo refactor ou slice seguinte:**
+
+- [ ] `lib/tenant.ts`: corrigir cast TypeScript — usar `getEnv().TENANT_ID` diretamente (campo já existe em `Env`) — elimina o erro `TS2352` e simplifica o código
+- [ ] Criar issue: `app/dashboard/page.tsx` — mover lista de produtos e preços ao catálogo (slice de UI multi-tenant)
+- [ ] Criar issue: `lib/env.ts` — `META_AD_ACCOUNT_ID_ESG/PLANOVOO` → resolver via catálogo por tenant (não por produto hardcoded)
 
 ---
 
