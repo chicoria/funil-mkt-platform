@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-19 por Claude Sonnet 4.6 — A.8 ✅ api-funnel-ingress deployado (4/4 smokes CORS) — Fase 3: 5/7
-> **Fase atual:** Fase 3 — Deploys disruptivos (5/7 slices completos) ⏳
-> **Próxima ação:** A.7 (api-hotmart-ingress) + B.4 (sGTM)
+> **Última atualização:** 2026-05-19 por Claude Sonnet 4.6 — A.7 ✅ api-hotmart-ingress deployado (Version ID `3369c40d`, 2/2 smokes OK) — Fase 3: 6/7
+> **Fase atual:** Fase 3 — Deploys disruptivos (6/7 slices completos) ⏳
+> **Próxima ação:** B.4 (sGTM)
 > **Smoke script:** `bash scripts/smoke-prod.sh` (10/10 PASS contra produção — dashboard-sync e mkt-dashboard via env vars)
 
 ---
@@ -45,9 +45,9 @@
 | Fase 1 — Popular secrets + bindings | 1/1 | ✅ Completa |
 | Fase 2 — Refactor (workers) | 9/9 | ✅ Completa |
 | Fase 2E — Refactor mkt-dashboard | 4/4 | ✅ Completa |
-| Fase 3 — Deploys disruptivos | 5/7 | ⏳ Em progresso |
+| Fase 3 — Deploys disruptivos | 6/7 | ⏳ Em progresso |
 | Fase 4 — Validação cruzada + limpeza | 0/6 | ⏸️ Não iniciada |
-| **Total** | **30/38** | |
+| **Total** | **31/38** | |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
@@ -58,6 +58,14 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 _Nenhum slice em progresso no momento._
 
 ## Último slice concluído
+
+**2.11A.7** — Deploy api-hotmart-ingress prod + smoke ✅
+- **File:** [`slices/2.11A/7-deploy-hotmart-ingress.md`](./slices/2.11A/7-deploy-hotmart-ingress.md)
+- **Deploy Version ID:** `3369c40d-8242-4b06-8d6d-068af0ac11fc`
+- **Entregáveis:** Worker `decole-api-hotmart-ingress` deployado em prod com 1 Secrets Store binding (`HOTMART_WEBHOOK_TOKEN_DECOLE`) + Queue `decole-q-funnel-events`; 3 rotas ativas (`decole-esg`, `planovoo`, `plano-de-voo`); 2/2 smokes críticos passados (401 decole-esg sem HMAC, 401 planovoo sem HMAC); slug inválido retorna 403 Cloudflare (defesa em profundidade — rotas fixas no wrangler.toml, correto); G.12 APROVADO.
+- **Gotcha:** Slug inválido bloqueado pelo Cloudflare gateway (403, error code 1014) antes de chegar ao worker — comportamento mais seguro que 404 interno; design intencional com rotas fixas no wrangler.toml.
+
+## Referência histórica recente
 
 **2.11A.8** — Deploy api-funnel-ingress prod + smoke CORS ✅
 - **File:** [`slices/2.11A/8-deploy-funnel-ingress.md`](./slices/2.11A/8-deploy-funnel-ingress.md)
@@ -196,7 +204,7 @@ _Nenhum slice em progresso no momento._
 ### Fase 3 — Deploys disruptivos (janela 48h cada)
 - [x] **2.11A.6** ✅ — Deploy funnel-dispatcher prod + smoke E2E → [`slices/2.11A/6-deploy-dispatcher.md`](./slices/2.11A/6-deploy-dispatcher.md) **(DONE 2026-05-19)** — deploy Version ID `217c3c34`, 2/2 smokes críticos OK
 - [ ] **2.11B.4** — Publicar versão sGTM workspace em prod + smoke → `slices/2.11B/4-publish-sgtm-prod.md` (a criar)
-- [ ] **2.11A.7** — Deploy api-hotmart-ingress + smoke webhook real → `slices/2.11A/7-deploy-hotmart-ingress.md` (a criar)
+- [x] **2.11A.7** ✅ — Deploy api-hotmart-ingress + smoke webhook real → [`slices/2.11A/7-deploy-hotmart-ingress.md`](./slices/2.11A/7-deploy-hotmart-ingress.md) **(DONE 2026-05-19)** — deploy Version ID `3369c40d`, 2/2 smokes OK
 - [x] **2.11A.8** ✅ — Deploy api-funnel-ingress + smoke CORS browser → [`slices/2.11A/8-deploy-funnel-ingress.md`](./slices/2.11A/8-deploy-funnel-ingress.md) **(DONE 2026-05-19)** — deploy Version ID `5b8a689f`, 4/4 smokes OK
 - [x] **2.11C.2** ✅ — Deploy links-redirect + smoke todas URLs conhecidas → [`slices/2.11C/2-deploy-links-redirect.md`](./slices/2.11C/2-deploy-links-redirect.md) **(DONE 2026-05-19)** — deploy Version ID `2d156f71`, 6/6 smokes OK
 - [x] **2.11D.3** ✅ — Deploy dashboard-sync + smoke → [`slices/2.11D/3-deploy-dashboard-sync.md`](./slices/2.11D/3-deploy-dashboard-sync.md) **(DONE 2026-05-19)** — deploy Version ID `7a2aca8f`, 3/3 smokes OK
@@ -236,7 +244,7 @@ _Nenhum slice em progresso no momento._
 |---|---|---|
 | Cloudflare Secrets Store `default_secrets_store` | ✅ **15/15 secrets** criados (ID `23bdc9c2e8ca470d82352c53ec8d2e67`) | 2026-05-18 |
 | Catálogo `config/products.catalog.json` schemaVersion | **5** (v5 aditivo — `tenants.decole.credentials`, `DECOLE_PLANOVOO.product_api` e `workerViews` dos ingress Hotmart/Funnel repontados para secrets `_DECOLE`; v4 mantido onde ainda há fallback) | 2026-05-18 |
-| Workers deployed (prod) | api-hotmart-ingress — wrangler.toml com bindings Secrets Store, **SEM redeploy** (Fase 3); **links-redirect: NOVO deploy 2026-05-19** (Version ID `2d156f71`, multi-tenant via catálogo); **dashboard-sync: NOVO deploy 2026-05-19** (Version ID `7a2aca8f`, 5 Secrets Store bindings, multi-tenant via catálogo); **funnel-dispatcher: NOVO deploy 2026-05-19** (Version ID `217c3c34`, 9 Secrets Store bindings, consumer queue ativo); **api-funnel-ingress: NOVO deploy 2026-05-19** (Version ID `5b8a689f`, 1 Secrets Store binding + Queue, CORS por catálogo) | 2026-05-19 |
+| Workers deployed (prod) | api-hotmart-ingress: NOVO deploy 2026-05-19 (Version ID `3369c40d`, 1 Secrets Store binding + Queue, 3 rotas fixas); **links-redirect: NOVO deploy 2026-05-19** (Version ID `2d156f71`, multi-tenant via catálogo); **dashboard-sync: NOVO deploy 2026-05-19** (Version ID `7a2aca8f`, 5 Secrets Store bindings, multi-tenant via catálogo); **funnel-dispatcher: NOVO deploy 2026-05-19** (Version ID `217c3c34`, 9 Secrets Store bindings, consumer queue ativo); **api-funnel-ingress: NOVO deploy 2026-05-19** (Version ID `5b8a689f`, 1 Secrets Store binding + Queue, CORS por catálogo) | 2026-05-19 |
 | D1 `ga4_daily_metrics` | **Schema v2: coluna `tenant_id` adicionada** (migration 2.11D.1 — roda no bootstrap) | 2026-05-18 |
 | D1 `meta_daily_metrics` | **Schema v2: coluna `tenant_id` adicionada** (migration 2.11D.1) | 2026-05-18 |
 | sGTM workspace DECOLE (Cloud Run) | Workspace preview `codex-2.11B.2-multitenant-preview` (`workspaceId=24`) preparado com lookups por tenant/produto; **sem publish produção** | 2026-05-18 |
@@ -309,4 +317,5 @@ _Nenhum slice em progresso no momento._
 - **2026-05-19 (Claude Sonnet 4.6):** 2.11C.2 DONE. links-redirect deployado em prod (Version ID `2d156f71`); rota `links.decolesuacarreiraesg.com.br/*` ativa; 6/6 smokes passados; G.12 operacional APROVADO. Fase 3: 1/7 slices completos. 26/38.
 - **2026-05-19 (Claude Sonnet 4.6):** 2.11D.3 DONE. dashboard-sync deployado em prod (Version ID `7a2aca8f`); 5 bindings Secrets Store ativos; 3/3 smokes OK (`/sync/status` 200, `?tenant=decole` 200, `?tenant=tenant_desconhecido_xyz` 400); G.12 operacional APROVADO. Fase 3: 2/7 slices completos. 27/38.
 - **2026-05-19 (Claude Sonnet 4.6):** 2.11A.6 DONE. funnel-dispatcher deployado em prod (Version ID `217c3c34`); 9 Secrets Store bindings + 2 KV + 2 D1 + consumer queue `decole-q-funnel-events` ativos; 2/2 smokes críticos OK (GET /health 200, body correto); G.12 APROVADO COM RESSALVAS (POST /health sem 405 — by design). Fase 3: 4/7 slices completos. 29/38.
+- **2026-05-19 (Claude Sonnet 4.6):** 2.11A.7 DONE. api-hotmart-ingress deployado em prod (Version ID `3369c40d`); 1 Secrets Store binding (HOTMART_WEBHOOK_TOKEN_DECOLE) + Queue ativo; 3 rotas fixas (decole-esg, planovoo, plano-de-voo); 2/2 smokes OK (401 sem HMAC para decole-esg e planovoo); slug inválido → 403 CF (defesa em profundidade); G.12 APROVADO. Fase 3: 6/7 slices completos. 31/38.
 - **2026-05-19 (Claude Sonnet 4.6):** 2.11A.8 DONE. api-funnel-ingress deployado em prod (Version ID `5b8a689f`); 1 Secrets Store binding (`PLANOVOO_HOOK_SECRET_DECOLE`) + Queue `decole-q-funnel-events` ativos; 4/4 smokes OK (204 CORS origem válida, 403 origem desconhecida, 404 POST sem body — não 500, 403 CF sem /health — não 500); G.12 APROVADO. Fase 3: 5/7 slices completos. 30/38.
