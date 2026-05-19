@@ -1,8 +1,9 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-19 por Claude Sonnet 4.6 — 2.11D.3 DONE (deploy dashboard-sync + smoke 3/3 ✅) — **Fase 3: 2/7 slices completos**
+> **Última atualização:** 2026-05-19 por Claude Sonnet 4.6 — Batch 1 Fase 3: 2.11C.2 ✅ + 2.11D.3 ✅ · 2.11E.4 ⛔ bloqueado (wrangler auth)
 > **Fase atual:** Fase 3 — Deploys disruptivos (2/7 slices completos) ⏳
-> **Próxima ação:** humano re-autentica wrangler (`npx wrangler login`) → continuar 2.11E.4 (deploy mkt-dashboard) + demais deploys Fase 3
+> **Próxima ação:** `npx wrangler login` em `/git/mkt-dashboard` → deploy mkt-dashboard (2.11E.4) → Batch 2: A.6, A.7, A.8, B.4
+> **Smoke script:** `bash scripts/smoke-prod.sh` (10/10 PASS contra produção — dashboard-sync e mkt-dashboard via env vars)
 
 ---
 
