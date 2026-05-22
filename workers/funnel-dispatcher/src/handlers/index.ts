@@ -606,7 +606,7 @@ async function upsertEventStoreRecord(event: FunnelEvent, env: DispatcherEnv): P
   const tenantId = tenantIdFor(event, env);
   const db = getEventStoreDb(env);
   if (!db) {
-    return;
+    throw new Error("event_store_db_not_configured");
   }
 
   await ensureEventStoreSchema(db);

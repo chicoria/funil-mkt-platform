@@ -15,20 +15,23 @@
  *   --yes                    Responde "sim" a todas as perguntas (pipelines)
  *
  * Exemplos:
+ *   # A partir da raiz do repo, carregar credenciais do .env.local na CLI:
+ *   set -a; source .env.local; set +a
+ *
  *   # Inspecionar — não altera nada
- *   node scripts/cleanup-transaction.mjs HP4217962122
+ *   set -a; source .env.local; set +a; node scripts/cleanup-transaction.mjs HP4217962122
  *
  *   # Remover só o PURCHASE_REFUNDED e limpar dedupe (re-testar desde esse evento)
- *   node scripts/cleanup-transaction.mjs HP4217962122 --remove-event PURCHASE_REFUNDED
+ *   set -a; source .env.local; set +a; node scripts/cleanup-transaction.mjs HP4217962122 --remove-event PURCHASE_REFUNDED
  *
  *   # Reset completo para re-testar desde o início (remove tudo + tokens)
- *   node scripts/cleanup-transaction.mjs HP4217962122 --remove-all-events --delete-tokens --yes
+ *   set -a; source .env.local; set +a; node scripts/cleanup-transaction.mjs HP4217962122 --remove-all-events --delete-tokens --yes
  *
  *   # Só limpar dedupe para reenvio sem perder historial
- *   node scripts/cleanup-transaction.mjs HP4217962122 --replay
+ *   set -a; source .env.local; set +a; node scripts/cleanup-transaction.mjs HP4217962122 --replay
  *
  *   # Apagar tokens Postgres (pergunta antes)
- *   node scripts/cleanup-transaction.mjs HP4217962122 --delete-tokens
+ *   set -a; source .env.local; set +a; node scripts/cleanup-transaction.mjs HP4217962122 --delete-tokens
  */
 
 import { execFileSync } from "node:child_process";

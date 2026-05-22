@@ -134,6 +134,23 @@ describe("funnel-dispatcher", () => {
     expect(hasEventInsert).toBe(true);
   });
 
+  it("falha sem EVENT_STORE_DB e nao deduplica upsert_event_store", async () => {
+    const env = makeEnv({ EVENT_STORE_DB: undefined });
+    const event = {
+      event_id: "evt-missing-event-store",
+      event_type: "GENERATE_LEAD",
+      product_code: "DECOLE_ESG_MENTORIA",
+      source: "site",
+      occurred_at: new Date().toISOString(),
+      payload: {},
+    };
+
+    await expect(worker.queue({ messages: [{ body: event }] }, env)).rejects.toThrow("event_store_db_not_configured");
+
+    const dedupeKeys = (env.DEDUPE_KV.put as any).mock.calls.map((call: unknown[]) => String(call[0]));
+    expect(dedupeKeys.some((key: string) => key.endsWith(":upsert_event_store"))).toBe(false);
+  });
+
   it("isola identity KV e D1 por tenant", async () => {
     const env = makeEnv({
       CATALOG_JSON: JSON.stringify({
