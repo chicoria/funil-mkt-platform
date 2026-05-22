@@ -63,14 +63,11 @@ describe("links-redirect worker", () => {
     expect(url.searchParams.get("foo")).toBe("bar");
   });
 
-  it("repassa parametros recebidos para o checkout", async () => {
+  it("retorna 404 para checkout legado sem prefixo de produto", async () => {
     const res = await worker.fetch(makeRequest("checkout?utm_source=ig"), makeEnv());
-    const location = res.headers.get("location") || "";
-    const url = new URL(location);
-    expect(url.origin).toBe("https://pay.hotmart.com");
-    expect(url.searchParams.get("off")).toBe("3j6lto4t");
-    expect(url.searchParams.get("offer")).toBeNull();
-    expect(url.searchParams.get("utm_source")).toBe("ig");
+    expect(res.status).toBe(404);
+    const json = (await res.json()) as { error?: string };
+    expect(json.error).toBe("not_found");
   });
 
   it("enfileira BEGIN_CHECKOUT antes de redirecionar para checkout", async () => {
@@ -103,7 +100,7 @@ describe("links-redirect worker", () => {
   });
 
   it("padroniza oferta via parametro offer", async () => {
-    const res = await worker.fetch(makeRequest("checkout?offer=n82b9jqz&utm_source=ig"), makeEnv());
+    const res = await worker.fetch(makeRequest("plano-de-voo/checkout?offer=n82b9jqz&utm_source=ig"), makeEnv());
     const location = res.headers.get("location") || "";
     const url = new URL(location);
     expect(url.searchParams.get("off")).toBe("n82b9jqz");
@@ -288,7 +285,7 @@ describe("links-redirect worker", () => {
 
   it("captura CF-Connecting-IP e inclui client_ip na attribution do BEGIN_CHECKOUT", async () => {
     const sent: unknown[] = [];
-    const req = new Request("https://links.decolesuacarreiraesg.com.br/checkout?anonymous_id=anon-ip", {
+    const req = new Request("https://links.decolesuacarreiraesg.com.br/plano-de-voo/checkout?anonymous_id=anon-ip", {
       method: "GET",
       headers: { "cf-connecting-ip": "9.8.7.6" },
     });

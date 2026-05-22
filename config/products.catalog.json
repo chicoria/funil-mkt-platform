@@ -1,6 +1,6 @@
 {
   "schemaVersion": 5,
-  "updatedAt": "2026-05-19",
+  "updatedAt": "2026-05-22",
   "description": "Catálogo central multi-tenant — tenants.{id}.products.{code} declara cada produto. Fonte única para tracking, integrações, links e dashboard por tenant/produto.",
   "global": {
     "hotmart": {
@@ -114,13 +114,6 @@
             "productCode": "DECOLE_PLANOVOO"
           },
           {
-            "path": "/checkout",
-            "type": "checkout",
-            "legacy": true,
-            "deprecated": true,
-            "_note": "Rota legada sem prefixo de produto — manter até confirmar zero tráfego (30 dias)"
-          },
-          {
             "path": "/decole-esg/signup",
             "type": "doi_confirmation",
             "productCode": "DECOLE_ESG_MENTORIA",
@@ -129,6 +122,7 @@
           {
             "path": "/plano-de-voo/signup",
             "type": "doi_confirmation",
+            "productCode": "DECOLE_PLANOVOO",
             "redirectUrl": "https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html"
           }
         ],

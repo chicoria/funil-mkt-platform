@@ -102,7 +102,7 @@ else
 fi
 
 status=$(http_status "$LINKS_BASE/checkout")
-check "GET /checkout (legacy) → 302" "302" "$status"
+check "GET /checkout (legacy removida) → 404" "404" "$status"
 
 status=$(http_status "$LINKS_BASE/decole-esg/checkout")
 check "GET /decole-esg/checkout → 302" "302" "$status"

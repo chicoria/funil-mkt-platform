@@ -480,6 +480,10 @@ const worker = {
       }
 
       if (path === "checkout" || path.endsWith("/checkout")) {
+        const route = resolveTenantRoute(bundledCatalogJson as LinksCatalog, tenantId, rawPath);
+        if (!route || route.type !== "checkout") {
+          return jsonResponse({ ok: false, error: "not_found" }, 404);
+        }
         const requestUrl = await withCheckoutRecoveryParams(url, tenantId, env);
         const result = handleCheckoutPath(requestUrl, rawPath, tenantId);
         if (!result || !result.location) {
