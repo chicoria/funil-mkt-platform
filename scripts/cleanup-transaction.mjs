@@ -7,6 +7,8 @@
  * Modos de operação:
  *   (sem flags)              Inspeciona historial D1 + tokens Postgres (read-only)
  *   --replay                 Limpa DEDUPE_KV de todos os eventos → permite reenvio completo
+ *   --event-id <UUID>        Adiciona event_id extra ao --replay (útil quando o evento
+ *                            não está no D1 mas as chaves de dedupe ainda existem no KV)
  *   --remove-event <TIPO>    Remove evento(s) de um tipo específico do D1 + DEDUPE_KV
  *                            ⚠️  Apaga historial — só usar em testes
  *   --remove-all-events      Remove TODOS os eventos da transação do D1 + DEDUPE_KV
@@ -27,8 +29,11 @@
  *   # Reset completo para re-testar desde o início (remove tudo + tokens)
  *   set -a; source .env.local; set +a; node scripts/cleanup-transaction.mjs HP4217962122 --remove-all-events --delete-tokens --yes
  *
- *   # Só limpar dedupe para reenvio sem perder historial
+ *   # Limpar dedupe para reenvio sem perder historial (eventos no D1)
  *   set -a; source .env.local; set +a; node scripts/cleanup-transaction.mjs HP4217962122 --replay
+ *
+ *   # Limpar dedupe quando o evento não está no D1 (ex: PURCHASE_APPROVED reprocessar)
+ *   set -a; source .env.local; set +a; node scripts/cleanup-transaction.mjs HP4217962122 --replay --event-id 9c9f7279-d406-4396-8dd0-4d5e03a2660d
  *
  *   # Apagar tokens Postgres (pergunta antes)
  *   set -a; source .env.local; set +a; node scripts/cleanup-transaction.mjs HP4217962122 --delete-tokens
@@ -50,19 +55,32 @@ const VPS_POSTGRES_CONTAINER = "n8n-docker-caddy-postgres-1";
 const VPS_POSTGRES_USER = "decole";
 const VPS_POSTGRES_DB = "decole";
 
+// Handlers ativos no código atual
 const KNOWN_HANDLERS = [
   "resolve_identity",
   "upsert_event_store",
   "enrich_attribution",
   "update_brevo_funnel",
   "emit_tracking",
-  "forward_n8n",
   "call_product_api",
   "send_template_email",
   "invalidate_purchase_token",
   "send_brevo_doi",
   "send_cart_abandonment_email",
   "sync_brevo_segments",
+];
+
+// Handlers legados — podem ter chaves no DEDUPE_KV de deployments anteriores
+const LEGACY_HANDLERS = [
+  "forward_n8n",
+  "send_plano_voo_purchase_email",
+  "call_plano_voo_purchase",
+];
+
+// Todos os prefixos tenant:product conhecidos (formato novo de chave)
+const KNOWN_TENANT_PRODUCT_PREFIXES = [
+  "decole:DECOLE_ESG_MENTORIA",
+  "decole:DECOLE_PLANOVOO",
 ];
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -98,12 +116,21 @@ function kvDeleteKey(binding, key) {
 }
 
 function clearDedupeKeys(eventIds) {
+  const allHandlers = [...KNOWN_HANDLERS, ...LEGACY_HANDLERS];
   let deleted = 0;
   let notFound = 0;
   for (const eventId of eventIds) {
-    for (const handler of KNOWN_HANDLERS) {
+    // Formato antigo: event_id:handler (sem tenant)
+    for (const handler of allHandlers) {
       try { kvDeleteKey(DEDUPE_KV_BINDING, `${eventId}:${handler}`); deleted++; }
       catch { notFound++; }
+    }
+    // Formato novo: tenant:product:event_id:handler
+    for (const prefix of KNOWN_TENANT_PRODUCT_PREFIXES) {
+      for (const handler of allHandlers) {
+        try { kvDeleteKey(DEDUPE_KV_BINDING, `${prefix}:${eventId}:${handler}`); deleted++; }
+        catch { notFound++; }
+      }
     }
   }
   return { deleted, notFound };
@@ -136,6 +163,10 @@ async function main() {
   const removeEventIdx = args.indexOf("--remove-event");
   const removeEventType = removeEventIdx !== -1 ? args[removeEventIdx + 1]?.toUpperCase() : null;
 
+  // --event-id <UUID>  (event_id extra para --replay quando não está no D1)
+  const eventIdIdx = args.indexOf("--event-id");
+  const extraEventId = eventIdIdx !== -1 ? args[eventIdIdx + 1] : null;
+
   if (!transactionId) {
     console.log("Uso: node cleanup-transaction.mjs <TRANSACTION_ID> [--replay] [--remove-event TIPO] [--remove-all-events] [--delete-tokens] [--yes]");
     process.exit(1);
@@ -143,6 +174,7 @@ async function main() {
 
   const activeFlags = [
     doReplay && "--replay",
+    extraEventId && `--event-id ${extraEventId}`,
     removeEventType && `--remove-event ${removeEventType}`,
     doRemoveAllEvents && "--remove-all-events",
     doDeleteTokens && "--delete-tokens",
@@ -190,10 +222,14 @@ async function main() {
   // ── 3. Replay — limpar DEDUPE_KV sem apagar historial ────────────────────
   if (doReplay) {
     console.log("\n3. --replay: limpando DEDUPE_KV (historial D1 preservado)...");
-    if (allEventIds.length === 0) {
-      console.log("   Nenhum event_id — nada a limpar.");
+    const replayEventIds = [...new Set([...allEventIds, ...(extraEventId ? [extraEventId] : [])])];
+    if (extraEventId && !allEventIds.includes(extraEventId)) {
+      console.log(`   event_id extra (--event-id): ${extraEventId}`);
+    }
+    if (replayEventIds.length === 0) {
+      console.log("   Nenhum event_id — use --event-id <UUID> para especificar diretamente.");
     } else {
-      const { deleted, notFound } = clearDedupeKeys(allEventIds);
+      const { deleted, notFound } = clearDedupeKeys(replayEventIds);
       console.log(`   ${deleted} chave(s) removida(s), ${notFound} já não existiam.`);
       console.log("   ✓ Prontos para replay — reenvie os webhooks pelo Hotmart.");
     }
