@@ -92,12 +92,23 @@ function prompt(question) {
   });
 }
 
+function parseWranglerJson(out) {
+  // wrangler pode pré-fixar linhas de promoção (ex: "Cloudflare agent skills…")
+  // antes do JSON — encontra o primeiro '[' ou '{' e descarta o que vier antes.
+  const start = Math.min(
+    out.indexOf("[") === -1 ? Infinity : out.indexOf("["),
+    out.indexOf("{") === -1 ? Infinity : out.indexOf("{"),
+  );
+  if (start === Infinity) throw new Error(`wrangler output contains no JSON:\n${out}`);
+  return JSON.parse(out.slice(start));
+}
+
 function d1Query(dbName, sql) {
   const out = execFileSync(
     "npx", ["wrangler", "d1", "execute", dbName, "--remote", "--json", "--command", sql],
     { cwd: wranglerDispatcherCwd, encoding: "utf8" }
   );
-  return JSON.parse(out)?.[0]?.results ?? [];
+  return parseWranglerJson(out)?.[0]?.results ?? [];
 }
 
 function d1Execute(dbName, sql) {
@@ -105,7 +116,7 @@ function d1Execute(dbName, sql) {
     "npx", ["wrangler", "d1", "execute", dbName, "--remote", "--json", "--command", sql],
     { cwd: wranglerDispatcherCwd, encoding: "utf8" }
   );
-  return JSON.parse(out)?.[0]?.meta ?? { changes: 0 };
+  return parseWranglerJson(out)?.[0]?.meta ?? { changes: 0 };
 }
 
 function kvDeleteKey(binding, key) {
@@ -208,15 +219,19 @@ async function main() {
 
   // ── 2. Inspecionar Postgres ───────────────────────────────────────────────
   console.log("\n2. Tokens no Postgres...");
-  const tokenRows = psql(
-    `SELECT token, status, hotmart_transacao, criado_at FROM plano_voo_tokens WHERE hotmart_transacao = '${transactionId}' ORDER BY criado_at`
-  );
-
-  if (tokenRows.length === 0) {
-    console.log("   Nenhum token encontrado.");
-  } else {
-    console.log(`   ${tokenRows.length} token(s):`);
-    tokenRows.forEach((r) => console.log(`   ${r}`));
+  let tokenRows = [];
+  try {
+    tokenRows = psql(
+      `SELECT token, status, hotmart_transacao, criado_at FROM plano_voo_tokens WHERE hotmart_transacao = '${transactionId}' ORDER BY criado_at`
+    );
+    if (tokenRows.length === 0) {
+      console.log("   Nenhum token encontrado.");
+    } else {
+      console.log(`   ${tokenRows.length} token(s):`);
+      tokenRows.forEach((r) => console.log(`   ${r}`));
+    }
+  } catch (err) {
+    console.log(`   ⚠️  VPS inacessível — tokens Postgres não inspecionados (${err.message.split("\n")[0]})`);
   }
 
   // ── 3. Replay — limpar DEDUPE_KV sem apagar historial ────────────────────
