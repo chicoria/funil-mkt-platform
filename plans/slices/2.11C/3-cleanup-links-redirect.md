@@ -1,6 +1,6 @@
 # Slice 2.11C.3 — links-redirect: remover env vars legadas + validar grep
 
-> Satélite: 2.11C ([`../../PLANO-LINKS-REDIRECT-MULTI-TENANT.md`](../../PLANO-LINKS-REDIRECT-MULTI-TENANT.md))
+> Satélite: 2.11C ([`../../completed/PLANO-LINKS-REDIRECT-MULTI-TENANT.md`](../../completed/PLANO-LINKS-REDIRECT-MULTI-TENANT.md))
 > Estimativa: 30 min
 
 ## Status

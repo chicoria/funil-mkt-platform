@@ -1,6 +1,6 @@
 # Slice 2.11D.1 — Migration D1: tenant_id em ga4_daily_metrics + meta_daily_metrics
 
-> Satélite: 2.11D ([`../../PLANO-DASHBOARD-SYNC-MULTI-TENANT.md`](../../PLANO-DASHBOARD-SYNC-MULTI-TENANT.md))
+> Satélite: 2.11D ([`../../completed/PLANO-DASHBOARD-SYNC-MULTI-TENANT.md`](../../completed/PLANO-DASHBOARD-SYNC-MULTI-TENANT.md))
 > Estimativa: 2-3 horas
 
 ## Status

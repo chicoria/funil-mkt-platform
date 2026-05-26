@@ -15,9 +15,9 @@ Quando um slice originalmente concebido aqui cresceu e ganhou autonomia, ele vir
 |---|---|---|---|
 | PLANO-MASTER-MULTI-TENANT | `plans/PLANO-MASTER-MULTI-TENANT.md` | **Ponto de entrada autoritativo** — overview + governance + guard rails para todas as mudanças multi-tenant | (master) |
 | PLANO-MULTI-TENANT-SECRETS-CONFIG | `plans/PLANO-MULTI-TENANT-SECRETS-CONFIG.md` | Credenciais por tenant, schema v5 do catálogo, naming `{SECRET}_{TENANT}`, Cloudflare Secrets Store, princípio agnostic dos workers, testes de regressão | 2.11A |
-| PLANO-SGTM-PLATAFORMA-COMPARTILHADO | `plans/PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md` | 1 sGTM compartilhado da plataforma (Modelo B), custom domains por tenant, lookup tables internas, roadmap de backoffice automatizado | 2.11B |
-| PLANO-LINKS-REDIRECT-MULTI-TENANT | `plans/PLANO-LINKS-REDIRECT-MULTI-TENANT.md` | Remove hardcode do `links-redirect` (paths, contatos WhatsApp, URLs Hotmart) para `tenants.{id}.links` no catálogo | 2.11C |
-| PLANO-DASHBOARD-SYNC-MULTI-TENANT | `plans/PLANO-DASHBOARD-SYNC-MULTI-TENANT.md` | dashboard-sync itera catálogo, `tenant_id` em D1 (`ga4_daily_metrics`, `meta_daily_metrics`), cron multi-tenant | 2.11D |
+| PLANO-SGTM-PLATAFORMA-COMPARTILHADO | `plans/completed/PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md` | 1 sGTM compartilhado da plataforma (Modelo B), custom domains por tenant, lookup tables internas, roadmap de backoffice automatizado | 2.11B |
+| PLANO-LINKS-REDIRECT-MULTI-TENANT | `plans/completed/PLANO-LINKS-REDIRECT-MULTI-TENANT.md` | Remove hardcode do `links-redirect` (paths, contatos WhatsApp, URLs Hotmart) para `tenants.{id}.links` no catálogo | 2.11C |
+| PLANO-DASHBOARD-SYNC-MULTI-TENANT | `plans/completed/PLANO-DASHBOARD-SYNC-MULTI-TENANT.md` | dashboard-sync itera catálogo, `tenant_id` em D1 (`ga4_daily_metrics`, `meta_daily_metrics`), cron multi-tenant | 2.11D |
 
 **Política:** este PLANO-2 documenta arquitetura, decisões e história dos slices. Quando um slice cobrir trabalho concentrado em um repo único (como secrets, dashboard, sGTM, links), o plano operacional fica no repo afetado, com link bidirecional. **Comece sempre por `PLANO-MASTER-MULTI-TENANT.md` para entender governance antes de mexer em qualquer satélite.**
 
@@ -334,13 +334,13 @@ A revisão profunda do escopo identificou que "credenciais, auth e CORS por tena
 - **Slice 2.11A — Secrets e credenciais por tenant** → `plans/PLANO-MULTI-TENANT-SECRETS-CONFIG.md`
   Cobre: rename de env vars para `{SECRET}_{TENANT}[_{PRODUCT}]`, Cloudflare Secrets Store account-level com helper wrapper, expansão de `tenants.{id}.credentials` no catálogo, nova seção `tenants.{id}.integrations` (n8n, Plano de Voo, Brevo) e `tenants.{id}.tracking` (sGTM endpoint, GA4 por tenant, Meta CAPI token), substituição de leituras `env.BREVO_API_KEY`/`env.HOTMART_WEBHOOK_TOKEN`/`env.N8N_WEBHOOK_URL`/`env.PLANOVOO_*` por leituras indiretas via catálogo, schema v5, ingress auth Hotmart por tenant (inverter ordem `isAuthorized` → `resolveTenant`), CORS por tenant, princípio operacional "workers agnostic" (grep critério), estratégia de testes (cross-tenant isolation + golden master), compatibilidade com staging.
 
-- **Slice 2.11B — sGTM único da plataforma (Modelo B)** → `plans/PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md`
+- **Slice 2.11B — sGTM único da plataforma (Modelo B)** → `plans/completed/PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md`
   Cobre: 1 container Cloud Run compartilhado por todos os tenants (`gcr.io/cloud-tagging-10302018/gtm-cloud-image`), custom domains por tenant (`sgtm.decolesuacarreiraesg.com.br`, futuramente `sgtm.superare.com.br`) preservando first-party cookies, lookup tables internas no workspace GTM (tenant_id do Host header → measurement_id/api_secret/capi_token; (tenant_id, produto) → pixel_id), runbook de onboarding, roadmap de backoffice automatizado via Cloud Run Admin API + Tag Manager API v2 + Cloudflare API (SA `acesso-api@gtm-k6q4h6br-ndq3n.iam.gserviceaccount.com` já existente).
 
-- **Slice 2.11C — links-redirect multi-tenant** → `plans/PLANO-LINKS-REDIRECT-MULTI-TENANT.md`
+- **Slice 2.11C — links-redirect multi-tenant** → `plans/completed/PLANO-LINKS-REDIRECT-MULTI-TENANT.md`
   Cobre: remoção integral do hardcode do `links-redirect` (paths `decole-esg/checkout`, `plano-de-voo/checkout`, URLs Hotmart, número WhatsApp Elizete, mapa `LINKS_PRODUCTS`), nova estrutura `tenants.{id}.links.{linksDomain, routes[], contacts{slug}}` + `products.{code}.links.{checkoutBaseUrl, offerPathTemplate}` no catálogo v5, resolução de tenant via hostname, refactor para bundle catalog-aware.
 
-- **Slice 2.11D — dashboard-sync multi-tenant** → `plans/PLANO-DASHBOARD-SYNC-MULTI-TENANT.md`
+- **Slice 2.11D — dashboard-sync multi-tenant** → `plans/completed/PLANO-DASHBOARD-SYNC-MULTI-TENANT.md`
   Cobre: remoção do `productMap` hardcoded, descoberta de tenants/produtos via catálogo bundled, GA4 property POR TENANT, Meta Ad Account POR PRODUTO, secrets renomeados (`GA4_*_DECOLE`, `META_AD_ACCOUNT_ID_DECOLE_*`), D1 `tenant_id` em `ga4_daily_metrics` / `meta_daily_metrics`, modo cron multi-tenant, test harness completo (worker hoje não tem testes), princípio agnostic.
 
 **Os critérios de aceite originais do antigo 2.11 (handlers Brevo sem `env.BREVO_API_KEY` global, Hotmart auth por tenant, CORS por tenant)** continuam válidos e estão **dentro de 2.11A**.

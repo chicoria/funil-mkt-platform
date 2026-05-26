@@ -735,9 +735,9 @@ curl -s https://decole-dashboard-sync.chicoria.workers.dev/sync/status?tenant=de
 
 ## Referências
 
-- Satélite 2.11B: [`plans/PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md`](./PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md) seção 6 e 10
+- Satélite 2.11B: [`plans/completed/PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md`](./completed/PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md) seção 6 e 10
 - Satélite 2.11A: [`plans/PLANO-MULTI-TENANT-SECRETS-CONFIG.md`](./PLANO-MULTI-TENANT-SECRETS-CONFIG.md) seção 2 (naming), 5 (workers), 10.2 (Secrets Store)
-- Satélite 2.11E: [`plans/PLANO-MKT-DASHBOARD-MULTI-TENANT.md`](./PLANO-MKT-DASHBOARD-MULTI-TENANT.md) seção 5.1 (ADMIN_SECRET CF Pages)
+- Satélite 2.11E: [`plans/completed/PLANO-MKT-DASHBOARD-MULTI-TENANT.md`](./completed/PLANO-MKT-DASHBOARD-MULTI-TENANT.md) seção 5.1 (ADMIN_SECRET CF Pages)
 - Slice 2.11A.2: [`plans/slices/2.11A/2-populate-secrets-bindings.md`](./slices/2.11A/2-populate-secrets-bindings.md) — tabela completa de secrets existentes para DECOLE
 - Slice 2.11B.4: [`plans/slices/2.11B/4-publish-sgtm-prod.md`](./slices/2.11B/4-publish-sgtm-prod.md) — script publish GTM + IDs
 - Status atual: [`plans/STATUS-2.11.md`](./STATUS-2.11.md)

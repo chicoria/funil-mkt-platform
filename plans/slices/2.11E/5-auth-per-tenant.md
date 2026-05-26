@@ -1,6 +1,6 @@
 # Slice 2.11E.5 — Auth por tenant (ADMIN_SECRET_{TENANT})
 
-> Satélite: 2.11E ([`../../PLANO-MKT-DASHBOARD-MULTI-TENANT.md`](../../PLANO-MKT-DASHBOARD-MULTI-TENANT.md))
+> Satélite: 2.11E ([`../../completed/PLANO-MKT-DASHBOARD-MULTI-TENANT.md`](../../completed/PLANO-MKT-DASHBOARD-MULTI-TENANT.md))
 > Estimativa: 3–4 horas
 
 ## Status

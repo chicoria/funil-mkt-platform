@@ -18,7 +18,7 @@
 
 Após Fase 2E completa (slices 2.11E.1–2.11E.5 DONE, commit `7517e42`), o `mkt-dashboard` precisa ser buildado e deployado no Cloudflare Pages com nome `mkt-dashboard`. Este é o primeiro deploy disruptivo da Fase 3 para este repositório. App usa `next-on-pages` + `wrangler pages deploy`.
 
-Satélite: [`PLANO-MKT-DASHBOARD-MULTI-TENANT.md`](../../PLANO-MKT-DASHBOARD-MULTI-TENANT.md)
+Satélite: [`PLANO-MKT-DASHBOARD-MULTI-TENANT.md`](../../completed/PLANO-MKT-DASHBOARD-MULTI-TENANT.md)
 
 ## Pré-requisitos
 

@@ -1,16 +1,16 @@
 # Slice 2.11C.4 — DOI signup via links worker
 
-> Satélite: 2.11C ([`../../PLANO-LINKS-REDIRECT-MULTI-TENANT.md`](../../PLANO-LINKS-REDIRECT-MULTI-TENANT.md))
+> Satélite: 2.11C ([`../../completed/PLANO-LINKS-REDIRECT-MULTI-TENANT.md`](../../completed/PLANO-LINKS-REDIRECT-MULTI-TENANT.md))
 > Estimativa: 1 dia
 
 ## Status
 
 | Campo | Valor |
 |---|---|
-| Estado | IN_PROGRESS |
+| Estado | DONE |
 | Started | 2026-05-19 por Codex (GPT-5) |
-| Completed | — |
-| Commit final | — |
+| Completed | 2026-05-19 (revalidado em 2026-05-26) |
+| Commit final | `d34707f` + `562037d` |
 | PR | — |
 | Janela de smoke | — |
 
@@ -140,6 +140,13 @@ Validação pós-rollback: DOI volta a redirecionar diretamente para `confirmaca
 - O que funcionou: blocos `dataLayer.push({ event: "sign_up", ... })` removidos de `site/confirmacao.html` e `site/planodevoo/confirmacao.html`; grep final sem matches de `sign_up` nessas páginas.
 - O que falhou: nenhum erro técnico.
 - Próximo passo planejado: manter monitoramento de duplicidade de `SIGN_UP` em produção para confirmar redução de eventos duplicados.
+
+### 2026-05-26 por Codex (GPT-5)
+
+- O que foi tentado: revalidar o estado do slice antes de arquivar o plano satélite 2.11C.
+- O que funcionou: `npm test -- --run` em `workers/links-redirect` passou com 30/30 testes; grep nas páginas de confirmação não encontrou `sign_up`, `CompleteRegistration`, `fbq(` ou `gtag(`.
+- O que falhou: nenhum erro técnico nesta revalidação.
+- Próximo passo planejado: tratar tracking server-side de `SIGN_UP` no plano separado `PLANO-SIGNUP-SERVER-SIDE-DOI-TRACKING.md`.
 
 ## Gotchas / lições aprendidas
 

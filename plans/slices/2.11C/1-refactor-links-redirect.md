@@ -1,6 +1,6 @@
 # Slice 2.11C.1 — Refatorar links-redirect (catálogo + lookup)
 
-> Satélite: 2.11C ([`../../PLANO-LINKS-REDIRECT-MULTI-TENANT.md`](../../PLANO-LINKS-REDIRECT-MULTI-TENANT.md))
+> Satélite: 2.11C ([`../../completed/PLANO-LINKS-REDIRECT-MULTI-TENANT.md`](../../completed/PLANO-LINKS-REDIRECT-MULTI-TENANT.md))
 > Estimativa: 4–6 horas
 
 ## Status

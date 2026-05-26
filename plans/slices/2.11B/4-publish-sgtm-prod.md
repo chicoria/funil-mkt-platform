@@ -1,6 +1,6 @@
 # Slice 2.11B.4 — Publicar workspace sGTM 24 em produção
 
-> Satélite: 2.11B ([`../../PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md`](../../PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md))
+> Satélite: 2.11B ([`../../completed/PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md`](../../completed/PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md))
 > Estimativa: 1–2 horas
 
 ## Status

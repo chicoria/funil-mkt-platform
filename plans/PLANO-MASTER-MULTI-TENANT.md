@@ -1,7 +1,7 @@
 # Plano Master — Multi-Tenant
 
 > **Ponto de entrada autoritativo** para toda mudança no `funil-mkt-platform` que envolva multi-tenancy.
-> **Status:** ✅ **CONCLUÍDO (baseline 2.11)** — 38/38 slices · Fases 0, 0.5, 1, 2, 2E, 3 e 4 completas. ⏳ **Extensão em andamento:** Slice 2.11C.4 (DOI signup via links worker), iniciado em 2026-05-19 por Codex (GPT-5).
+> **Status:** baseline 2.11 operacional concluído; cleanup residual `2.11A.9` segue aberto. Extensão 2.11C.4 concluída e arquivada; tracking server-side de `SIGN_UP` segue em plano separado.
 > **Source of truth de progresso:** [`STATUS-2.11.md`](./STATUS-2.11.md)
 
 ---
@@ -35,10 +35,10 @@ O `funil-mkt-platform` evoluiu para suportar multi-tenancy (Slices 2.0–2.10 do
 |---|---|---|---|
 | **PLANO-2-DISPATCHER-GENERICO** | [`PLANO-2-DISPATCHER-GENERICO.md`](./PLANO-2-DISPATCHER-GENERICO.md) | Arquitetura macro, decisões e história. **Slices 2.0-2.10 concluídos**, 2.11 split em A/B/C/D, 2.12-2.15 roadmap. | 2.0-2.15 |
 | **PLANO-MULTI-TENANT-SECRETS-CONFIG** | [`PLANO-MULTI-TENANT-SECRETS-CONFIG.md`](./PLANO-MULTI-TENANT-SECRETS-CONFIG.md) | Credenciais por tenant, schema v5, Secrets Store, princípio agnostic, testes de regressão | **2.11A** |
-| **PLANO-SGTM-PLATAFORMA-COMPARTILHADO** | [`PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md`](./PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md) | 1 sGTM compartilhado, custom domains, lookup tables, roadmap de backoffice | **2.11B** |
-| **PLANO-LINKS-REDIRECT-MULTI-TENANT** | [`PLANO-LINKS-REDIRECT-MULTI-TENANT.md`](./PLANO-LINKS-REDIRECT-MULTI-TENANT.md) | Remove hardcode de paths, contatos WhatsApp, URLs Hotmart do `links-redirect` | **2.11C** |
-| **PLANO-DASHBOARD-SYNC-MULTI-TENANT** | [`PLANO-DASHBOARD-SYNC-MULTI-TENANT.md`](./PLANO-DASHBOARD-SYNC-MULTI-TENANT.md) | dashboard-sync itera catálogo, tenant_id em D1, cron multi-tenant | **2.11D** |
-| **PLANO-MKT-DASHBOARD-MULTI-TENANT** | [`PLANO-MKT-DASHBOARD-MULTI-TENANT.md`](./PLANO-MKT-DASHBOARD-MULTI-TENANT.md) | Rename decole-dashboard→mkt-dashboard; queries com tenant_id; auth por tenant via Secrets Store | **2.11E** |
+| **PLANO-SGTM-PLATAFORMA-COMPARTILHADO** | [`PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md`](./completed/PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md) | 1 sGTM compartilhado, custom domains, lookup tables, roadmap de backoffice | **2.11B** |
+| **PLANO-LINKS-REDIRECT-MULTI-TENANT** | [`PLANO-LINKS-REDIRECT-MULTI-TENANT.md`](./completed/PLANO-LINKS-REDIRECT-MULTI-TENANT.md) | Remove hardcode de paths, contatos WhatsApp, URLs Hotmart do `links-redirect` | **2.11C** |
+| **PLANO-DASHBOARD-SYNC-MULTI-TENANT** | [`PLANO-DASHBOARD-SYNC-MULTI-TENANT.md`](./completed/PLANO-DASHBOARD-SYNC-MULTI-TENANT.md) | dashboard-sync itera catálogo, tenant_id em D1, cron multi-tenant | **2.11D** |
+| **PLANO-MKT-DASHBOARD-MULTI-TENANT** | [`PLANO-MKT-DASHBOARD-MULTI-TENANT.md`](./completed/PLANO-MKT-DASHBOARD-MULTI-TENANT.md) | Rename decole-dashboard→mkt-dashboard; queries com tenant_id; auth por tenant via Secrets Store | **2.11E** |
 | **PLANO-STAGING-FUNIL-LANDING-PLANOVOO** | [`PLANO-STAGING-FUNIL-LANDING-PLANOVOO.md`](./PLANO-STAGING-FUNIL-LANDING-PLANOVOO.md) | Ambiente de staging isolado (revisão cirúrgica posterior — ver satélite 1 seção 10) | follow-up |
 | **PLANO-1-SEPARACAO-RESPONSABILIDADES** | [`completed/PLANO-1-SEPARACAO-RESPONSABILIDADES.md`](./completed/PLANO-1-SEPARACAO-RESPONSABILIDADES.md) | ✅ Concluído 2026-05-14 — APIs de hooks no Plano de Voo com HMAC | (arquivado) |
 
@@ -533,8 +533,8 @@ Fase 4 ── [Z/A/B/C/D/E: validação cruzada + limpeza + auth smoke]
 Para o próximo agente / humano:
 
 1. **Confirmar recovery point** em `STATUS-2.11.md` e git.
-2. Criar/executar `2.11Z.1` — smoke E2E cross-slice com tenant fake `superare-test`.
-3. Se `2.11Z.1` passar, avançar limpezas Fase 4: `2.11A.9`, `2.11B.5`, `2.11C.3`, `2.11D.4`, `2.11E.6`.
+2. Fechar `2.11A.9` — cleanup final de fallbacks legados e scripts de auditoria.
+3. Executar `PLANO-SIGNUP-SERVER-SIDE-DOI-TRACKING.md` para tornar `SIGN_UP` DOI o evento canônico server-side para GA4 + Meta CAPI.
 
 ---
 

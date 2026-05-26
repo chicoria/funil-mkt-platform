@@ -1,6 +1,6 @@
 # Slice 2.11E.2 — lib/d1.ts com tenant_id em todas as queries
 
-> Satélite: 2.11E ([`../../PLANO-MKT-DASHBOARD-MULTI-TENANT.md`](../../PLANO-MKT-DASHBOARD-MULTI-TENANT.md))
+> Satélite: 2.11E ([`../../completed/PLANO-MKT-DASHBOARD-MULTI-TENANT.md`](../../completed/PLANO-MKT-DASHBOARD-MULTI-TENANT.md))
 > Estimativa: 3–4 horas
 
 ## Status

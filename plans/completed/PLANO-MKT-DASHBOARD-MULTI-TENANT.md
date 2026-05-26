@@ -1,6 +1,6 @@
 # Plano Satélite 5 — mkt-dashboard Multi-Tenant
 
-> **Satélite** de [`PLANO-MASTER-MULTI-TENANT.md`](./PLANO-MASTER-MULTI-TENANT.md) (Slice 2.11E)
+> **Satélite** de [`PLANO-MASTER-MULTI-TENANT.md`](../PLANO-MASTER-MULTI-TENANT.md) (Slice 2.11E)
 > **Repositório afetado:** `/Users/chicoria/git/decole-dashboard` → `/Users/chicoria/git/mkt-dashboard`
 > **Pré-requisito:** Fase 2 completa (2.11D.2 DONE) — worker `dashboard-sync` já aceita `?tenant=` e D1 já tem `tenant_id`
 

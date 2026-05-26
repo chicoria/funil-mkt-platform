@@ -1,6 +1,6 @@
 # Slice 2.11E.3 — API routes com repasse ?tenant= ao worker
 
-> Satélite: 2.11E ([`../../PLANO-MKT-DASHBOARD-MULTI-TENANT.md`](../../PLANO-MKT-DASHBOARD-MULTI-TENANT.md))
+> Satélite: 2.11E ([`../../completed/PLANO-MKT-DASHBOARD-MULTI-TENANT.md`](../../completed/PLANO-MKT-DASHBOARD-MULTI-TENANT.md))
 > Estimativa: 1–2 horas
 
 ## Status

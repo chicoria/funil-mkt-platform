@@ -1,6 +1,6 @@
 # Slice 2.11B.2 — Refatorar sGTM em PREVIEW
 
-> Satélite: 2.11B ([`../../PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md`](../../PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md))
+> Satélite: 2.11B ([`../../completed/PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md`](../../completed/PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md))
 > Estimativa: 1 dia
 
 ## Status
@@ -34,7 +34,7 @@ O sGTM atual serve DECOLE e ainda precisa ser preparado para o Modelo B: um cont
 | `plans/slices/2.11B/2-refactor-sgtm-workspace-preview.md` | CREATE/EDIT | Registro executável da slice, lacunas, decisões e validações |
 | `plans/STATUS-2.11.md` | EDIT | Marcar slice em progresso/concluída ou bloqueada |
 | `plans/PLANO-MASTER-MULTI-TENANT.md` | EDIT | Atualizar cabeçalho ao fechar |
-| `plans/PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md` | EDIT | Atualizar descobertas reais se houver delta do plano |
+| `plans/completed/PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md` | EDIT | Atualizar descobertas reais se houver delta do plano |
 | GTM workspace `GTM-K6Q4H6BR` | EXTERNAL | Refactor em workspace/preview, sem publicar produção |
 
 ### Diff conceitual

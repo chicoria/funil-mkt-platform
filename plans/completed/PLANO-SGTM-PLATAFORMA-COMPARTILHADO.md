@@ -1,6 +1,6 @@
 # Plano Satélite 2 — sGTM Único da Plataforma (Modelo B)
 
-> **Satélite** de [`PLANO-MASTER-MULTI-TENANT.md`](./PLANO-MASTER-MULTI-TENANT.md) (Slice 2.11B)
+> **Satélite** de [`PLANO-MASTER-MULTI-TENANT.md`](../PLANO-MASTER-MULTI-TENANT.md) (Slice 2.11B)
 > **Pode rodar em paralelo** com 2.11A (não há dependência forte)
 > **Pré-requisito:** acesso a Cloud Run no projeto GCP `gtm-k6q4h6br-ndq3n`; service account `acesso-api@gtm-k6q4h6br-ndq3n.iam.gserviceaccount.com` (credentials em `~/secrets/decole/gtm-k6q4h6br-ndq3n-7525dc924517.json`)
 

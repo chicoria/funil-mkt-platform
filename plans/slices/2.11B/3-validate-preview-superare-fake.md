@@ -1,6 +1,6 @@
 # Slice 2.11B.3 — Validar preview sGTM com tenant fake superare-test
 
-> Satélite: 2.11B ([`../../PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md`](../../PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md))
+> Satélite: 2.11B ([`../../completed/PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md`](../../completed/PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md))
 > Estimativa: 2–4 horas
 
 ## Status
@@ -35,7 +35,7 @@ Satélite de referência: seção 5 — Passo 3.
 | `plans/slices/2.11B/3-validate-preview-superare-fake.md` | CREATE | Este file |
 | `plans/STATUS-2.11.md` | EDIT | Marcar IN_PROGRESS → DONE |
 | `plans/PLANO-MASTER-MULTI-TENANT.md` | EDIT | Atualizar cabeçalho ao fechar |
-| `plans/PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md` | EDIT | Registrar resultados da validação |
+| `plans/completed/PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md` | EDIT | Registrar resultados da validação |
 
 Sem mudanças em workers, sem deploy, sem publish GTM.
 

@@ -1,6 +1,6 @@
 # Slice 2.11C.2 — Deploy links-redirect prod + smoke todas URLs
 
-> Satélite: 2.11C ([`../../PLANO-LINKS-REDIRECT-MULTI-TENANT.md`](../../PLANO-LINKS-REDIRECT-MULTI-TENANT.md))
+> Satélite: 2.11C ([`../../completed/PLANO-LINKS-REDIRECT-MULTI-TENANT.md`](../../completed/PLANO-LINKS-REDIRECT-MULTI-TENANT.md))
 > Estimativa: 2 horas
 
 ## Status

@@ -1,6 +1,6 @@
 # Plano Satélite 4 — dashboard-sync Multi-Tenant
 
-> **Satélite** de [`PLANO-MASTER-MULTI-TENANT.md`](./PLANO-MASTER-MULTI-TENANT.md) (Slice 2.11D)
+> **Satélite** de [`PLANO-MASTER-MULTI-TENANT.md`](../PLANO-MASTER-MULTI-TENANT.md) (Slice 2.11D)
 > **Pode rodar em paralelo** com 2.11A (não há dependência forte além de naming convention já decidida)
 > **Pré-requisito:** Cloudflare Secrets Store + helper wrapper (slice 2.11A.0); migration D1 com `tenant_id` (slice 2.11D.1 dentro da Fase 0)
 

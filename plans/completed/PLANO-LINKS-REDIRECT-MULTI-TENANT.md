@@ -1,6 +1,6 @@
 # Plano Satélite 3 — links-redirect Multi-Tenant
 
-> **Satélite** de [`PLANO-MASTER-MULTI-TENANT.md`](./PLANO-MASTER-MULTI-TENANT.md) (Slice 2.11C)
+> **Satélite** de [`PLANO-MASTER-MULTI-TENANT.md`](../PLANO-MASTER-MULTI-TENANT.md) (Slice 2.11C)
 > **Pode rodar em paralelo** com 2.11A/B/D
 > **Pré-requisito:** schema v5 do catálogo (slice 2.11A.1) — campos `tenants.{id}.links` e `products.{code}.links`
 

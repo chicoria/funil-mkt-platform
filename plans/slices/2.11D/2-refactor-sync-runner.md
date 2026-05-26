@@ -1,6 +1,6 @@
 # Slice 2.11D.2 — Refatorar dashboard-sync runSync (multi-tenant)
 
-> Satélite: 2.11D ([`../../PLANO-DASHBOARD-SYNC-MULTI-TENANT.md`](../../PLANO-DASHBOARD-SYNC-MULTI-TENANT.md))
+> Satélite: 2.11D ([`../../completed/PLANO-DASHBOARD-SYNC-MULTI-TENANT.md`](../../completed/PLANO-DASHBOARD-SYNC-MULTI-TENANT.md))
 > Estimativa: 4–6 horas
 
 ## Status

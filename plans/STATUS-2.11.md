@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-19 por Codex (GPT-5) — 2.11A.9 cleanup legado avançado (Fase A runtime + Fase B catálogo, testes verdes)
-> **Fase atual:** Pós-2.11 — Extensões incrementais + cleanup final de legado (2.11A.9 e 2.11C.4 IN_PROGRESS) ⏳
-> **Próxima ação:** fechar 2.11A.9 (deploy + smoke) e concluir 2.11C.4
+> **Última atualização:** 2026-05-26 por Codex (GPT-5) — planos 2.11C/2.11E arquivados após revalidação documental; 2.11A.9 segue como cleanup aberto
+> **Fase atual:** Pós-2.11 — cleanup final de legado (2.11A.9 IN_PROGRESS) + plano SIGN_UP server-side proposto
+> **Próxima ação:** fechar 2.11A.9 (deploy + smoke) e executar `PLANO-SIGNUP-SERVER-SIDE-DOI-TRACKING.md`
 > **Smoke script:** `bash scripts/smoke-prod.sh` (10/10 PASS contra produção — dashboard-sync e mkt-dashboard via env vars)
 
 ---
@@ -15,9 +15,10 @@
 2. Este arquivo (`STATUS-2.11.md`) — estado atual, slice em progresso, queue, bloqueios
 3. Satélite relevante ao slice atual:
    - [`PLANO-MULTI-TENANT-SECRETS-CONFIG.md`](./PLANO-MULTI-TENANT-SECRETS-CONFIG.md) — 2.11A
-   - [`PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md`](./PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md) — 2.11B
-   - [`PLANO-LINKS-REDIRECT-MULTI-TENANT.md`](./PLANO-LINKS-REDIRECT-MULTI-TENANT.md) — 2.11C
-   - [`PLANO-DASHBOARD-SYNC-MULTI-TENANT.md`](./PLANO-DASHBOARD-SYNC-MULTI-TENANT.md) — 2.11D
+   - [`PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md`](./completed/PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md) — 2.11B
+   - [`PLANO-LINKS-REDIRECT-MULTI-TENANT.md`](./completed/PLANO-LINKS-REDIRECT-MULTI-TENANT.md) — 2.11C
+   - [`PLANO-DASHBOARD-SYNC-MULTI-TENANT.md`](./completed/PLANO-DASHBOARD-SYNC-MULTI-TENANT.md) — 2.11D
+   - [`PLANO-MKT-DASHBOARD-MULTI-TENANT.md`](./completed/PLANO-MKT-DASHBOARD-MULTI-TENANT.md) — 2.11E
 4. Slice em progresso: `slices/{satélite}/{N}-{título}.md` — contexto completo + execução append-only
 5. Próximo slice na queue: mesmo padrão de arquivo
 
@@ -46,8 +47,9 @@
 | Fase 2 — Refactor (workers) | 9/9 | ✅ Completa |
 | Fase 2E — Refactor mkt-dashboard | 4/4 | ✅ Completa |
 | Fase 3 — Deploys disruptivos | 7/7 | ✅ Completa |
-| Fase 4 — Validação cruzada + limpeza | 6/6 | ✅ Completa |
-| **Total** | **38/38** | ✅ |
+| Fase 4 — Validação cruzada + limpeza | 5/6 | ⏳ 2.11A.9 em progresso |
+| **Total baseline** | **37/38** | ⏳ |
+| Extensões pós-2.11 | 1/1 | ✅ |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
@@ -59,18 +61,13 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - **File:** [`slices/2.11A/9-cleanup-fallbacks.md`](./slices/2.11A/9-cleanup-fallbacks.md)
 - **Objetivo:** concluir cleanup de fallbacks legados no dispatcher e catálogo
 
-**2.11C.4** — DOI signup via links worker ⏳
-- **File:** [`slices/2.11C/4-doi-signup-via-links-worker.md`](./slices/2.11C/4-doi-signup-via-links-worker.md)
-- **Objetivo:** mover confirmação DOI para URL do links worker e emitir `SIGN_UP` server-side
-
 ## Último slice concluído
 
-**2.11B.4** — Publicar workspace sGTM 24 em produção ✅
-- **File:** [`slices/2.11B/4-publish-sgtm-prod.md`](./slices/2.11B/4-publish-sgtm-prod.md)
-- **GTM Version ID:** `18`
-- **Container:** `GTM-K6Q4H6BR` | Account: `6266094107` | Container: `241313282`
-- **Entregáveis:** workspace 24 (`codex-2.11B.2-multitenant-preview`) publicado como versionId=18 em produção; quick_preview OK (sem compilerError) antes do publish; DNS `sgtm.decolesuacarreiraesg.com.br → ghs.googlehosted.com.` OK; sGTM respondendo (HTTP 400 em `/g/collect` — correto sem payload); G.12 APROVADO.
-- **Gotcha:** Workspace 24 deletado automaticamente após publish (comportamento GTM padrão). prevVersionId=NENHUM (primeira versão publicada no container).
+**2.11C.4** — DOI signup via links worker ✅
+- **File:** [`slices/2.11C/4-doi-signup-via-links-worker.md`](./slices/2.11C/4-doi-signup-via-links-worker.md)
+- **Commits:** `d34707f` + `562037d`
+- **Entregáveis:** DOI redirecionado para `links-redirect`, emissão server-side de `SIGN_UP` no links worker e remoção de emissão browser-side de `sign_up` nas páginas de confirmação.
+- **Revalidação 2026-05-26:** `workers/links-redirect` tests verdes (`30/30`) e grep sem `sign_up`/`CompleteRegistration` nas páginas de confirmação.
 
 ## Referência histórica recente
 
@@ -226,15 +223,15 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - [x] **2.11E.4** ✅ — Deploy mkt-dashboard + smoke DECOLE → [`slices/2.11E/4-deploy-mkt-dashboard.md`](./slices/2.11E/4-deploy-mkt-dashboard.md) **(DONE 2026-05-19)** — commit `5f64c97`
 
 ### Fase 4 — Validação cruzada + limpeza
-- [ ] **2.11Z.1** — Smoke E2E cross-slice com tenant fake superare-test → `slices/2.11Z/1-cross-tenant-e2e-validation.md` (a criar)
-- [ ] **2.11A.9** — audit-secrets em CI + remover worker secrets antigos + validar grep workers agnostic → `slices/2.11A/9-cleanup-fallbacks.md` (a criar)
+- [x] **2.11Z.1** ✅ — Smoke E2E cross-slice com tenant fake superare-test → [`slices/2.11Z/1-cross-tenant-e2e-validation.md`](./slices/2.11Z/1-cross-tenant-e2e-validation.md) **(DONE 2026-05-19)** — commit `f868db9`
+- [ ] **2.11A.9** — audit-secrets em CI + remover worker secrets antigos + validar grep workers agnostic → [`slices/2.11A/9-cleanup-fallbacks.md`](./slices/2.11A/9-cleanup-fallbacks.md) **(IN_PROGRESS 2026-05-19)**
 - [x] **2.11B.5** ✅ — Documentar runbook onboarding tenant em RUNBOOK-ONBOARDING-TENANT.md → [`slices/2.11B/5-runbook-onboarding.md`](./slices/2.11B/5-runbook-onboarding.md) **(DONE 2026-05-19)**
 - [x] **2.11C.3** ✅ — links-redirect remove env vars legadas + grep 0 matches → [`slices/2.11C/3-cleanup-links-redirect.md`](./slices/2.11C/3-cleanup-links-redirect.md) **(DONE 2026-05-19)** — deploy Version ID `64360b18`
 - [x] **2.11D.4** ✅ — dashboard-sync remove 5 secrets legados (sem `_DECOLE`) do Cloudflare + grep 0 matches → [`slices/2.11D/4-cleanup-dashboard-sync.md`](./slices/2.11D/4-cleanup-dashboard-sync.md) **(DONE 2026-05-19)**
-- [ ] **2.11E.6** — Smoke auth cross-tenant + remover `ADMIN_SECRET` global → `slices/2.11E/6-cleanup-auth.md` (a criar)
+- [x] **2.11E.6** ✅ — Smoke auth cross-tenant + remover `ADMIN_SECRET` global do auth → [`slices/2.11E/5-auth-per-tenant.md`](./slices/2.11E/5-auth-per-tenant.md) **(DONE 2026-05-19)** — commit `a1db0e0` no repo `mkt-dashboard`
 
 ### Pós-2.11 — Extensões incrementais
-- [ ] **2.11C.4** — DOI signup via links worker (redirecionamento + emissão server-side de `SIGN_UP`) → [`slices/2.11C/4-doi-signup-via-links-worker.md`](./slices/2.11C/4-doi-signup-via-links-worker.md) **(IN_PROGRESS 2026-05-19)**
+- [x] **2.11C.4** ✅ — DOI signup via links worker (redirecionamento + emissão server-side de `SIGN_UP`) → [`slices/2.11C/4-doi-signup-via-links-worker.md`](./slices/2.11C/4-doi-signup-via-links-worker.md) **(DONE 2026-05-19; revalidado 2026-05-26)**
 
 ---
 
@@ -302,9 +299,8 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 **Para o próximo agente:**
 
 1. Confirmar recovery point (`git status --short`, `git log --oneline -10`) e resolver qualquer drift documental pendente.
-2. Criar `plans/slices/2.11Z/1-cross-tenant-e2e-validation.md` a partir de `SLICE-TEMPLATE.md`.
-3. Marcar 2.11Z.1 como IN_PROGRESS.
-4. Executar smoke E2E cross-slice com tenant fake `superare-test`, cobrindo workers, sGTM, dashboard-sync e isolamento cross-tenant.
+2. Fechar `2.11A.9`: concluir scripts de auditoria, deploy/smoke e atualizar este STATUS.
+3. Executar `PLANO-SIGNUP-SERVER-SIDE-DOI-TRACKING.md` como plano separado para `SIGN_UP` server-side via `emit_tracking`.
 
 ---
 

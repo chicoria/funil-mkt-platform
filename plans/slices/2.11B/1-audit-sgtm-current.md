@@ -1,6 +1,6 @@
 # Slice 2.11B.1 — Auditar sGTM DECOLE (inventário baseline)
 
-> Satélite: 2.11B ([`../../PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md`](../../PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md))
+> Satélite: 2.11B ([`../../completed/PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md`](../../completed/PLANO-SGTM-PLATAFORMA-COMPARTILHADO.md))
 > Estimativa: 2-3 horas (exploração + documentação)
 
 ## Status
