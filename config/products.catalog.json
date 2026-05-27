@@ -1,6 +1,6 @@
 {
   "schemaVersion": 5,
-  "updatedAt": "2026-05-22",
+  "updatedAt": "2026-05-26",
   "description": "Catálogo central multi-tenant — tenants.{id}.products.{code} declara cada produto. Fonte única para tracking, integrações, links e dashboard por tenant/produto.",
   "global": {
     "hotmart": {
@@ -407,18 +407,21 @@
               {
                 "funnelStage": "CONVERSION",
                 "eventType": "SIGN_UP",
-                "delivery": "both",
-                "source": "site",
-                "ingress": "api-funnel-ingress",
+                "delivery": "server_queue",
+                "source": "links-redirect",
+                "ingress": "decole-q-funnel-events",
                 "queue": "decole-q-funnel-events",
                 "chain": [
                   "resolve_identity",
                   "upsert_event_store",
-                  "update_brevo_funnel"
+                  "enrich_attribution",
+                  "update_brevo_funnel",
+                  "emit_tracking"
                 ],
                 "destinations": [
                   "Brevo",
-                  "Event Store"
+                  "Event Store",
+                  "sGTM"
                 ]
               },
               {
@@ -1061,18 +1064,21 @@
               {
                 "funnelStage": "CONVERSION",
                 "eventType": "SIGN_UP",
-                "delivery": "both",
-                "source": "site",
-                "ingress": "api-funnel-ingress",
+                "delivery": "server_queue",
+                "source": "links-redirect",
+                "ingress": "decole-q-funnel-events",
                 "queue": "decole-q-funnel-events",
                 "chain": [
                   "resolve_identity",
                   "upsert_event_store",
-                  "update_brevo_funnel"
+                  "enrich_attribution",
+                  "update_brevo_funnel",
+                  "emit_tracking"
                 ],
                 "destinations": [
                   "Brevo",
-                  "Event Store"
+                  "Event Store",
+                  "sGTM"
                 ]
               },
               {

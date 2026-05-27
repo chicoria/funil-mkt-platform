@@ -305,6 +305,7 @@ async function sha256Hex(value: string): Promise<string> {
 }
 
 function eventToGa4Name(eventType: string): string {
+  if (eventType === "SIGN_UP") return "sign_up";
   if (eventType === "BEGIN_CHECKOUT") return "begin_checkout";
   if (eventType === "PURCHASE_APPROVED") return "purchase";
   if (eventType === "GENERATE_LEAD" || eventType === "PRECHECKOUT_SUBMIT_SUCCESS") return "generate_lead";
@@ -313,6 +314,7 @@ function eventToGa4Name(eventType: string): string {
 }
 
 function eventToMetaName(eventType: string): string {
+  if (eventType === "SIGN_UP") return "CompleteRegistration";
   if (eventType === "PURCHASE_APPROVED") return "Purchase";
   if (eventType === "BEGIN_CHECKOUT" || eventType === "PURCHASE_OUT_OF_SHOPPING_CART") return "InitiateCheckout";
   if (eventType === "GENERATE_LEAD" || eventType === "PRECHECKOUT_SUBMIT_SUCCESS") return "Lead";
