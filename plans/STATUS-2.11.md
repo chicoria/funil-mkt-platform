@@ -1,8 +1,8 @@
 # Status 2.11 — Multi-Tenant
 
-> **Última atualização:** 2026-05-26 por Codex (GPT-5) — planos 2.11C/2.11E arquivados após revalidação documental; 2.11A.9 segue como cleanup aberto
-> **Fase atual:** Pós-2.11 — cleanup final de legado (2.11A.9 IN_PROGRESS) + plano SIGN_UP server-side proposto
-> **Próxima ação:** fechar 2.11A.9 (deploy + smoke) e executar `PLANO-SIGNUP-SERVER-SIDE-DOI-TRACKING.md`
+> **Última atualização:** 2026-05-27 — SIGN_UP server-side DOI tracking concluído e validado end-to-end
+> **Fase atual:** Pós-2.11 — cleanup final de legado (2.11A.9 IN_PROGRESS)
+> **Próxima ação:** fechar 2.11A.9 (remover dead code + secrets antigos)
 > **Smoke script:** `bash scripts/smoke-prod.sh` (10/10 PASS contra produção — dashboard-sync e mkt-dashboard via env vars)
 
 ---
@@ -49,7 +49,7 @@
 | Fase 3 — Deploys disruptivos | 7/7 | ✅ Completa |
 | Fase 4 — Validação cruzada + limpeza | 5/6 | ⏳ 2.11A.9 em progresso |
 | **Total baseline** | **37/38** | ⏳ |
-| Extensões pós-2.11 | 1/1 | ✅ |
+| Extensões pós-2.11 | 2/2 | ✅ |
 
 Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rolled back
 
@@ -62,6 +62,19 @@ Legenda: ✅ Done · ⏳ In Progress · ⏸️ TODO · ⛔ Blocked · ↩️ Rol
 - **Objetivo:** concluir cleanup de fallbacks legados no dispatcher e catálogo
 
 ## Último slice concluído
+
+**SIGN_UP server-side DOI tracking** ✅ (extensão pós-2.11)
+- **Plano:** [`PLANO-SIGNUP-SERVER-SIDE-DOI-TRACKING.md`](./completed/PLANO-SIGNUP-SERVER-SIDE-DOI-TRACKING.md)
+- **Commits:** `068cf6d` (catalog + dispatcher) · `ee3c0bc` (replay fix + E2E cenário 13)
+- **Entregáveis:**
+  - `SIGN_UP` nos dois produtos passa de `delivery=both` (sem emit_tracking) para `server_queue` com chain completa `resolve_identity → upsert_event_store → enrich_attribution → update_brevo_funnel → emit_tracking`
+  - `eventToMetaName(SIGN_UP)` corrigido no dispatcher e no replay script (`"SIGN_UP"` bruto → `"CompleteRegistration"`)
+  - sGTM container `GTM-K6Q4H6BR` versão 19 publicada: `testEventCode` dinâmico via `{{ED - test_event_code}}` (era hardcoded `TEST19244`)
+  - Cenário E2E 13 (`13-sign-up-doi.mjs`): 6/6 pass em produção com `TEST24981`
+  - GitHub Actions secrets Cloudflare configurados; Cloudflare Secrets Store `meta_access_token_decole` actualizado
+- **Validação:** CompleteRegistration visível no Meta Events Manager com `TEST24981`
+
+## Referência histórica — Anterior último slice
 
 **2.11C.4** — DOI signup via links worker ✅
 - **File:** [`slices/2.11C/4-doi-signup-via-links-worker.md`](./slices/2.11C/4-doi-signup-via-links-worker.md)

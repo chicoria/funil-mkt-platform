@@ -51,8 +51,8 @@ legend top left
   <b>Event delivery types (products.catalog.json)</b>
   |= delivery |= who fires |= tracking |= server funnel |
   | <color:#1565C0>gtm_web_only</color>  | browser only   | GTM Web → sGTM → GA4 + Meta CAPI  | ✗ no queue |
-  | <color:#2E7D32>both (gtm_web_to_sgtm)</color> | browser + server | GTM Web → sGTM → GA4 + Meta CAPI | ✓ queue (emit_tracking <b>skipped</b> server-side) |
-  | <color:#6A1B9A>server_queue</color>  | Hotmart webhook | emit_tracking → sGTM | ✓ full chain |
+  | <color:#2E7D32>both (gtm_web_to_sgtm)</color> | browser + server | GTM Web → sGTM → GA4 + Meta CAPI | ✓ queue (emit_tracking <b>skipped</b> server-side — ex: GENERATE_LEAD) |
+  | <color:#6A1B9A>server_queue</color>  | server only | emit_tracking → sGTM | ✓ full chain (ex: PURCHASE_APPROVED, SIGN_UP) |
 endlegend
 
 ' ════════════════════════════════════════════════════════════════
@@ -69,12 +69,12 @@ package "Static Site  (decolesuacarreiraesg.com.br)" as site_pkg #E8F4FD {
 
   package "DECOLE ESG Mentoria" as lp_esg_pkg #DBEAFE {
     component "/  ·  /bio-insta.html\n─────────────────────\n<color:#1565C0>page_view</color>  →  ga4_via_gtm + pixel_via_gtm\n<color:#1565C0>cta_click</color>  →  ga4_via_gtm + pixel_via_gtm\n<color:#2E7D32>generate_lead</color>  →  ga4_via_gtm + pixel_via_gtm\n             + api-precheckout (server)" as lp_esg #BFDBFE
-    component "/confirmacao.html  (DOI)\n─────────────────────\n<color:#2E7D32>sign_up</color>  →  ga4_via_gtm\n         CompleteRegistration (pixel_via_gtm)\n         + api-funnel-ingress (server)" as lp_esg_doi #BFDBFE
+    component "/confirmacao.html  (DOI)\n─────────────────────\n<color:#1565C0>page_view</color>  →  ga4_via_gtm\n<i>sem conversao browser-side</i>\n<i>SIGN_UP emitido via links-redirect</i>" as lp_esg_doi #BFDBFE
   }
 
   package "DECOLE Plano de Voo" as lp_pv_pkg #DBEAFE {
     component "/planodevoo\n─────────────────────\n<color:#1565C0>page_view</color>  →  ga4_via_gtm + pixel_via_gtm\n<color:#1565C0>cta_click</color>  →  ga4_via_gtm + pixel_via_gtm\n<color:#2E7D32>generate_lead</color>  →  ga4_via_gtm + pixel_via_gtm\n             + api-precheckout (server)" as lp_pv #BFDBFE
-    component "/planodevoo/confirmacao.html  (DOI)\n─────────────────────\n<color:#2E7D32>sign_up</color>  →  ga4_via_gtm\n         CompleteRegistration (pixel_via_gtm)\n         + api-funnel-ingress (server)" as lp_pv_doi #BFDBFE
+    component "/planodevoo/confirmacao.html  (DOI)\n─────────────────────\n<color:#1565C0>page_view</color>  →  ga4_via_gtm\n<i>sem conversao browser-side</i>\n<i>SIGN_UP emitido via links-redirect</i>" as lp_pv_doi #BFDBFE
   }
 
   component "GTM Web Container  GTM-58CQ9K7X\n─────────────────────────────────────────\nreceives dataLayer events\nGA4 tag  →  sGTM  (sends <b>produto</b> param)\nMeta Pixel tag  →  sGTM  (sends <b>pixel_id</b> param)\n─────────────────────────────────────────\n<b>produto</b>  differentiationKey per product:\n  ESG Mentoria  →  produto=DECOLE_ESG_MENTORIA\n  Plano de Voo  →  produto=DECOLE_PLANOVOO" as gtm_web #93C5FD
@@ -97,7 +97,7 @@ package "Ingress Layer  (Cloudflare Workers)" as ingress_pkg #E8EAED {
 
   component "api-precheckout\n· lead form capture\n· resolve DOI config → catalog\n· emit GENERATE_LEAD" as pw #CFD8DC
 
-  component "links-redirect\n· resolve route → catalog\n· emit BEGIN_CHECKOUT to Queue\n· 302 → Hotmart checkout URL" as lr #CFD8DC
+  component "links-redirect\n· resolve route → catalog\n· emit BEGIN_CHECKOUT to Queue\n· emit SIGN_UP to Queue (DOI links)\n· 302 → checkout URL / confirmacao.html" as lr #CFD8DC
 }
 
 ' ════════════════════════════════════════════════════════════════
@@ -123,7 +123,7 @@ package "funnel-dispatcher  (Cloudflare Queue Consumer)" as disp_pkg #F1F8E9 {
     component "upsert_event_store\n· INSERT funnel_events (profile_id, tenant_id, product_code)" as h2 #C8E6C9
     component "enrich_attribution\n· SELECT fbp / fbc / client_ip from prior site events" as h3 #C8E6C9
     component "update_brevo_funnel\n· PATCH /contacts  (funnel step attrs + list membership)" as h4 #C8E6C9
-    component "emit_tracking\n· POST sGTM endpoint (purchase · checkout)\n· <color:#2E7D32>skipped for delivery=both events</color>" as h5 #C8E6C9
+    component "emit_tracking\n· POST sGTM endpoint\n· server_queue events: PURCHASE_APPROVED · BEGIN_CHECKOUT · <color:#6A1B9A>SIGN_UP</color>\n· <color:#2E7D32>skipped for delivery=both events (ex: GENERATE_LEAD)</color>" as h5 #C8E6C9
     component "call_product_api  [generic]\n· reads product_api from catalog event\n· HMAC-signed POST to external API" as h6 #C8E6C9
     component "send_template_email  [generic]\n· reads template_email from catalog event\n· POST /smtp/email (Brevo transactional)" as h7 #C8E6C9
     component "send_brevo_doi · send_cart_abandonment_email\ninvalidate_purchase_token · sync_brevo_segments" as h_etc #C8E6C9
@@ -173,18 +173,16 @@ package "Backoffice  (Cloudflare)" as bo_pkg #F3E5F5 {
 
 ' User visits site
 browser --> lp_esg     : "visit"
-browser --> lp_esg_doi : "DOI confirm click\n(/decole-esg/signup)"
 browser --> lp_pv      : "visit"
-browser --> lp_pv_doi  : "DOI confirm click\n(/plano-de-voo/signup)"
 
 ' Landing pages → dataLayer → GTM Web
 lp_esg     --> gtm_web : "<color:#1565C0>page_view  dataLayer.push</color>\n<color:#1565C0>cta_click  dataLayer.push</color>\n<color:#2E7D32>generate_lead  dataLayer.push</color>"
-lp_esg_doi --> gtm_web : "<color:#2E7D32>sign_up  dataLayer.push</color>"
+lp_esg_doi --> gtm_web : "<color:#1565C0>page_view  dataLayer.push</color>"
 lp_pv      --> gtm_web : "<color:#1565C0>page_view  dataLayer.push</color>\n<color:#1565C0>cta_click  dataLayer.push</color>\n<color:#2E7D32>generate_lead  dataLayer.push</color>"
-lp_pv_doi  --> gtm_web : "<color:#2E7D32>sign_up  dataLayer.push</color>"
+lp_pv_doi  --> gtm_web : "<color:#1565C0>page_view  dataLayer.push</color>"
 
 ' GTM Web → sGTM (all events via GA4 + Meta Pixel tags)
-gtm_web --> sgtm : "<color:#1565C0>page_view · cta_click</color>\n<color:#2E7D32>generate_lead · sign_up</color>\n<color:#6A1B9A>begin_checkout</color>\n(GA4 tag + Meta Pixel tag)"
+gtm_web --> sgtm : "<color:#1565C0>page_view · cta_click</color>\n<color:#2E7D32>generate_lead</color>\n<color:#6A1B9A>begin_checkout</color>\n(GA4 tag + Meta Pixel tag)"
 
 ' ════════════════════════════════════════════════════════════════
 '  FLOWS — Server-side funnel path (ingress → queue → dispatcher)
@@ -196,10 +194,10 @@ hotmart --> hw : "POST /webhooks/v1/hotmart\n(payload + X-HOTMART-HOTTOK)"
 ' Browser → ingress (form submits / server events)
 lp_esg     --> pw : "<color:#2E7D32>generate_lead form submit</color>"
 lp_pv      --> pw : "<color:#2E7D32>generate_lead form submit</color>"
-lp_esg_doi --> fw : "<color:#2E7D32>sign_up  (SIGN_UP event)</color>"
-lp_pv_doi  --> fw : "<color:#2E7D32>sign_up  (SIGN_UP event)</color>"
-browser    --> lr : "checkout link click\n(<color:#6A1B9A>BEGIN_CHECKOUT</color>)"
-lr         --> browser : "302 → Hotmart checkout"
+browser    --> lr : "DOI confirm click  (<color:#2E7D32>/decole-esg/signup · /plano-de-voo/signup</color>)\ncheckout link click  (<color:#6A1B9A>BEGIN_CHECKOUT</color>)"
+lr         --> browser : "302 → Hotmart checkout / confirmacao.html"
+lr         --> lp_esg_doi : "(redirect DOI ESG)"
+lr         --> lp_pv_doi  : "(redirect DOI Plano de Voo)"
 
 ' Catalog lookups
 hw  ..> catalog : "resolve tenant · product\nvalidate token secret name"
@@ -213,9 +211,8 @@ fw  ..> secrets : "{TENANT}_HOOK_SECRET"
 
 ' Publish to Queue
 hw --> q : "<color:#6A1B9A>PURCHASE_APPROVED · PURCHASE_*</color>\nPURCHASE_OUT_OF_SHOPPING_CART\n..."
-fw --> q : "<color:#2E7D32>SIGN_UP  (delivery=both)</color>"
 pw --> q : "<color:#2E7D32>GENERATE_LEAD  (delivery=both)</color>"
-lr --> q : "<color:#6A1B9A>BEGIN_CHECKOUT  (server_queue)</color>"
+lr --> q : "<color:#6A1B9A>BEGIN_CHECKOUT  (server_queue)</color>\n<color:#2E7D32>SIGN_UP  (server_queue — DOI links)</color>"
 q  ..> dlq : "retries exhausted"
 
 ' Queue → Dispatcher
@@ -319,10 +316,16 @@ end note
 
 note bottom of h5
   <b>emit_tracking skipped for delivery=both</b>
-  GENERATE_LEAD / SIGN_UP tracked via
-  GTM Web → sGTM (browser path).
-  Server chain omits emit_tracking
-  to avoid double-counting in GA4 / Meta CAPI.
+  GENERATE_LEAD tracked via GTM Web → sGTM (browser path).
+  Server chain omits emit_tracking para evitar dupla contagem.
+  ──────────────────────────────────────
+  <b>SIGN_UP (DOI confirmation)</b>
+  delivery=server_queue desde 2026-05-27.
+  Emitido por links-redirect (nao browser).
+  chain: resolve_identity → upsert_event_store
+       → enrich_attribution → update_brevo_funnel
+       → emit_tracking → sGTM (CompleteRegistration)
+  Paginas /confirmacao.html: sem conversao browser-side.
 end note
 
 @enduml

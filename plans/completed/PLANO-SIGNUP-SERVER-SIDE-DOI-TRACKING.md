@@ -1,7 +1,7 @@
 # Plano — SIGN_UP Server-Side Para Confirmacao DOI
 
-> **Status:** Proposto
-> **Data:** 2026-05-26
+> **Status:** Concluído ✅
+> **Data proposta:** 2026-05-26  |  **Data execução:** 2026-05-27
 > **Escopo:** `links-redirect` -> Queue -> `funnel-dispatcher` -> `emit_tracking` -> sGTM -> GA4 + Meta CAPI
 
 ## Objetivo
@@ -204,3 +204,63 @@ git diff --check
 - Nao ha duplicidade de `CompleteRegistration`.
 - `GENERATE_LEAD` continua sem dupla contagem.
 - Diagrama e PNG representam o fluxo real.
+
+---
+
+## Registo De Execucao (2026-05-27)
+
+### Changes aplicadas
+
+**`config/products.catalog.json`**
+- `DECOLE_ESG_MENTORIA.SIGN_UP` e `DECOLE_PLANOVOO.SIGN_UP`:
+  - `delivery: "both"` → `"server_queue"` (seguindo modelo `PURCHASE_APPROVED`)
+  - `source: "site"` → `"links-redirect"` (documentacao precisa da origem real)
+  - chain: adicionado `enrich_attribution` + `emit_tracking`
+  - destinations: adicionado `"sGTM"`
+- `updatedAt` actualizado para 2026-05-26
+
+**`workers/funnel-dispatcher/src/handlers/index.ts`**
+- `eventToGa4Name`: mapeamento explicito `SIGN_UP` → `"sign_up"`
+- `eventToMetaName`: mapeamento explicito `SIGN_UP` → `"CompleteRegistration"` (corrige bug critico — fallback retornava `"SIGN_UP"` bruto para Meta CAPI)
+
+**`scripts/replay-emit-tracking.mjs`**
+- Idem: `eventToGa4Name` e `eventToMetaName` locais actualizados (script tinha logica duplicada dessincronizada)
+
+**`tests/scenarios/13-sign-up-doi.mjs`** (novo)
+- Cenario E2E end-to-end: redirect 302, evento D1, identity, fbp, sGTM planned + replay
+
+**sGTM container `GTM-K6Q4H6BR`** (versao 19 publicada)
+- Tag `Meta CAPI - Dynamic by Tenant/Product`: `testEventCode` alterado de `{{LT - Meta Test Event Code by Tenant/Product}}` (hardcoded `TEST19244`) para `{{ED - test_event_code}}` (lido dos params do evento dinamicamente)
+- Em producao: campo vazio → sem test mode
+- Em E2E: usa codigo passado no payload
+
+**GitHub Actions secrets**
+- Adicionados `CF_API_TOKEN`, `CF_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
+
+**Cloudflare Secrets Store**
+- `meta_access_token_decole` actualizado com novo token do system user `agent-api`
+
+**`.env.local`**
+- `META_SYSTEM_USER_ACCESS_TOKEN` actualizado (token regenerado)
+- `META_TEST_EVENT_CODE_DECOLE_ESG` → `TEST24981`
+- `META_TEST_EVENT_CODE_PLANOVOO` → `TEST53754`
+
+### Desvios ao plano original
+
+| Item | Plano | Executado |
+|---|---|---|
+| `delivery` field | Nao mencionado | Alterado `both` → `server_queue` por recomendacao da avaliacao |
+| Paginas confirmacao.html | Remover fbq/dataLayer sign_up | Ja estavam limpas — nada a fazer |
+| sGTM testEventCode | Nao estava no plano | Fix adicional: hardcoded → dinamico via `{{ED - test_event_code}}` |
+| GitHub Actions secrets | Nao estava no plano | Adicionados durante deploy (CF_API_TOKEN ausente causou falha) |
+
+### Validacao operacional
+
+- Cenario E2E 13: **6/6 pass** (27s) — redirect 302, D1, identity, fbp, sGTM planned, CompleteRegistration enviado com `TEST24981`
+- Deploy `funnel-dispatcher` via GitHub Actions: **sucesso** (typecheck + 183 testes + wrangler deploy)
+- Meta Events Manager: `CompleteRegistration` visivel com codigo `TEST24981`
+
+### Commits
+
+- `068cf6d` — catalog + dispatcher (SIGN_UP chain + mapeamentos)
+- `ee3c0bc` — replay script fix + cenario E2E 13
