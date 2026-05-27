@@ -204,6 +204,7 @@ function firstNumber(source, paths) {
 }
 
 function eventToGa4Name(eventType) {
+  if (eventType === "SIGN_UP") return "sign_up";
   if (eventType === "PURCHASE_APPROVED") return "purchase";
   if (eventType === "GENERATE_LEAD" || eventType === "PRECHECKOUT_SUBMIT_SUCCESS") return "generate_lead";
   if (eventType === "BEGIN_CHECKOUT" || eventType === "PURCHASE_OUT_OF_SHOPPING_CART") return "begin_checkout";
@@ -211,6 +212,7 @@ function eventToGa4Name(eventType) {
 }
 
 function eventToMetaName(eventType) {
+  if (eventType === "SIGN_UP") return "CompleteRegistration";
   if (eventType === "PURCHASE_APPROVED") return "Purchase";
   if (eventType === "BEGIN_CHECKOUT" || eventType === "PURCHASE_OUT_OF_SHOPPING_CART") return "InitiateCheckout";
   if (eventType === "GENERATE_LEAD" || eventType === "PRECHECKOUT_SUBMIT_SUCCESS") return "Lead";
