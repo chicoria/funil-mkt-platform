@@ -1721,6 +1721,14 @@ async function emitTracking(event: FunnelEvent, env: DispatcherEnv): Promise<voi
             ...(eventSourceUrl ? { page_location: eventSourceUrl } : {}),
             ...(asString(event.identity?.session_id) ? { session_id: asString(event.identity?.session_id) } : {}),
             ...(asString(event.identity?.email_hash) ? { em: asString(event.identity?.email_hash) } : {}),
+            // external_id: prefer the deterministic profile_id (resolved from email),
+            // fall back to the probabilistic anonymous_id from the browser.
+            ...(() => {
+              const externalId =
+                asString((event.payload || {}).profile_id) ||
+                asString(event.identity?.anonymous_id);
+              return externalId ? { external_id: externalId } : {};
+            })(),
             ...(asString(event.attribution?.client_ip) ? { client_ip_address: asString(event.attribution?.client_ip) } : {}),
             ...(asString(event.attribution?.fbp) ? { fbp: asString(event.attribution?.fbp) } : {}),
             ...(asString(event.attribution?.fbc) ? { fbc: asString(event.attribution?.fbc) } : {}),
