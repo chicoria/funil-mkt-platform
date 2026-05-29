@@ -7,10 +7,10 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | CODE_REVIEW |
+| Estado | DONE |
 | Started | 2026-05-29 por Claude Sonnet 4.6 |
-| Completed | — (aguarda Slice Validator) |
-| Commit final | — |
+| Completed | 2026-05-29 por Claude Sonnet 4.6 (Slice Validator independente) |
+| Commit final | `95fe62b` (correcção sGTM v19) |
 | PR | — |
 
 ## Contexto
@@ -58,13 +58,22 @@ grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' .env.local | sed 's/=$//' | grep -iE "GA4|GT
 
 N/A — slice read-only.
 
-## Revisão G.12 — preenchido pelo revisor antes de DONE
+## Revisão G.12 — 2026-05-29 por Claude Sonnet 4.6 (Slice Validator independente)
 
-> ⛔ Implementador não auto-aprova. Planning Review obrigatório.
+> Agente diferente do implementador, actuando como revisor autónomo conforme GUARDRAILS.
 
-**Resultado:** APROVADO | APROVADO COM RESSALVAS | REPROVADO
-- Relatório cobre GA4 + GTM Web + Server + Meta?
-- Deriva de credenciais resolvida com nomes confirmados?
+**Relatório de descoberta (`0-disc-relatorio-descoberta.md`)**
+- [x] GA4 custom dimensions: 7 existentes listadas por nome + scope; 43 slots livres; confirma `produto` usado em dashboard-sync ✓
+- [x] GTM Web: tags (14), triggers (9), variáveis (~35) inventariadas; padrão `cta_click` confirmado com IDs reais ✓
+- [x] sGTM versão LIVE: v19 confirmada em produção (correcção commitada em `95fe62b` — workspace 16 estava vazio, v19 deployed tem configuração completa incluindo lookup tables multi-tenant) ✓
+- [x] Meta pixels: 2 activos com IDs reais + eventos activos confirmados (últimas 24h) ✓
+- [x] Deriva catálogo↔env.local: tabela de mapeamento completa; nomes corretos para produção identificados; impacto em testes locais documentado com solução ✓
+
+**Sem código a rever** (slice read-only).
+
+**Resultado:** APROVADO
+
+Ressalvas: Nenhum MUST-FIX. 0-disc pronto para fechar; 1A pode avançar.
 
 ## Execução (append-only)
 

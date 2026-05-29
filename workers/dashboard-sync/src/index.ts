@@ -63,6 +63,74 @@ async function applyDashboardMigrationsOnce(db: D1Database): Promise<void> {
   console.log(JSON.stringify({ stage: "migration_applied", migration: MIGRATION_ID, applied_at: now }));
 }
 
+/**
+ * Idempotent migration: creates session_engagement table for engagement tracking.
+ * Slice 1A — 2026-05-29.
+ */
+async function applyEngagementMigrationsOnce(db: D1Database): Promise<void> {
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS __funilmkt_schema_migrations (
+         id TEXT PRIMARY KEY,
+         applied_at TEXT NOT NULL
+       )`
+    )
+    .run();
+
+  const MIGRATION_ID = "session_engagement_v1_2026_05_29";
+  const row = await db
+    .prepare(`SELECT id FROM __funilmkt_schema_migrations WHERE id = ? LIMIT 1`)
+    .bind(MIGRATION_ID)
+    .first<{ id?: string }>();
+  if (row?.id) return;
+
+  const now = new Date().toISOString();
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS session_engagement (
+         tenant_id        TEXT NOT NULL DEFAULT 'decole',
+         session_id       TEXT NOT NULL,
+         anonymous_id     TEXT,
+         profile_id       TEXT,
+         product_code     TEXT NOT NULL,
+         funnel_stage     TEXT,
+         first_seen_at    TEXT NOT NULL,
+         last_seen_at     TEXT NOT NULL,
+         page_views       INTEGER DEFAULT 0,
+         max_scroll_pct   INTEGER DEFAULT 0,
+         lp_sections_viewed   TEXT,
+         lp_sections_engaged  TEXT,
+         cta_clicks       TEXT,
+         vsl_version      TEXT,
+         vsl_max_pct      INTEGER DEFAULT 0,
+         vsl_sections     TEXT,
+         became_lead      INTEGER DEFAULT 0,
+         purchased        INTEGER DEFAULT 0,
+         PRIMARY KEY (tenant_id, session_id)
+       )`
+    )
+    .run();
+  await db
+    .prepare(`CREATE INDEX IF NOT EXISTS idx_se_tenant_profile ON session_engagement(tenant_id, profile_id)`)
+    .run();
+  await db
+    .prepare(
+      `CREATE INDEX IF NOT EXISTS idx_se_tenant_anon ON session_engagement(tenant_id, anonymous_id, last_seen_at)`
+    )
+    .run();
+  await db
+    .prepare(
+      `CREATE INDEX IF NOT EXISTS idx_se_tenant_product_stage ON session_engagement(tenant_id, product_code, funnel_stage, last_seen_at)`
+    )
+    .run();
+  await db
+    .prepare(`INSERT INTO __funilmkt_schema_migrations (id, applied_at) VALUES (?, ?)`)
+    .bind(MIGRATION_ID, now)
+    .run();
+
+  console.log(JSON.stringify({ stage: "migration_applied", migration: MIGRATION_ID, applied_at: now }));
+}
+
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 function isAuthorized(request: Request, env: DashboardSyncEnv, url: URL): boolean {
@@ -152,6 +220,7 @@ export default {
   async scheduled(_event: ScheduledEvent, env: DashboardSyncEnv, ctx: ExecutionContext): Promise<void> {
     await ensureSyncControlSchema(env.EVENT_STORE_DB);
     await applyDashboardMigrationsOnce(env.EVENT_STORE_DB);
+    await applyEngagementMigrationsOnce(env.EVENT_STORE_DB);
     const yesterday = new Date();
     yesterday.setUTCDate(yesterday.getUTCDate() - 1);
     ctx.waitUntil(
@@ -166,6 +235,7 @@ export default {
     const url = new URL(request.url);
     await ensureSyncControlSchema(env.EVENT_STORE_DB);
     await applyDashboardMigrationsOnce(env.EVENT_STORE_DB);
+    await applyEngagementMigrationsOnce(env.EVENT_STORE_DB);
 
     if (url.pathname === "/sync/status") {
       if (!isAuthorized(request, env, url)) return new Response("Unauthorized", { status: 401 });

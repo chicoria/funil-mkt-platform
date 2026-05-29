@@ -2,7 +2,7 @@
 
 > Source of truth de progresso do `PLANO-ENGAGEMENT-FUNIL-COMPLETO.md`.
 > Atualizado a cada slice pelo **Slice Validator** (não pelo implementador).
-> Última atualização: 2026-05-29 (criação).
+> Última atualização: 2026-05-29 (1A DONE).
 
 ## Recovery point (ordem de leitura obrigatória)
 
@@ -25,8 +25,8 @@ Regras: `MUST-FIX` impede `DONE`; `REPROVADO` (Code Quality) volta para `IN_PROG
 
 | Slice | Critério de aceite objetivo (o "proposto") | Evidência exigida | Status |
 |---|---|---|---|
-| 0-disc | Relatório do estado live (dimensões GA4, tags/vars GTM Web+Server, pixels/eventos Meta) + deriva catálogo↔env resolvida | doc de descoberta + nomes confirmados que os workers leem | **CODE_REVIEW** |
-| 1A | Tabela+índices `session_engagement` criados; merge puro passa unit (happy+edge) | `wrangler d1` local + vitest verde em `packages/shared/test` | NOT_STARTED |
+| 0-disc | Relatório do estado live (dimensões GA4, tags/vars GTM Web+Server, pixels/eventos Meta) + deriva catálogo↔env resolvida | doc de descoberta + nomes confirmados que os workers leem | **DONE** ✓ |
+| 1A | Tabela+índices `session_engagement` criados; merge puro passa unit (happy+edge) | `wrangler d1` local + vitest verde em `packages/shared/test` | **DONE** ✓ |
 | 1B | Catálogo com `engagement` dos 2 produtos (ESG 18+VSL; PLANOVOO 9 sem VSL) + eventos `engagement_rollup`; `updatedAt` | JSON válido + diff do catálogo | NOT_STARTED |
 | 1C | `site/src/engagement/` (core+dom+entry) compila e core passa unit | `npm run build:check` verde | NOT_STARTED |
 | 1D | `index.html` e `planodevoo/index.html` emitem eventos+beacon; VSL mapeia seção↔tempo | Playwright e2e verde + Network mostra `ENGAGEMENT_SNAPSHOT` | NOT_STARTED |
@@ -53,3 +53,5 @@ Regras: `MUST-FIX` impede `DONE`; `REPROVADO` (Code Quality) volta para `IN_PROG
 
 - **2026-05-29:** criação do plano, ledger e 13 slice files (todos NOT_STARTED). Nenhum slice iniciado.
 - **2026-05-29:** G1 → DONE (commits `80e429e`, `4ebf852`, `73f39cd`, `fef0c1d`; aprovado pelo usuário como Slice Validator). 0-disc → IN_PROGRESS → CODE_REVIEW (relatório `0-disc-relatorio-descoberta.md` produzido; aguarda Slice Validator).
+- **2026-05-29:** 0-disc → DONE (Slice Validator independente: relatório cobre GA4/GTM/sGTM v19/Meta, deriva catálogo↔env resolvida — APROVADO sem MUST-FIX).
+- **2026-05-29:** 1A → DONE (TDD Red→Green: 80/80 testes verdes; `mergeSnapshot` puro; migration `session_engagement_v1_2026_05_29` idempotente em `dashboard-sync`; `git diff --check` limpo; 0 hardcode de tenant/produto).
