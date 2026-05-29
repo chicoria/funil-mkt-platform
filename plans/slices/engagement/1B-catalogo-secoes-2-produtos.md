@@ -79,4 +79,15 @@ git checkout -- config/products.catalog.json
 
 ## Gotchas / lições aprendidas
 
-- _(a preencher)_
+- **PLANOVOO sectionSelector inicial era lista explícita** — `section[id='preview'],section[id='o-que-e'],...` — frágil e inconsistente com o formato `lp-secao-*` do ESG.
+- **Correcção pós-validação em produção** (commit `bf900e5`, 2026-05-29): migrado para `section[data-lp-section]` + IDs no catálogo actualizados para `lp-secao-*`. Ver também gotcha no 1D.
+
+## Addendum — Padronização PLANOVOO (2026-05-29)
+
+Detectado em produção que os `section_id` do Plano de Voo chegavam ao analytics com nomes sem prefixo (`preview`, `o-que-e`, ...) enquanto o ESG usava `lp-secao-*`. Correcção aplicada em 3 camadas:
+
+1. **HTML** (`site/planodevoo/index.html`): adicionado `data-lp-section="lp-secao-<key>"` nas 9 secções, preservando os `id` originais (sem risco de quebrar CSS/anchors).
+2. **Catálogo** (`products.catalog.json`): `sectionSelector` de PLANOVOO actualizado para `section[data-lp-section]`; `id` das secções migrados para `lp-secao-*`.
+3. **`dom.ts`**: `const id = el.dataset['lpSection'] ?? el.id` — prefere `data-lp-section` sobre `el.id`, mantendo retrocompatibilidade com ESG (que usa `id="lp-secao-*"` nativo sem o atributo).
+
+Commits: `df0bf8c` (decolesuacarreiraesg) + `bf900e5` (funil-mkt-platform).
