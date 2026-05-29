@@ -29,7 +29,7 @@ Regras: `MUST-FIX` impede `DONE`; `REPROVADO` (Code Quality) volta para `IN_PROG
 | 1A | Tabela+índices `session_engagement` criados; merge puro passa unit (happy+edge) | `wrangler d1` local + vitest verde em `packages/shared/test` | **DONE** ✓ |
 | 1B | Catálogo com `engagement` dos 2 produtos (ESG 18+VSL; PLANOVOO 9 sem VSL) + eventos `engagement_rollup`; `updatedAt` | JSON válido + diff do catálogo | **DONE** ✓ |
 | 1C | `site/src/engagement/` (core+dom+entry) compila e core passa unit | `npm run build:check` verde | **DONE** ✓ |
-| 1D | `index.html` e `planodevoo/index.html` emitem eventos+beacon; VSL mapeia seção↔tempo | Playwright e2e verde + Network mostra `ENGAGEMENT_SNAPSHOT` | NOT_STARTED |
+| 1D | `index.html` e `planodevoo/index.html` emitem eventos+beacon; VSL mapeia seção↔tempo | Playwright e2e verde + Network mostra `ENGAGEMENT_SNAPSHOT` | **DONE** ✓ |
 | 1E | 1 linha/sessão em `session_engagement` com merge correto; stitching propaga lead/compra | integração dispatcher verde | **DONE** ✓ |
 | 1F | Funil unificado + coorte + retenção VSL renderizam de D1; reconcilia com GA4 | unit `lib/d1.test.ts` + `next dev` observado | NOT_STARTED |
 | 1G | Jornada unificada (anon+profile), `UserBehaviorSummary`, `UserList` navegável | unit queries + navegação observada | NOT_STARTED |
