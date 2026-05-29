@@ -603,7 +603,18 @@ function rowToEngagementSnapshot(row: SessionEngagementRow): SessionEngagementSn
     cta_clicks: parseJsonArray<CtaClick>(row.cta_clicks),
     vsl_version: row.vsl_version ?? undefined,
     vsl_max_pct: row.vsl_max_pct,
-    vsl_sections: parseJsonArray<VslSection>(row.vsl_sections),
+    // vsl_sections guardado como objecto {section_id: {watched_sec}} — converter para array interno
+    vsl_sections: (() => {
+      try {
+        const parsed = JSON.parse(row.vsl_sections);
+        if (Array.isArray(parsed)) return parsed as VslSection[];
+        if (parsed && typeof parsed === "object") {
+          return Object.entries(parsed as Record<string, { watched_sec?: number }>)
+            .map(([section_id, val]) => ({ section_id, watched_sec: val?.watched_sec ?? 0 }));
+        }
+      } catch { /* noop */ }
+      return [] as VslSection[];
+    })(),
     became_lead: row.became_lead === 1,
     purchased: row.purchased === 1,
   };
@@ -636,7 +647,18 @@ function buildEngagementPatch(event: FunnelEvent): Partial<SessionEngagementSnap
     if (Array.isArray(payload.cta_clicks)) patch.cta_clicks = payload.cta_clicks as CtaClick[];
     if (payload.vsl_version) patch.vsl_version = asString(payload.vsl_version);
     if (typeof payload.vsl_max_pct === "number") patch.vsl_max_pct = payload.vsl_max_pct;
-    if (Array.isArray(payload.vsl_sections)) patch.vsl_sections = payload.vsl_sections as VslSection[];
+    // vsl_sections pode chegar como array [{section_id, watched_sec}] OU como objecto
+    // {"vslv1_promessa": {started, ended, watched_sec}} (formato do browser SessionAccumulator)
+    if (Array.isArray(payload.vsl_sections)) {
+      patch.vsl_sections = payload.vsl_sections as VslSection[];
+    } else if (payload.vsl_sections && typeof payload.vsl_sections === "object") {
+      // Converter objecto → array para consistência interna
+      patch.vsl_sections = Object.entries(payload.vsl_sections as Record<string, { watched_sec?: number }>)
+        .map(([section_id, val]) => ({
+          section_id,
+          watched_sec: typeof val?.watched_sec === "number" ? val.watched_sec : 0,
+        }));
+    }
     if (payload.funnel_stage) patch.funnel_stage = payload.funnel_stage as FunnelStage;
   }
 
@@ -795,7 +817,12 @@ async function upsertSessionEngagementRecord(event: FunnelEvent, env: Dispatcher
       JSON.stringify(merged.cta_clicks),
       merged.vsl_version ?? null,
       merged.vsl_max_pct,
-      JSON.stringify(merged.vsl_sections),
+      // Guardar vsl_sections como objecto {section_id: {watched_sec}} para json_each no dashboard
+      JSON.stringify(
+        Array.isArray(merged.vsl_sections)
+          ? Object.fromEntries(merged.vsl_sections.map((s) => [s.section_id, { watched_sec: s.watched_sec }]))
+          : (merged.vsl_sections ?? {})
+      ),
       merged.became_lead ? 1 : 0,
       merged.purchased ? 1 : 0
     )
