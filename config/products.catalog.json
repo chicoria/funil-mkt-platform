@@ -1,6 +1,6 @@
 {
   "schemaVersion": 5,
-  "updatedAt": "2026-05-29",
+  "updatedAt": "2026-05-29T04:00:00Z",
   "description": "Catálogo central multi-tenant — tenants.{id}.products.{code} declara cada produto. Fonte única para tracking, integrações, links e dashboard por tenant/produto.",
   "global": {
     "hotmart": {
@@ -582,11 +582,11 @@
                   "funnelPrefix": "DECOLE_ESG"
                 }
               },
-              {"funnelStage":"AWARENESS","eventType":"SECTION_VIEW","delivery":"engagement_rollup","source":"site"},
-              {"funnelStage":"AWARENESS","eventType":"SECTION_ENGAGED","delivery":"engagement_rollup","source":"site"},
-              {"funnelStage":"CONSIDERATION","eventType":"VSL_SECTION_START","delivery":"engagement_rollup","source":"site"},
-              {"funnelStage":"CONSIDERATION","eventType":"VSL_SECTION_END","delivery":"engagement_rollup","source":"site"},
-              {"funnelStage":"AWARENESS","eventType":"ENGAGEMENT_SNAPSHOT","delivery":"engagement_rollup","source":"site"}
+              {"funnelStage":"AWARENESS","eventType":"SECTION_VIEW","delivery":"engagement_rollup","source":"site","chain":["resolve_identity","upsert_session_engagement"]},
+              {"funnelStage":"AWARENESS","eventType":"SECTION_ENGAGED","delivery":"engagement_rollup","source":"site","chain":["resolve_identity","upsert_session_engagement"]},
+              {"funnelStage":"CONSIDERATION","eventType":"VSL_SECTION_START","delivery":"engagement_rollup","source":"site","chain":["resolve_identity","upsert_session_engagement"]},
+              {"funnelStage":"CONSIDERATION","eventType":"VSL_SECTION_END","delivery":"engagement_rollup","source":"site","chain":["resolve_identity","upsert_session_engagement"]},
+              {"funnelStage":"AWARENESS","eventType":"ENGAGEMENT_SNAPSHOT","delivery":"engagement_rollup","source":"site","chain":["resolve_identity","upsert_session_engagement"]}
             ]
           },
           "engagement": {
@@ -1456,9 +1456,9 @@
                   "funnelPrefix": "DECOLE_PLANOVOO"
                 }
               },
-              {"funnelStage":"AWARENESS","eventType":"SECTION_VIEW","delivery":"engagement_rollup","source":"site"},
-              {"funnelStage":"AWARENESS","eventType":"SECTION_ENGAGED","delivery":"engagement_rollup","source":"site"},
-              {"funnelStage":"AWARENESS","eventType":"ENGAGEMENT_SNAPSHOT","delivery":"engagement_rollup","source":"site"}
+              {"funnelStage":"AWARENESS","eventType":"SECTION_VIEW","delivery":"engagement_rollup","source":"site","chain":["resolve_identity","upsert_session_engagement"]},
+              {"funnelStage":"AWARENESS","eventType":"SECTION_ENGAGED","delivery":"engagement_rollup","source":"site","chain":["resolve_identity","upsert_session_engagement"]},
+              {"funnelStage":"AWARENESS","eventType":"ENGAGEMENT_SNAPSHOT","delivery":"engagement_rollup","source":"site","chain":["resolve_identity","upsert_session_engagement"]}
             ]
           },
           "engagement": {

@@ -21,6 +21,13 @@ import { HandlerContext } from "../handler-context";
 import { resolveEventTenantId, tenantScopedKey } from "../tenant-scope";
 import { callProductApi, type ProductApiConfig } from "./call-product-api";
 import { sendTemplateEmail, type TemplateEmailConfig } from "./send-template-email";
+import {
+  mergeSnapshot,
+  type SessionEngagementSnapshot,
+  type VslSection,
+  type CtaClick,
+  type FunnelStage,
+} from "../../../../packages/shared/src/session-engagement";
 
 const BREVO_BASE_URL = "https://api.brevo.com/v3";
 const CHECKOUT_RECOVERY_KEY_PREFIX = "checkout_recovery:";
@@ -538,6 +545,271 @@ async function ensureEventStoreSchema(db: D1DatabaseLike): Promise<void> {
   ]);
   await runD1(db, `CREATE UNIQUE INDEX IF NOT EXISTS idx_funnel_events_tenant_event_id ON funnel_events(tenant_id, event_id)`);
   await runD1(db, `CREATE INDEX IF NOT EXISTS idx_funnel_events_tenant_profile ON funnel_events(tenant_id, profile_id, occurred_at)`);
+}
+
+interface SessionEngagementRow {
+  session_id: string;
+  tenant_id: string;
+  product_code: string;
+  anonymous_id: string | null;
+  profile_id: string | null;
+  funnel_stage: string | null;
+  first_seen_at: string;
+  last_seen_at: string;
+  page_views: number;
+  max_scroll_pct: number;
+  lp_sections_viewed: string;
+  lp_sections_engaged: string;
+  cta_clicks: string;
+  vsl_version: string | null;
+  vsl_max_pct: number;
+  vsl_sections: string;
+  became_lead: number;
+  purchased: number;
+}
+
+const ENGAGEMENT_ROLLUP_TYPES = new Set([
+  "SECTION_VIEW",
+  "SECTION_ENGAGED",
+  "VSL_SECTION_START",
+  "VSL_SECTION_END",
+  "ENGAGEMENT_SNAPSHOT",
+]);
+
+function parseJsonArray<T>(raw: string, fallback: T[] = []): T[] {
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as T[]) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function rowToEngagementSnapshot(row: SessionEngagementRow): SessionEngagementSnapshot {
+  return {
+    session_id: row.session_id,
+    tenant_id: row.tenant_id,
+    product_code: row.product_code,
+    anonymous_id: row.anonymous_id ?? undefined,
+    profile_id: row.profile_id ?? undefined,
+    funnel_stage: (row.funnel_stage ?? undefined) as FunnelStage | undefined,
+    first_seen_at: row.first_seen_at,
+    last_seen_at: row.last_seen_at,
+    page_views: row.page_views,
+    max_scroll_pct: row.max_scroll_pct,
+    lp_sections_viewed: parseJsonArray<string>(row.lp_sections_viewed),
+    lp_sections_engaged: parseJsonArray<string>(row.lp_sections_engaged),
+    cta_clicks: parseJsonArray<CtaClick>(row.cta_clicks),
+    vsl_version: row.vsl_version ?? undefined,
+    vsl_max_pct: row.vsl_max_pct,
+    vsl_sections: parseJsonArray<VslSection>(row.vsl_sections),
+    became_lead: row.became_lead === 1,
+    purchased: row.purchased === 1,
+  };
+}
+
+function buildEngagementPatch(event: FunnelEvent): Partial<SessionEngagementSnapshot> {
+  const payload = event.payload || {};
+  const eventType = event.event_type.toUpperCase();
+  const patch: Partial<SessionEngagementSnapshot> = { last_seen_at: event.occurred_at };
+
+  if (eventType === "SECTION_VIEW") {
+    patch.page_views = 1;
+    const sectionId = asString(payload.section_id);
+    if (sectionId) patch.lp_sections_viewed = [sectionId];
+    if (typeof payload.scroll_pct === "number") patch.max_scroll_pct = payload.scroll_pct;
+  } else if (eventType === "SECTION_ENGAGED") {
+    const sectionId = asString(payload.section_id);
+    if (sectionId) patch.lp_sections_engaged = [sectionId];
+  } else if (eventType === "VSL_SECTION_START" || eventType === "VSL_SECTION_END") {
+    const sectionId = asString(payload.section_id);
+    const watchedSec = typeof payload.watched_sec === "number" ? payload.watched_sec : 0;
+    if (sectionId) patch.vsl_sections = [{ section_id: sectionId, watched_sec: watchedSec }];
+    if (typeof payload.pct === "number") patch.vsl_max_pct = payload.pct;
+    if (payload.version) patch.vsl_version = asString(payload.version);
+  } else if (eventType === "ENGAGEMENT_SNAPSHOT") {
+    if (typeof payload.page_views === "number") patch.page_views = payload.page_views;
+    if (typeof payload.max_scroll_pct === "number") patch.max_scroll_pct = payload.max_scroll_pct;
+    if (Array.isArray(payload.lp_sections_viewed)) patch.lp_sections_viewed = payload.lp_sections_viewed as string[];
+    if (Array.isArray(payload.lp_sections_engaged)) patch.lp_sections_engaged = payload.lp_sections_engaged as string[];
+    if (Array.isArray(payload.cta_clicks)) patch.cta_clicks = payload.cta_clicks as CtaClick[];
+    if (payload.vsl_version) patch.vsl_version = asString(payload.vsl_version);
+    if (typeof payload.vsl_max_pct === "number") patch.vsl_max_pct = payload.vsl_max_pct;
+    if (Array.isArray(payload.vsl_sections)) patch.vsl_sections = payload.vsl_sections as VslSection[];
+    if (payload.funnel_stage) patch.funnel_stage = payload.funnel_stage as FunnelStage;
+  }
+
+  return patch;
+}
+
+async function ensureSessionEngagementSchema(db: D1DatabaseLike): Promise<void> {
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS session_engagement (
+        tenant_id TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        product_code TEXT NOT NULL,
+        anonymous_id TEXT,
+        profile_id TEXT,
+        funnel_stage TEXT,
+        first_seen_at TEXT NOT NULL,
+        last_seen_at TEXT NOT NULL,
+        page_views INTEGER NOT NULL DEFAULT 0,
+        max_scroll_pct REAL NOT NULL DEFAULT 0,
+        lp_sections_viewed TEXT NOT NULL DEFAULT '[]',
+        lp_sections_engaged TEXT NOT NULL DEFAULT '[]',
+        cta_clicks TEXT NOT NULL DEFAULT '[]',
+        vsl_version TEXT,
+        vsl_max_pct REAL NOT NULL DEFAULT 0,
+        vsl_sections TEXT NOT NULL DEFAULT '[]',
+        became_lead INTEGER NOT NULL DEFAULT 0,
+        purchased INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (tenant_id, session_id)
+      )`
+    )
+    .run();
+}
+
+async function upsertSessionEngagementRecord(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
+  const db = getEventStoreDb(env);
+  if (!db) {
+    console.log(
+      JSON.stringify({
+        stage: "handler_skip",
+        handler: "upsert_session_engagement",
+        reason: "missing_event_store_db",
+        event_id: event.event_id,
+      })
+    );
+    return;
+  }
+
+  const tenantId = tenantIdFor(event, env);
+  const profileId = asString((event.payload || {}).profile_id) || null;
+  const anonymousId = asString(event.identity?.anonymous_id) || null;
+  const eventType = event.event_type.toUpperCase();
+
+  // Stitching: executar sempre que profile_id for conhecido
+  if (profileId) {
+    const now = new Date().toISOString();
+    if (eventType === "GENERATE_LEAD" && anonymousId) {
+      await db
+        .prepare(
+          `UPDATE session_engagement SET profile_id=?, became_lead=1, last_seen_at=? WHERE tenant_id=? AND anonymous_id=? AND profile_id IS NULL`
+        )
+        .bind(profileId, now, tenantId, anonymousId)
+        .run();
+    } else if (eventType === "PURCHASE_APPROVED" || eventType === "PURCHASE_COMPLETE") {
+      await db
+        .prepare(`UPDATE session_engagement SET purchased=1 WHERE tenant_id=? AND profile_id=?`)
+        .bind(tenantId, profileId)
+        .run();
+    }
+  }
+
+  // UPSERT só para eventos engagement_rollup
+  if (!ENGAGEMENT_ROLLUP_TYPES.has(eventType)) return;
+
+  const sessionId = asString(event.identity?.session_id);
+  if (!sessionId) {
+    console.log(
+      JSON.stringify({
+        stage: "handler_skip",
+        handler: "upsert_session_engagement",
+        reason: "missing_session_id",
+        event_id: event.event_id,
+      })
+    );
+    return;
+  }
+
+  await ensureSessionEngagementSchema(db);
+
+  const existingRow = await db
+    .prepare(`SELECT * FROM session_engagement WHERE tenant_id=? AND session_id=? LIMIT 1`)
+    .bind(tenantId, sessionId)
+    .first<SessionEngagementRow>();
+
+  const current: SessionEngagementSnapshot = existingRow
+    ? rowToEngagementSnapshot(existingRow)
+    : {
+        session_id: sessionId,
+        tenant_id: tenantId,
+        product_code: event.product_code,
+        anonymous_id: anonymousId ?? undefined,
+        profile_id: profileId ?? undefined,
+        first_seen_at: event.occurred_at,
+        last_seen_at: event.occurred_at,
+        page_views: 0,
+        max_scroll_pct: 0,
+        lp_sections_viewed: [],
+        lp_sections_engaged: [],
+        cta_clicks: [],
+        vsl_max_pct: 0,
+        vsl_sections: [],
+        became_lead: false,
+        purchased: false,
+      };
+
+  const patch = buildEngagementPatch(event);
+  const merged = mergeSnapshot(current, patch);
+
+  await db
+    .prepare(
+      `INSERT INTO session_engagement (
+        tenant_id, session_id, product_code, anonymous_id, profile_id,
+        funnel_stage, first_seen_at, last_seen_at, page_views, max_scroll_pct,
+        lp_sections_viewed, lp_sections_engaged, cta_clicks,
+        vsl_version, vsl_max_pct, vsl_sections, became_lead, purchased
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(tenant_id, session_id) DO UPDATE SET
+        anonymous_id = COALESCE(excluded.anonymous_id, session_engagement.anonymous_id),
+        profile_id = COALESCE(excluded.profile_id, session_engagement.profile_id),
+        funnel_stage = excluded.funnel_stage,
+        last_seen_at = excluded.last_seen_at,
+        page_views = excluded.page_views,
+        max_scroll_pct = excluded.max_scroll_pct,
+        lp_sections_viewed = excluded.lp_sections_viewed,
+        lp_sections_engaged = excluded.lp_sections_engaged,
+        cta_clicks = excluded.cta_clicks,
+        vsl_version = COALESCE(excluded.vsl_version, session_engagement.vsl_version),
+        vsl_max_pct = excluded.vsl_max_pct,
+        vsl_sections = excluded.vsl_sections,
+        became_lead = excluded.became_lead,
+        purchased = excluded.purchased`
+    )
+    .bind(
+      merged.tenant_id,
+      merged.session_id,
+      merged.product_code,
+      merged.anonymous_id ?? null,
+      merged.profile_id ?? null,
+      merged.funnel_stage ?? null,
+      merged.first_seen_at,
+      merged.last_seen_at,
+      merged.page_views,
+      merged.max_scroll_pct,
+      JSON.stringify(merged.lp_sections_viewed),
+      JSON.stringify(merged.lp_sections_engaged),
+      JSON.stringify(merged.cta_clicks),
+      merged.vsl_version ?? null,
+      merged.vsl_max_pct,
+      JSON.stringify(merged.vsl_sections),
+      merged.became_lead ? 1 : 0,
+      merged.purchased ? 1 : 0
+    )
+    .run();
+
+  console.log(
+    JSON.stringify({
+      stage: "handler_ok",
+      handler: "upsert_session_engagement",
+      event_id: event.event_id,
+      tenant_id: tenantId,
+      session_id: sessionId,
+      event_type: event.event_type,
+    })
+  );
 }
 
 async function resolveIdentityState(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
@@ -1868,6 +2140,11 @@ export function createHandlers(): HandlerMap {
     async upsert_event_store(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
       console.log(JSON.stringify({ stage: "handler", handler: "upsert_event_store", event_id: event.event_id }));
       await upsertEventStoreRecord(event, env);
+    },
+
+    async upsert_session_engagement(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
+      console.log(JSON.stringify({ stage: "handler", handler: "upsert_session_engagement", event_id: event.event_id }));
+      await upsertSessionEngagementRecord(event, env);
     },
 
     async invalidate_purchase_token(event: FunnelEvent, env: DispatcherEnv): Promise<void> {

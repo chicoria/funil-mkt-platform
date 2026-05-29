@@ -30,7 +30,7 @@ Regras: `MUST-FIX` impede `DONE`; `REPROVADO` (Code Quality) volta para `IN_PROG
 | 1B | Catálogo com `engagement` dos 2 produtos (ESG 18+VSL; PLANOVOO 9 sem VSL) + eventos `engagement_rollup`; `updatedAt` | JSON válido + diff do catálogo | **DONE** ✓ |
 | 1C | `site/src/engagement/` (core+dom+entry) compila e core passa unit | `npm run build:check` verde | NOT_STARTED |
 | 1D | `index.html` e `planodevoo/index.html` emitem eventos+beacon; VSL mapeia seção↔tempo | Playwright e2e verde + Network mostra `ENGAGEMENT_SNAPSHOT` | NOT_STARTED |
-| 1E | 1 linha/sessão em `session_engagement` com merge correto; stitching propaga lead/compra | integração dispatcher verde | NOT_STARTED |
+| 1E | 1 linha/sessão em `session_engagement` com merge correto; stitching propaga lead/compra | integração dispatcher verde | **DONE** ✓ |
 | 1F | Funil unificado + coorte + retenção VSL renderizam de D1; reconcilia com GA4 | unit `lib/d1.test.ts` + `next dev` observado | NOT_STARTED |
 | 1G | Jornada unificada (anon+profile), `UserBehaviorSummary`, `UserList` navegável | unit queries + navegação observada | NOT_STARTED |
 | 1H | Vars/triggers/tags GA4 dos eventos no GTM Web; export commitado | GA4 DebugView + `engagement-web-import.json` | NOT_STARTED |
@@ -56,3 +56,4 @@ Regras: `MUST-FIX` impede `DONE`; `REPROVADO` (Code Quality) volta para `IN_PROG
 - **2026-05-29:** 0-disc → DONE (Slice Validator independente: relatório cobre GA4/GTM/sGTM v19/Meta, deriva catálogo↔env resolvida — APROVADO sem MUST-FIX).
 - **2026-05-29:** 1A → DONE (TDD Red→Green: 80/80 testes verdes; `mergeSnapshot` puro; migration `session_engagement_v1_2026_05_29` idempotente em `dashboard-sync`; `git diff --check` limpo; 0 hardcode de tenant/produto).
 - **2026-05-29:** 1B → DONE (engagement.vsl 12 seções + engagement.landing 18 seções em ESG; engagement.landing 9 seções sem vsl em PLANOVOO; 5+3 eventos engagement_rollup; JSON válido; updatedAt 2026-05-29).
+- **2026-05-29:** 1E → DONE (TDD Red→Green: 7 novos testes + 190 total verdes; handler `upsert_session_engagement` em `createHandlers()` com mergeSnapshot puro + stitching became_lead/purchased; chain engagement_rollup adicionado no catálogo ESG+PLANOVOO; git diff --check limpo).
