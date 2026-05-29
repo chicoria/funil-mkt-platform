@@ -3,6 +3,11 @@ main = "src/index.ts"
 compatibility_date = "2026-04-22"
 workers_dev = true
 
+# ── Workers Analytics Engine — engagement raw events drill-down ─────────────
+[[analytics_engine_datasets]]
+binding = "ENGAGEMENT_AE"
+dataset = "engagement_events"
+
 [vars]
 PLANOVOO_API_BASE_URL = "https://plano.decolesuacarreiraesg.com.br"
 

@@ -16,12 +16,21 @@ interface KVNamespaceLike {
   delete?(key: string): Promise<void>;
 }
 
+export interface AnalyticsEngineDataset {
+  writeDataPoint(event: {
+    blobs?: string[];
+    doubles?: number[];
+    indexes?: string[];
+  }): void;
+}
+
 export interface DispatcherEnv {
   [key: string]: unknown;
   DEDUPE_KV?: KVNamespaceLike;
   IDENTITY_KV?: KVNamespaceLike;
   IDENTITY_DB?: unknown;
   EVENT_STORE_DB?: unknown;
+  ENGAGEMENT_AE?: AnalyticsEngineDataset;
   CATALOG_JSON?: string;
   BREVO_API_KEY?: string;
   BREVO_BASE_URL?: string;

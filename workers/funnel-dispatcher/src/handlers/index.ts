@@ -1,6 +1,7 @@
 import { FunnelEvent } from "../../../../packages/shared/src/funnel-event";
 import { resolveSecret, type SecretValue } from "../../../../packages/shared/src/secrets-store-wrapper";
 import { resolveProfileId } from "./identity";
+import { writeEngagementAe } from "./write-engagement-ae";
 import bundledCatalogJson from "../../../../config/products.catalog.json";
 import {
   DispatcherEnv,
@@ -2145,6 +2146,9 @@ export function createHandlers(): HandlerMap {
     async upsert_session_engagement(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
       console.log(JSON.stringify({ stage: "handler", handler: "upsert_session_engagement", event_id: event.event_id }));
       await upsertSessionEngagementRecord(event, env);
+      // Write raw event to Analytics Engine for drill-down (fire-and-forget, no-op if binding absent)
+      const tenantId = event.tenant_id ?? "decole";
+      writeEngagementAe(event, env.ENGAGEMENT_AE as import("../dispatcher").AnalyticsEngineDataset | undefined, tenantId);
     },
 
     async invalidate_purchase_token(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
