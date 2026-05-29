@@ -35,7 +35,7 @@ Regras: `MUST-FIX` impede `DONE`; `REPROVADO` (Code Quality) volta para `IN_PROG
 | 1G | Jornada unificada (anon+profile), `UserBehaviorSummary`, `UserList` navegável | unit queries + navegação observada | **DONE** ✓ |
 | 1H | Vars/triggers/tags GA4 dos eventos no GTM Web; export commitado | GA4 DebugView + `engagement-web-import.json` | **DONE** ✓ |
 | 1I | Dimensões customizadas registradas; `ga4.ts` lê novos eventos | GA4 Data API mostra dimensões + unit do report | **DONE** ✓ |
-| 1J | Eventos Meta alta-intenção via Pixel+CAPI sob flag `metaForward` | Meta Test Events (`META_TEST_EVENT_CODE_*`) | NOT_STARTED |
+| 1J | Eventos Meta alta-intenção via Pixel+CAPI sob flag `metaForward` | Meta Test Events (`META_TEST_EVENT_CODE_*`) | **DONE** ✓ |
 | 2 | Eventos crus no Analytics Engine + drill-down VSL ao segundo | unit escritor/consulta AE + query observada | NOT_STARTED |
 | G1 | Camada de governança reutilizável no `workspace-agent-guidelines` (`slice-validation.md` + ledger template + edições) | arquivos + `README` atualizado + `git diff --check` limpo | **DONE** ✓ |
 
