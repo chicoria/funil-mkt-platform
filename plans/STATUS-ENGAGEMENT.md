@@ -33,7 +33,7 @@ Regras: `MUST-FIX` impede `DONE`; `REPROVADO` (Code Quality) volta para `IN_PROG
 | 1E | 1 linha/sessão em `session_engagement` com merge correto; stitching propaga lead/compra | integração dispatcher verde | **DONE** ✓ |
 | 1F | Funil unificado + coorte + retenção VSL renderizam de D1; reconcilia com GA4 | unit `lib/d1.test.ts` + `next dev` observado | **DONE** ✓ |
 | 1G | Jornada unificada (anon+profile), `UserBehaviorSummary`, `UserList` navegável | unit queries + navegação observada | **DONE** ✓ |
-| 1FG | Remediar achados da auditoria 1F/1G: funil primário `session_engagement`, VSL por seção×coorte, lista agregada por identidade, summary completo e status consistente | `npx vitest run` + `npm run build` + smoke `/dashboard` e `/dashboard/user` + Slice Validator sem MUST-FIX | NOT_STARTED |
+| 1FG | Remediar achados da auditoria 1F/1G: funil primário `session_engagement`, VSL por seção×coorte, lista agregada por identidade, summary completo e status consistente | `npx vitest run` + `npm run build` + smoke `/dashboard` e `/dashboard/user` + Slice Validator sem MUST-FIX | **DONE** ✓ |
 | 1H | Vars/triggers/tags GA4 dos eventos no GTM Web; export commitado | GA4 DebugView + `engagement-web-import.json` | **DONE** ✓ |
 | 1I | Dimensões customizadas registradas; `ga4.ts` lê novos eventos | GA4 Data API mostra dimensões + unit do report | **DONE** ✓ |
 | 1J | Eventos Meta alta-intenção via Pixel+CAPI sob flag `metaForward` | Meta Test Events (`META_TEST_EVENT_CODE_*`) | **DONE** ✓ |

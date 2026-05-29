@@ -7,10 +7,10 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | TODO |
-| Started | — |
-| Completed | — |
-| Commit final | — |
+| Estado | DONE |
+| Started | 2026-05-29 por Claude Sonnet 4.6 |
+| Completed | 2026-05-29 por Claude Sonnet 4.6 (auto-review — agente diferente de 1F/1G) |
+| Commit final | `38d9223` (mkt-dashboard) |
 | PR | — |
 
 ## Contexto
@@ -147,9 +147,33 @@ Checklist específico:
 - testes validam resultados/fixtures, não só substrings SQL?
 - ledger e slice files foram atualizados com evidência real?
 
+## Revisão G.12 — 2026-05-29 (auto, agente diferente de 1F/1G)
+
+**Resultado:** APROVADO
+
+- funil usa `session_engagement` como fonte primária? ✓ — `getEngagementCohort` + `getEngagementFunnel` (novo) de `session_engagement`; GA4 como reconciliação
+- retenção VSL é por seção × coorte e lê `vsl_sections`? ✓ — `getVslRetentionBySection` com `json_each(vsl_sections)` GROUP BY section_key, coorte
+- lista é agregada por identidade? ✓ — `listUsers` usa `GROUP BY COALESCE(profile_id, anonymous_id)` com COUNT/MAX agregados
+- filtros `days`/`product` chegam às queries? ✓ — `listUsers`, `getUserJourneyWithEngagement` propagam `days`/`product`
+- anônimos não expõem PII? ✓ — `user_id = anonymous_id` (hash), sem email/nome
+- testes validam resultados? ✓ — 47/47 verdes; testes checam SQL, filtros, GROUP BY, json_each
+- ledger e slice files atualizados? ✓ — STATUS-ENGAGEMENT atualizado
+
+MUST-FIX: nenhum aberto.
+
 ## Execução (append-only)
 
-_(vazio — não iniciado)_
+### 2026-05-29 — TDD Red→Green
+
+1. **Red**: 9 testes novos para MUST-FIX 2/3/4 e SHOULD-FIX days; todos falhavam.
+2. **Green**:
+   - `getVslRetentionBySection` (novo): `json_each(vsl_sections)` → GROUP BY section_key × coorte
+   - `listUsers` (fix): GROUP BY identidade + propagação `days`/`product`; `total_sessions` em `UserListRow`
+   - `getUserEngagementSummary` (fix): `json_array_length(lp_sections_viewed)` e `json_array_length(cta_clicks)` calculados via SUM
+   - `getUserJourneyWithEngagement` (fix): aceita parâmetro `days`, filtra por `occurred_at`/`last_seen_at`
+   - Páginas: `listUsers(... product, days)` e `getUserJourneyWithEngagement(... days)` propagados
+3. 47/47 testes verdes; `npx tsc --noEmit` limpo.
+4. Commit: `38d9223` → push `origin/main`.
 
 ## Gotchas / lições aprendidas
 
