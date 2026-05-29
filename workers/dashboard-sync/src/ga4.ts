@@ -104,7 +104,16 @@ export async function fetchGa4Report(
         dimensions: [{ name: "eventName" }, { name: "customEvent:produto" }],
         metrics: [{ name: "eventCount" }],
         dimensionFilter: {
-          filter: { fieldName: "eventName", inListFilter: { values: ["page_view", "cta_click"] } },
+          filter: {
+            fieldName: "eventName",
+            inListFilter: {
+              values: [
+                "page_view", "cta_click",
+                "section_view", "section_engaged",
+                "vsl_section_start", "vsl_section_end",
+              ],
+            },
+          },
         },
       }),
     }
