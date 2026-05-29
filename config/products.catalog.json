@@ -1,6 +1,6 @@
 {
   "schemaVersion": 5,
-  "updatedAt": "2026-05-27",
+  "updatedAt": "2026-05-29",
   "description": "Catálogo central multi-tenant — tenants.{id}.products.{code} declara cada produto. Fonte única para tracking, integrações, links e dashboard por tenant/produto.",
   "global": {
     "hotmart": {
@@ -581,8 +581,64 @@
                 "brevoConfig": {
                   "funnelPrefix": "DECOLE_ESG"
                 }
-              }
+              },
+              {"funnelStage":"AWARENESS","eventType":"SECTION_VIEW","delivery":"engagement_rollup","source":"site"},
+              {"funnelStage":"AWARENESS","eventType":"SECTION_ENGAGED","delivery":"engagement_rollup","source":"site"},
+              {"funnelStage":"CONSIDERATION","eventType":"VSL_SECTION_START","delivery":"engagement_rollup","source":"site"},
+              {"funnelStage":"CONSIDERATION","eventType":"VSL_SECTION_END","delivery":"engagement_rollup","source":"site"},
+              {"funnelStage":"AWARENESS","eventType":"ENGAGEMENT_SNAPSHOT","delivery":"engagement_rollup","source":"site"}
             ]
+          },
+          "engagement": {
+            "vsl": {
+              "videoId": "GXfMV8KxUsA",
+              "activeVersion": "v1",
+              "versions": {
+                "v1": {
+                  "durationSec": 1612.7,
+                  "sections": [
+                    {"id":"01","key":"vslv1_promessa","name":"PROMESSA","startSec":0.4,"endSec":40.7},
+                    {"id":"02","key":"vslv1_transicao-panorama-do-mercado-crescimento","name":"TRANSICAO - panorama do mercado","startSec":40.833,"endSec":211.833},
+                    {"id":"03","key":"vslv1_para-quem-e","name":"PARA QUEM E","startSec":212.4,"endSec":261.033},
+                    {"id":"04","key":"vslv1_provas-reais","name":"PROVAS REAIS","startSec":261.333,"endSec":319.566},
+                    {"id":"05","key":"vslv1_historia-pessoal","name":"HISTORIA PESSOAL","startSec":319.666,"endSec":390.6},
+                    {"id":"06","key":"vslv1_exercicio-1-possibilidade-para-todas-as-areas","name":"EXERCICIO 1","startSec":391.766,"endSec":591.0},
+                    {"id":"07","key":"vslv1_exercicio-2-jeito-errado-x-jeito-certo","name":"EXERCICIO 2","startSec":591.2,"endSec":643.7},
+                    {"id":"08","key":"vslv1_por-que-esse-erro-falha","name":"POR QUE ESSE ERRO FALHA?","startSec":644.0,"endSec":916.3},
+                    {"id":"09","key":"vslv1_como-criar-uma-carreira-em-esg-6-passos-metodo","name":"COMO CRIAR UMA CARREIRA EM ESG","startSec":917.266,"endSec":1227.9},
+                    {"id":"10","key":"vslv1_por-que-meu-metodo-funciona","name":"POR QUE MEU METODO FUNCIONA?","startSec":1227.9,"endSec":1486.766},
+                    {"id":"11","key":"vslv1_ancoragem-oferta","name":"ANCORAGEM + OFERTA","startSec":1487.333,"endSec":1593.966},
+                    {"id":"12","key":"vslv1_cta-emocional","name":"CTA EMOCIONAL","startSec":1594.4,"endSec":1612.7}
+                  ]
+                }
+              }
+            },
+            "landing": {
+              "sectionSelector": "section[id^=\"lp-secao-\"]",
+              "viewThreshold": 0.5,
+              "viewTimeMs": 1000,
+              "engagedTimeMs": 8000,
+              "sections": [
+                {"id":"lp-secao-inicio","index":1,"name":"Hero"},
+                {"id":"lp-secao-aula-gratuita","index":2,"name":"Aula gratuita (VSL)"},
+                {"id":"lp-secao-oferta","index":3,"name":"Oferta"},
+                {"id":"lp-secao-metodo","index":4,"name":"Método"},
+                {"id":"lp-secao-publico-alvo","index":5,"name":"Público-alvo"},
+                {"id":"lp-secao-depoimentos","index":6,"name":"Depoimentos"},
+                {"id":"lp-secao-mentoria-grupo","index":7,"name":"Mentoria em grupo"},
+                {"id":"lp-secao-whatsapp-1a1","index":8,"name":"WhatsApp 1a1"},
+                {"id":"lp-secao-mentora","index":9,"name":"Mentora"},
+                {"id":"lp-secao-midia","index":10,"name":"Mídia"},
+                {"id":"lp-secao-garantia","index":11,"name":"Garantia"},
+                {"id":"lp-secao-perguntas-frequentes","index":12,"name":"FAQ"},
+                {"id":"lp-secao-diferenca-decole","index":13,"name":"Diferença DECOLE"},
+                {"id":"lp-secao-jornada-decole","index":14,"name":"Jornada DECOLE"},
+                {"id":"lp-secao-mitos-verdades","index":15,"name":"Mitos e verdades"},
+                {"id":"lp-secao-alcance-global","index":16,"name":"Alcance global"},
+                {"id":"lp-secao-contato-final","index":17,"name":"Contato final"},
+                {"id":"lp-secao-oferta-final","index":18,"name":"Oferta final"}
+              ]
+            }
           },
           "meta": {
             "pixelIdEnvVar": "META_PIXEL_ID_DECOLE_ESG"
@@ -1399,8 +1455,30 @@
                 "brevoConfig": {
                   "funnelPrefix": "DECOLE_PLANOVOO"
                 }
-              }
+              },
+              {"funnelStage":"AWARENESS","eventType":"SECTION_VIEW","delivery":"engagement_rollup","source":"site"},
+              {"funnelStage":"AWARENESS","eventType":"SECTION_ENGAGED","delivery":"engagement_rollup","source":"site"},
+              {"funnelStage":"AWARENESS","eventType":"ENGAGEMENT_SNAPSHOT","delivery":"engagement_rollup","source":"site"}
             ]
+          },
+          "engagement": {
+            "landing": {
+              "sectionSelector": "section[id='preview'],section[id='o-que-e'],section[id='como-funciona'],section[id='o-que-tem'],section[id='depoimentos'],section[id='no-whatsapp'],section[id='mentoria'],section[id='oferta'],section[id='elizete']",
+              "viewThreshold": 0.5,
+              "viewTimeMs": 1000,
+              "engagedTimeMs": 8000,
+              "sections": [
+                {"id":"preview","index":1,"name":"Preview do plano"},
+                {"id":"o-que-e","index":2,"name":"O que é"},
+                {"id":"como-funciona","index":3,"name":"Como funciona"},
+                {"id":"o-que-tem","index":4,"name":"O que tem"},
+                {"id":"depoimentos","index":5,"name":"Depoimentos"},
+                {"id":"no-whatsapp","index":6,"name":"No WhatsApp"},
+                {"id":"mentoria","index":7,"name":"Mentoria"},
+                {"id":"oferta","index":8,"name":"Oferta"},
+                {"id":"elizete","index":9,"name":"Elizete (mentora)"}
+              ]
+            }
           },
           "meta": {
             "pixelIdEnvVar": "META_PIXEL_ID_PLANOVOO"

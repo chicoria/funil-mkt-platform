@@ -27,7 +27,7 @@ Regras: `MUST-FIX` impede `DONE`; `REPROVADO` (Code Quality) volta para `IN_PROG
 |---|---|---|---|
 | 0-disc | Relatório do estado live (dimensões GA4, tags/vars GTM Web+Server, pixels/eventos Meta) + deriva catálogo↔env resolvida | doc de descoberta + nomes confirmados que os workers leem | **DONE** ✓ |
 | 1A | Tabela+índices `session_engagement` criados; merge puro passa unit (happy+edge) | `wrangler d1` local + vitest verde em `packages/shared/test` | **DONE** ✓ |
-| 1B | Catálogo com `engagement` dos 2 produtos (ESG 18+VSL; PLANOVOO 9 sem VSL) + eventos `engagement_rollup`; `updatedAt` | JSON válido + diff do catálogo | NOT_STARTED |
+| 1B | Catálogo com `engagement` dos 2 produtos (ESG 18+VSL; PLANOVOO 9 sem VSL) + eventos `engagement_rollup`; `updatedAt` | JSON válido + diff do catálogo | **DONE** ✓ |
 | 1C | `site/src/engagement/` (core+dom+entry) compila e core passa unit | `npm run build:check` verde | NOT_STARTED |
 | 1D | `index.html` e `planodevoo/index.html` emitem eventos+beacon; VSL mapeia seção↔tempo | Playwright e2e verde + Network mostra `ENGAGEMENT_SNAPSHOT` | NOT_STARTED |
 | 1E | 1 linha/sessão em `session_engagement` com merge correto; stitching propaga lead/compra | integração dispatcher verde | NOT_STARTED |
@@ -55,3 +55,4 @@ Regras: `MUST-FIX` impede `DONE`; `REPROVADO` (Code Quality) volta para `IN_PROG
 - **2026-05-29:** G1 → DONE (commits `80e429e`, `4ebf852`, `73f39cd`, `fef0c1d`; aprovado pelo usuário como Slice Validator). 0-disc → IN_PROGRESS → CODE_REVIEW (relatório `0-disc-relatorio-descoberta.md` produzido; aguarda Slice Validator).
 - **2026-05-29:** 0-disc → DONE (Slice Validator independente: relatório cobre GA4/GTM/sGTM v19/Meta, deriva catálogo↔env resolvida — APROVADO sem MUST-FIX).
 - **2026-05-29:** 1A → DONE (TDD Red→Green: 80/80 testes verdes; `mergeSnapshot` puro; migration `session_engagement_v1_2026_05_29` idempotente em `dashboard-sync`; `git diff --check` limpo; 0 hardcode de tenant/produto).
+- **2026-05-29:** 1B → DONE (engagement.vsl 12 seções + engagement.landing 18 seções em ESG; engagement.landing 9 seções sem vsl em PLANOVOO; 5+3 eventos engagement_rollup; JSON válido; updatedAt 2026-05-29).
