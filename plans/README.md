@@ -62,3 +62,4 @@ Todos os planos seguem **agent-resumable workflow** (G.11 do master):
 - **2026-05-18:** PLANO-STAGING-FUNIL-LANDING-PLANOVOO movido de `config/` para cá
 - **2026-05-18:** PLANO-1-SEPARACAO-RESPONSABILIDADES movido de `decole-plano-de-voo-app/docs/` para `completed/` (concluído em 2026-05-14)
 - **2026-05-18:** PLANO-2-DISPATCHER-GENERICO movido de `decole-plano-de-voo-app/docs/` (cross-repo) — Slices 2.0-2.10 concluídos; 2.11+ pendentes (split em satélites)
+- **2026-05-29:** PLANO-ENGAGEMENT-FUNIL-COMPLETO criado (funil completo + jornada por identidade, engajamento de seções/VSL, multicamadas). Satélite de slices `slices/engagement/` (0-disc, 1A–1J, 2, G1); progresso em `STATUS-ENGAGEMENT.md` (todos NOT_STARTED). Inclui camada de governança Slice Validator (slice G1 → `workspace-agent-guidelines`).
