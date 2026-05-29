@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { BrevoTransactionalEmailSender } from "../../transactional-email/index";
 
+type FetchMockWithCalls = typeof fetch & {
+  mock: { calls: Array<[string, RequestInit]> };
+};
+
 describe("BrevoTransactionalEmailSender", () => {
   it("envia payload correto para o Brevo", async () => {
     const fetchMock = vi.fn(async () => ({ ok: true })) as unknown as typeof fetch;
@@ -14,7 +18,7 @@ describe("BrevoTransactionalEmailSender", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const [url, options] = (fetchMock as FetchMockWithCalls).mock.calls[0];
     expect(url).toBe("https://api.brevo.com/v3/smtp/email");
     expect(options.method).toBe("POST");
     expect(options.headers).toMatchObject({
@@ -39,7 +43,7 @@ describe("BrevoTransactionalEmailSender", () => {
       templateId: 8,
     });
 
-    const [, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const [, options] = (fetchMock as FetchMockWithCalls).mock.calls[0];
     const body = JSON.parse(String(options.body || "{}")) as Record<string, unknown>;
     expect(body).toEqual({
       to: [{ email: "lead@exemplo.com" }],
@@ -120,7 +124,7 @@ describe("BrevoTransactionalEmailSender", () => {
       const sender = new BrevoTransactionalEmailSender("api-key", fetchMock);
       await sender.send({ to: { email: "a@b.com" }, templateId: 1 });
 
-      const [url] = (fetchMock as any).mock.calls[0] as [string, RequestInit];
+      const [url] = (fetchMock as FetchMockWithCalls).mock.calls[0];
       expect(url).toBe("https://api.brevo.com/v3/smtp/email");
     });
 
@@ -133,7 +137,7 @@ describe("BrevoTransactionalEmailSender", () => {
       );
       await sender.send({ to: { email: "a@b.com" }, templateId: 1 });
 
-      const [url] = (fetchMock as any).mock.calls[0] as [string, RequestInit];
+      const [url] = (fetchMock as FetchMockWithCalls).mock.calls[0];
       expect(url).toBe("https://sandbox.brevo.com/v3/smtp/email");
     });
 
@@ -146,7 +150,7 @@ describe("BrevoTransactionalEmailSender", () => {
       );
       await sender.send({ to: { email: "a@b.com" }, templateId: 1 });
 
-      const [url] = (fetchMock as any).mock.calls[0] as [string, RequestInit];
+      const [url] = (fetchMock as FetchMockWithCalls).mock.calls[0];
       expect(url).toBe("https://api.brevo.com/v3/smtp/email");
       expect(url).not.toContain("//smtp");
     });
@@ -158,7 +162,7 @@ describe("BrevoTransactionalEmailSender", () => {
       const sender = new BrevoTransactionalEmailSender("api-key", fetchMock, { timeoutMs: 5000 });
       await sender.send({ to: { email: "a@b.com" }, templateId: 1 });
 
-      const [, init] = (fetchMock as any).mock.calls[0] as [string, RequestInit];
+      const [, init] = (fetchMock as FetchMockWithCalls).mock.calls[0];
       expect(init.signal).toBeInstanceOf(AbortSignal);
     });
 

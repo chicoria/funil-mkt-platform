@@ -2,7 +2,7 @@
 
 > Source of truth de progresso do `PLANO-ENGAGEMENT-FUNIL-COMPLETO.md`.
 > Atualizado a cada slice pelo **Slice Validator** (não pelo implementador).
-> Última atualização: 2026-05-29 (1A DONE).
+> Última atualização: 2026-05-29 (1FG criado após auditoria 1F/1G).
 
 ## Recovery point (ordem de leitura obrigatória)
 
@@ -33,6 +33,7 @@ Regras: `MUST-FIX` impede `DONE`; `REPROVADO` (Code Quality) volta para `IN_PROG
 | 1E | 1 linha/sessão em `session_engagement` com merge correto; stitching propaga lead/compra | integração dispatcher verde | **DONE** ✓ |
 | 1F | Funil unificado + coorte + retenção VSL renderizam de D1; reconcilia com GA4 | unit `lib/d1.test.ts` + `next dev` observado | **DONE** ✓ |
 | 1G | Jornada unificada (anon+profile), `UserBehaviorSummary`, `UserList` navegável | unit queries + navegação observada | **DONE** ✓ |
+| 1FG | Remediar achados da auditoria 1F/1G: funil primário `session_engagement`, VSL por seção×coorte, lista agregada por identidade, summary completo e status consistente | `npx vitest run` + `npm run build` + smoke `/dashboard` e `/dashboard/user` + Slice Validator sem MUST-FIX | NOT_STARTED |
 | 1H | Vars/triggers/tags GA4 dos eventos no GTM Web; export commitado | GA4 DebugView + `engagement-web-import.json` | **DONE** ✓ |
 | 1I | Dimensões customizadas registradas; `ga4.ts` lê novos eventos | GA4 Data API mostra dimensões + unit do report | **DONE** ✓ |
 | 1J | Eventos Meta alta-intenção via Pixel+CAPI sob flag `metaForward` | Meta Test Events (`META_TEST_EVENT_CODE_*`) | **DONE** ✓ |
@@ -57,3 +58,4 @@ Regras: `MUST-FIX` impede `DONE`; `REPROVADO` (Code Quality) volta para `IN_PROG
 - **2026-05-29:** 1A → DONE (TDD Red→Green: 80/80 testes verdes; `mergeSnapshot` puro; migration `session_engagement_v1_2026_05_29` idempotente em `dashboard-sync`; `git diff --check` limpo; 0 hardcode de tenant/produto).
 - **2026-05-29:** 1B → DONE (engagement.vsl 12 seções + engagement.landing 18 seções em ESG; engagement.landing 9 seções sem vsl em PLANOVOO; 5+3 eventos engagement_rollup; JSON válido; updatedAt 2026-05-29).
 - **2026-05-29:** 1E → DONE (TDD Red→Green: 7 novos testes + 190 total verdes; handler `upsert_session_engagement` em `createHandlers()` com mergeSnapshot puro + stitching became_lead/purchased; chain engagement_rollup adicionado no catálogo ESG+PLANOVOO; git diff --check limpo).
+- **2026-05-29:** 1FG criado a partir de auditoria de conformidade dos slices 1F/1G. Achados: 1F/1G têm entrega parcial em `mkt-dashboard@0a954f0`, mas ainda exigem remediação antes de DONE real pelos critérios do plano.

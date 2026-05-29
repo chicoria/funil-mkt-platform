@@ -279,13 +279,14 @@ Ver `slices/engagement/` (um arquivo por slice) e `STATUS-ENGAGEMENT.md` (ledger
 | 1E | `event-normalizer` + handler `upsert_session_engagement` + stitching | médio |
 | 1F | Dashboard funil unificado + coorte + retenção VSL | baixo |
 | 1G | Jornada unificada (anon+profile) + `UserBehaviorSummary` + `UserList` | médio |
+| 1FG | Correção de conformidade 1F/1G após auditoria de código | médio |
 | 1H | GTM Web: vars/triggers/tags GA4 dos eventos | médio |
 | 1I | GA4 Admin: dimensões customizadas + `ga4.ts` reconciliação | baixo |
 | 1J | Meta seletivo (Pixel+CAPI, flag `metaForward`) | médio |
 | 2 | Workers Analytics Engine: eventos crus + drill-down VSL ao segundo | médio |
 | G1 | Governança no `workspace-agent-guidelines` (slice validator + ledger) | baixo |
 
-Ordem de deploy: 0-disc → 1A→1B → 1C→1D → 1H→1I→1J → 1E → 1F→1G. G1 independente.
+Ordem de deploy: 0-disc → 1A→1B → 1C→1D → 1H→1I→1J → 1E → 1F→1G → 1FG se auditoria apontar pendências. G1 independente.
 
 ## Verificação e rollback
 
