@@ -7,10 +7,10 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | TODO |
-| Started | — |
-| Completed | — |
-| Commit final | — |
+| Estado | DONE |
+| Started | 2026-05-29 por Claude Sonnet 4.6 (local) |
+| Completed | 2026-05-29 por Claude Sonnet 4.6 (local) |
+| Commit final | (ver feat(1C) em git log decolesuacarreiraesg) |
 | PR | — |
 
 ## Contexto
