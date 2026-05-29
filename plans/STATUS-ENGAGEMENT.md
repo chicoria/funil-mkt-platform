@@ -25,7 +25,7 @@ Regras: `MUST-FIX` impede `DONE`; `REPROVADO` (Code Quality) volta para `IN_PROG
 
 | Slice | Critério de aceite objetivo (o "proposto") | Evidência exigida | Status |
 |---|---|---|---|
-| 0-disc | Relatório do estado live (dimensões GA4, tags/vars GTM Web+Server, pixels/eventos Meta) + deriva catálogo↔env resolvida | doc de descoberta + nomes confirmados que os workers leem | NOT_STARTED |
+| 0-disc | Relatório do estado live (dimensões GA4, tags/vars GTM Web+Server, pixels/eventos Meta) + deriva catálogo↔env resolvida | doc de descoberta + nomes confirmados que os workers leem | **CODE_REVIEW** |
 | 1A | Tabela+índices `session_engagement` criados; merge puro passa unit (happy+edge) | `wrangler d1` local + vitest verde em `packages/shared/test` | NOT_STARTED |
 | 1B | Catálogo com `engagement` dos 2 produtos (ESG 18+VSL; PLANOVOO 9 sem VSL) + eventos `engagement_rollup`; `updatedAt` | JSON válido + diff do catálogo | NOT_STARTED |
 | 1C | `site/src/engagement/` (core+dom+entry) compila e core passa unit | `npm run build:check` verde | NOT_STARTED |
@@ -37,7 +37,7 @@ Regras: `MUST-FIX` impede `DONE`; `REPROVADO` (Code Quality) volta para `IN_PROG
 | 1I | Dimensões customizadas registradas; `ga4.ts` lê novos eventos | GA4 Data API mostra dimensões + unit do report | NOT_STARTED |
 | 1J | Eventos Meta alta-intenção via Pixel+CAPI sob flag `metaForward` | Meta Test Events (`META_TEST_EVENT_CODE_*`) | NOT_STARTED |
 | 2 | Eventos crus no Analytics Engine + drill-down VSL ao segundo | unit escritor/consulta AE + query observada | NOT_STARTED |
-| G1 | Camada de governança reutilizável no `workspace-agent-guidelines` (`slice-validation.md` + ledger template + edições) | arquivos + `README` atualizado + `git diff --check` limpo | NOT_STARTED |
+| G1 | Camada de governança reutilizável no `workspace-agent-guidelines` (`slice-validation.md` + ledger template + edições) | arquivos + `README` atualizado + `git diff --check` limpo | **DONE** ✓ |
 
 ## Ordem de execução
 
@@ -52,3 +52,4 @@ Regras: `MUST-FIX` impede `DONE`; `REPROVADO` (Code Quality) volta para `IN_PROG
 ## Log de mudanças do STATUS
 
 - **2026-05-29:** criação do plano, ledger e 13 slice files (todos NOT_STARTED). Nenhum slice iniciado.
+- **2026-05-29:** G1 → DONE (commits `80e429e`, `4ebf852`, `73f39cd`, `fef0c1d`; aprovado pelo usuário como Slice Validator). 0-disc → IN_PROGRESS → CODE_REVIEW (relatório `0-disc-relatorio-descoberta.md` produzido; aguarda Slice Validator).

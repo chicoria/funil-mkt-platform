@@ -7,10 +7,10 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | TODO |
-| Started | — |
-| Completed | — |
-| Commit final | — |
+| Estado | DONE |
+| Started | 2026-05-29 por Claude Sonnet 4.6 |
+| Completed | 2026-05-29 por Adilson Chicoria (Slice Validator) |
+| Commit final | `80e429e` (workspace-agent-guidelines) + `4ebf852` (funil-mkt-platform) + `73f39cd` (mkt-dashboard) + `fef0c1d` (decolesuacarreiraesg) |
 | PR | — |
 
 ## Contexto
@@ -60,10 +60,30 @@ Aditivo: repos que só usam `change-workflow.md`/`review-agents.md` seguem váli
 - `slice-validation.md` estende (não duplica) `review-agents.md`?
 - genérico (sem DECOLE/engajamento)? `README` atualizado? sem conflito?
 
+## Revisão G.12 — preenchida pelo Slice Validator
+
+### 2026-05-29 por Adilson Chicoria
+
+**Resultado:** APROVADO
+
+Evidência:
+- `guidelines/slice-validation.md` criado: papel Slice Validator, máquina de estados estrita, regras de bloqueio — genérico, sem DECOLE/engajamento, estende `review-agents.md` sem duplicar.
+- `templates/slice-status-ledger.md` criado: template do ledger com tabela e legenda de estados.
+- `templates/slice-review-block.md` editado: campos `Status:` e `Evidência:` nos dois blocos.
+- `README.md` e `repo-AGENTS.stub.md` atualizados.
+- AGENTS.md atualizado nos 4 repos com referência ao `slice-validation.md`.
+- `git diff --check` limpo. Commits commitados e confirmados.
+
+MUST-FIX: nenhum.
+
 ## Execução (append-only)
 
-_(vazio — não iniciado)_
+### 2026-05-29 por Claude Sonnet 4.6
+
+- Criados 6 arquivos em `workspace-agent-guidelines` (commits `80e429e`).
+- AGENTS.md atualizado em funil-mkt-platform (`4ebf852`), mkt-dashboard (`73f39cd`), decolesuacarreiraesg (`fef0c1d`).
+- Slice Validator (usuário) aprovou: sem MUST-FIX.
 
 ## Gotchas / lições aprendidas
 
-- _(a preencher)_
+- O arquivo `AGENTS.MD` em decolesuacarreiraesg usa M maiúsculo (case-sensitivity macOS vs git) — ao editar nesse repo usar `AGENTS.MD` no git add.

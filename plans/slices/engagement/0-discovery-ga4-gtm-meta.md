@@ -7,9 +7,9 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | TODO |
-| Started | — |
-| Completed | — |
+| Estado | CODE_REVIEW |
+| Started | 2026-05-29 por Claude Sonnet 4.6 |
+| Completed | — (aguarda Slice Validator) |
 | Commit final | — |
 | PR | — |
 
@@ -68,8 +68,19 @@ N/A — slice read-only.
 
 ## Execução (append-only)
 
-_(vazio — não iniciado)_
+### 2026-05-29 por Claude Sonnet 4.6
+
+- Autenticado via `GOOGLE_APPLICATION_CREDENTIALS` (service account file; `GOOGLE_SERVICE_ACCOUNT_JSON` no env estava inválido).
+- GA4 Admin API: 7 dimensões event-scoped existentes (`cta_*` + `produto`), 43 slots livres.
+- GTM Web (workspace 21): 14 tags, 9 triggers, ~35 variables. Padrão `cta_click` confirmado (tag [51], trigger [44], vars `DL - *` [45–50]).
+- GTM Server (workspace 16): **vazio** — nenhuma tag, trigger ou variável.
+- Meta: 2 pixels activos (`1329973348435032` ESG, `2220600768748665` PLANOVOO), disparados ontem. Eventos activos: `cta_click` + `PageView` (ESG); + `InitiateCheckout`, `Lead`, `form_start` (PLANOVOO). Sem custom conversions no ad account. API `/custom_events` não disponível com o token actual.
+- Deriva de credenciais analisada: catálogo tem nomes `*_DECOLE` que são os corretos para produção; `.env.local` tem nomes simplificados (sem sufixo) — não afecta produção mas requer aliases para testes locais.
+- Relatório completo: `0-disc-relatorio-descoberta.md`.
 
 ## Gotchas / lições aprendidas
 
-- _(a preencher)_
+- `GOOGLE_SERVICE_ACCOUNT_JSON` no `.env.local` estava inválido (formato incorreto); usar `GOOGLE_APPLICATION_CREDENTIALS` (path para o JSON file) que funciona.
+- GTM Server container existe (`241313282`) mas está vazio — a config Meta CAPI actual está no GTM **Web** (tags HTML). Para 1J: opção mais simples é adicionar ao Web (padrão existente); Server requer setup completo.
+- Meta Graph API v21.0 com System User token não expõe `/custom_events`, `/datasets` ou `/events` directamente — usar `/stats?aggregation=event` para ver eventos activos por hora.
+- Deriva catálogo↔env.local: nomes no catálogo (`GA4_PROPERTY_ID_DECOLE`, `META_CAPI_ACCESS_TOKEN_DECOLE`, etc.) são os correctos para produção. O `.env.local` local precisa de ter esses nomes para testes locais funcionarem.
