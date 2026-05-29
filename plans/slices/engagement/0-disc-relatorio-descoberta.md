@@ -67,14 +67,47 @@ Variáveis `DL - *` já existentes (padrão do `cta_click`):
 
 ---
 
-## 3. GTM Server (account `6266094107`, container `241313282`, workspace `16`)
+## 3. GTM Server (account `6266094107`, container `241313282`)
 
-**Container server está vazio** (nenhuma tag, trigger ou variável encontrada via API).
+> ⚠️ **Correcção pós-descoberta**: a primeira consulta foi ao workspace 16 (rascunho sem alterações em curso) e reportou "vazio". A **versão live publicada é a v19** e tem configuração completa em produção.
+
+### Arquitectura dos dois caminhos para o sGTM
+
+```
+A) Browser → GTM Web → sGTM
+   dataLayer.push → GTM Web (GTM-58CQ9K7X) → sGTM endpoint
+       └─ Client GA4 recebe e distribui para GA4 tag + Meta CAPI tag
+
+B) Worker → sGTM directamente
+   funnel-dispatcher emit_tracking → POST SGTM_ENDPOINT_URL_{TENANT}
+       └─ Client GA4 MP recebe e distribui para GA4 tag + Meta CAPI tag
+```
+
+### Versão live (v19) — configuração em produção
+
+| Componente | Tipo | Função |
+|---|---|---|
+| Client `GA4` | `gaaw_client` | Recebe eventos GA4 standard do browser (caminho A) |
+| Client `GA4 MP` | `mpaw_client` | Recebe eventos via Measurement Protocol do worker (caminho B) |
+| Trigger `All GA4 MP Events` | `always` | Dispara em **todos** os eventos recebidos |
+| Tag `GA4` | `sgtmgaaw` | Re-envia para GA4 |
+| Tag `Meta CAPI - Dynamic by Tenant/Product` | template custom | Envia para Meta CAPI com `pixelId` e `apiAccessToken` resolvidos pelas lookup tables |
+
+### Lookup Tables — multi-tenant/produto by design
+
+| Variável | Input | Resolve |
+|---|---|---|
+| `LT - Tenant ID by Host` | `{{RH - Host}}` | tenant por hostname |
+| `LT - GA4 Measurement ID by Tenant` | tenant id | measurement ID por tenant |
+| `LT - Meta CAPI Token by Tenant` | tenant id | token CAPI por tenant |
+| `LT - Meta Pixel ID by Tenant/Product` | `tenant|produto` | pixel ID por tenant+produto |
+| `LT - Meta Test Event Code by Tenant/Product` | `tenant|produto` | test event code por tenant+produto |
 
 **Conclusões:**
-- O sGTM existe como container criado mas ainda não configurado com tags de produção.
-- A configuração de tags Meta CAPI server-side está atualmente no GTM **Web** (tags HTML `FB_CONVERSIONS_API-*-Web-Tag-Pixel_Event`). Isto é arquitetura web-to-sGTM: o pixel web envia para o sGTM, que encaminha para Meta.
-- Para o slice **1J** (Meta seletivo): os eventos de alta intenção de engajamento serão adicionados ao mesmo padrão `FB_CONVERSIONS_API-*-Web-Trigger-Custom_Event` existente, ou ao GTM Server se este for instrumentado. **Decisão para 1J**: confirmar com o usuário se quer adicionar ao Web (mais simples, mantém o padrão) ou iniciar config do Server.
+- O sGTM está **completamente configurado e em produção**. Recebe todos os eventos pelos dois caminhos.
+- Os novos eventos de engajamento (`section_view`, `section_engaged`, `vsl_section_*`) chegarão ao sGTM automaticamente — o trigger `All GA4 MP Events` (always) já os apanhará, sem necessidade de configuração adicional no sGTM.
+- A tag `Meta CAPI` dispara **em todos os eventos**. Para o Meta seletivo (slice 1J): o controlo de quais eventos chegam ao Meta é feito **no trigger** (filtrar por `event_name` — ex. só `section_engaged` na secção de oferta, `vsl_section_end` para seções específicas). As lookup tables de pixel/token já estão configuradas — o 1J não precisa tocar nas credenciais.
+- As tags HTML `FB_CONVERSIONS_API-*` no GTM **Web** são o pixel browser-side (lado cliente). O CAPI server-side corre no sGTM. Ambos coexistem.
 
 ---
 
@@ -134,5 +167,5 @@ Se o secret no Cloudflare está como `GA4_PROPERTY_ID_DECOLE` (não `GA4_PROPERT
 |---|---|
 | **1I** | Registar 9 dimensões GA4 (`section_id`, `section_name`, `section_index`, `visible_pct`, `time_visible_ms`, `vsl_version`, `vsl_section_key`, `video_time_sec`, `progress_pct`). 43 slots livres. |
 | **1H** | Para cada evento (`section_view`, `section_engaged`, `vsl_section_start`, `vsl_section_end`): criar trigger `customEvent`, variáveis `DL - *` (reutilizar `DL - produto`), tag `gaawe` com `eventSettingsTable` — replicando o padrão do tag ID 51 (`GA4 - CTA Click`). |
-| **1J** | Eventos custom Meta de alta intenção via **Web tags HTML** (padrão existente `FB_CONVERSIONS_API-*`); GTM Server está vazio mas pode ser configurado se desejado. Decidir com o utilizador. Eventos activos hoje: só `cta_click` e `PageView` (ESG) + `InitiateCheckout`, `Lead` (PLANOVOO). |
+| **1J** | Meta seletivo via **filtro no trigger sGTM** (tag `Meta CAPI - Dynamic` já existe com lookup tables; adicionar condição `event_name IN [section_engaged_oferta, vsl_75pct…]`). Não precisa tocar em credenciais — as LTs já têm tudo. Eventos activos hoje: `cta_click` + `PageView` (ESG); `InitiateCheckout`, `Lead`, `form_start` (PLANOVOO). |
 | **1H/1I/1J** | `.env.local` local precisa de aliases com nomes `*_DECOLE` para testes locais baterem com o catálogo. Não mudar o catálogo — ele está correcto. |
