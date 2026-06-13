@@ -259,6 +259,88 @@ describe("links-redirect worker", () => {
     });
   });
 
+  describe("channel referral routes", () => {
+    it("aplica UTMs padrao do canal quando ausentes", async () => {
+      const res = await worker.fetch(makeRequest("planodevoo/ref/cecilia"), makeEnv());
+      expect(res.status).toBe(302);
+      const location = res.headers.get("location") || "";
+      const url = new URL(location);
+      expect(url.origin).toBe("https://decolesuacarreiraesg.com.br");
+      expect(url.pathname).toBe("/planodevoo");
+      expect(url.searchParams.get("utm_source")).toBe("indicacao");
+      expect(url.searchParams.get("utm_medium")).toBe("referral");
+      expect(url.searchParams.get("utm_campaign")).toBe("cecilia");
+    });
+
+    it.each([
+      ["deise", "deise"],
+      ["efazza", "efazza"],
+      ["carreira-esg", "carreira-esg"],
+    ])("aplica UTMs padrao do canal %s", async (slug, expectedCampaign) => {
+      const res = await worker.fetch(makeRequest(`planodevoo/ref/${slug}`), makeEnv());
+      expect(res.status).toBe(302);
+      const location = res.headers.get("location") || "";
+      const url = new URL(location);
+      expect(url.origin).toBe("https://decolesuacarreiraesg.com.br");
+      expect(url.pathname).toBe("/planodevoo");
+      expect(url.searchParams.get("utm_source")).toBe("indicacao");
+      expect(url.searchParams.get("utm_medium")).toBe("referral");
+      expect(url.searchParams.get("utm_campaign")).toBe(expectedCampaign);
+    });
+
+    it.each([
+      ["cecilia", "cecilia"],
+      ["deise", "deise"],
+      ["efazza", "efazza"],
+      ["carreira-esg", "carreira-esg"],
+    ])("aplica UTMs padrao do canal %s para Decole ESG via /ref", async (slug, expectedCampaign) => {
+      const res = await worker.fetch(makeRequest(`ref/${slug}`), makeEnv());
+      expect(res.status).toBe(302);
+      const location = res.headers.get("location") || "";
+      const url = new URL(location);
+      expect(url.origin).toBe("https://decolesuacarreiraesg.com.br");
+      expect(url.pathname).toBe("/");
+      expect(url.searchParams.get("utm_source")).toBe("indicacao");
+      expect(url.searchParams.get("utm_medium")).toBe("referral");
+      expect(url.searchParams.get("utm_campaign")).toBe(expectedCampaign);
+    });
+
+    it("UTMs recebidos tem precedencia sobre os defaults do canal", async () => {
+      const res = await worker.fetch(
+        makeRequest("planodevoo/ref/cecilia?utm_source=facebook&utm_medium=paid&foo=bar"),
+        makeEnv()
+      );
+      expect(res.status).toBe(302);
+      const location = res.headers.get("location") || "";
+      const url = new URL(location);
+      expect(url.searchParams.get("utm_source")).toBe("facebook");
+      expect(url.searchParams.get("utm_medium")).toBe("paid");
+      expect(url.searchParams.get("utm_campaign")).toBe("cecilia");
+      expect(url.searchParams.get("foo")).toBe("bar");
+    });
+
+    it("nao enfileira evento de funil para referral de canal", async () => {
+      const sent: unknown[] = [];
+      const res = await worker.fetch(
+        makeRequest("planodevoo/ref/cecilia"),
+        makeEnv({
+          FUNNEL_EVENTS: {
+            send: async (body: unknown) => {
+              sent.push(body);
+            },
+          },
+        })
+      );
+      expect(res.status).toBe(302);
+      expect(sent).toHaveLength(0);
+    });
+
+    it("retorna 404 para slug de canal inexistente", async () => {
+      const res = await worker.fetch(makeRequest("planodevoo/ref/inexistente"), makeEnv());
+      expect(res.status).toBe(404);
+    });
+  });
+
   it("redireciona /plano-de-voo/checkout/offer/:codigo com oferta da rota", async () => {
     const res = await worker.fetch(makeRequest("plano-de-voo/checkout/offer/novo123?utm_source=ig"), makeEnv());
     const location = res.headers.get("location") || "";

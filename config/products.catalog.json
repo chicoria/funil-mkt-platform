@@ -1,6 +1,6 @@
 {
   "schemaVersion": 5,
-  "updatedAt": "2026-05-29",
+  "updatedAt": "2026-06-13",
   "description": "Catálogo central multi-tenant — tenants.{id}.products.{code} declara cada produto. Fonte única para tracking, integrações, links e dashboard por tenant/produto.",
   "global": {
     "hotmart": {
@@ -127,6 +127,94 @@
             "type": "doi_confirmation",
             "productCode": "DECOLE_PLANOVOO",
             "redirectUrl": "https://decolesuacarreiraesg.com.br/planodevoo/confirmacao.html"
+          },
+          {
+            "path": "/planodevoo/ref/cecilia",
+            "type": "channel_referral",
+            "productCode": "DECOLE_PLANOVOO",
+            "redirectUrl": "https://decolesuacarreiraesg.com.br/planodevoo",
+            "defaultParams": {
+              "utm_source": "indicacao",
+              "utm_medium": "referral",
+              "utm_campaign": "cecilia"
+            }
+          },
+          {
+            "path": "/planodevoo/ref/deise",
+            "type": "channel_referral",
+            "productCode": "DECOLE_PLANOVOO",
+            "redirectUrl": "https://decolesuacarreiraesg.com.br/planodevoo",
+            "defaultParams": {
+              "utm_source": "indicacao",
+              "utm_medium": "referral",
+              "utm_campaign": "deise"
+            }
+          },
+          {
+            "path": "/planodevoo/ref/efazza",
+            "type": "channel_referral",
+            "productCode": "DECOLE_PLANOVOO",
+            "redirectUrl": "https://decolesuacarreiraesg.com.br/planodevoo",
+            "defaultParams": {
+              "utm_source": "indicacao",
+              "utm_medium": "referral",
+              "utm_campaign": "efazza"
+            }
+          },
+          {
+            "path": "/planodevoo/ref/carreira-esg",
+            "type": "channel_referral",
+            "productCode": "DECOLE_PLANOVOO",
+            "redirectUrl": "https://decolesuacarreiraesg.com.br/planodevoo",
+            "defaultParams": {
+              "utm_source": "indicacao",
+              "utm_medium": "referral",
+              "utm_campaign": "carreira-esg"
+            }
+          },
+          {
+            "path": "/ref/cecilia",
+            "type": "channel_referral",
+            "productCode": "DECOLE_ESG_MENTORIA",
+            "redirectUrl": "https://decolesuacarreiraesg.com.br",
+            "defaultParams": {
+              "utm_source": "indicacao",
+              "utm_medium": "referral",
+              "utm_campaign": "cecilia"
+            }
+          },
+          {
+            "path": "/ref/deise",
+            "type": "channel_referral",
+            "productCode": "DECOLE_ESG_MENTORIA",
+            "redirectUrl": "https://decolesuacarreiraesg.com.br",
+            "defaultParams": {
+              "utm_source": "indicacao",
+              "utm_medium": "referral",
+              "utm_campaign": "deise"
+            }
+          },
+          {
+            "path": "/ref/efazza",
+            "type": "channel_referral",
+            "productCode": "DECOLE_ESG_MENTORIA",
+            "redirectUrl": "https://decolesuacarreiraesg.com.br",
+            "defaultParams": {
+              "utm_source": "indicacao",
+              "utm_medium": "referral",
+              "utm_campaign": "efazza"
+            }
+          },
+          {
+            "path": "/ref/carreira-esg",
+            "type": "channel_referral",
+            "productCode": "DECOLE_ESG_MENTORIA",
+            "redirectUrl": "https://decolesuacarreiraesg.com.br",
+            "defaultParams": {
+              "utm_source": "indicacao",
+              "utm_medium": "referral",
+              "utm_campaign": "carreira-esg"
+            }
           }
         ],
         "contacts": {

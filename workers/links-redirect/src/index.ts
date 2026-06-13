@@ -42,6 +42,7 @@ interface LinksCatalog {
         readonly redirectUrl?: string;
         readonly legacy?: boolean;
         readonly deprecated?: boolean;
+        readonly defaultParams?: Readonly<Record<string, string>>;
       }>;
       contacts?: Record<string, { readonly type: string; readonly number?: string; readonly defaultText?: string }>;
     };
@@ -263,6 +264,37 @@ function handleDoiConfirmationPath(url: URL, routePath: string, tenantId: string
     productCode: route.productCode,
     confirmationPath: lowercasePath(normalizePath(route.path)),
     eventType: "SIGN_UP",
+  };
+}
+
+function handleChannelReferralPath(url: URL, routePath: string, tenantId: string): HandlerResult | null {
+  const route = resolveTenantRoute(bundledCatalogJson as LinksCatalog, tenantId, routePath);
+  if (!route || route.type !== "channel_referral") return null;
+  const redirectUrl = asTrimmedString(route.redirectUrl);
+  if (!redirectUrl) return null;
+
+  let target: URL;
+  try {
+    target = new URL(redirectUrl);
+  } catch {
+    return {
+      location: appendQueryParams(redirectUrl, url.searchParams),
+      cacheControl: "no-store",
+      productCode: route.productCode,
+    };
+  }
+
+  const defaultParams = route.defaultParams ?? {};
+  Object.entries(defaultParams).forEach(([key, value]) => {
+    if (!url.searchParams.has(key)) {
+      target.searchParams.set(key, value);
+    }
+  });
+
+  return {
+    location: appendQueryParams(target.toString(), url.searchParams),
+    cacheControl: "no-store",
+    productCode: route.productCode,
   };
 }
 
@@ -499,6 +531,15 @@ const worker = {
         }
         const requestUrl = await withCheckoutRecoveryParams(url, tenantId, env);
         return redirectResponse(request, requestUrl, confirmationResult, env);
+      }
+
+      // Channel referral handler — lookup dinâmico do catálogo
+      const channelReferralResult = handleChannelReferralPath(url, rawPath, tenantId);
+      if (channelReferralResult) {
+        if (!channelReferralResult.location) {
+          return jsonResponse({ ok: false, error: "link_not_configured" }, 500);
+        }
+        return redirectResponse(request, url, channelReferralResult, env);
       }
 
       // Contact handler — lookup dinâmico do catálogo
