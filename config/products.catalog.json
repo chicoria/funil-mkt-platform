@@ -1,6 +1,6 @@
 {
   "schemaVersion": 5,
-  "updatedAt": "2026-06-13",
+  "updatedAt": "2026-06-21",
   "description": "Catálogo central multi-tenant — tenants.{id}.products.{code} declara cada produto. Fonte única para tracking, integrações, links e dashboard por tenant/produto.",
   "global": {
     "hotmart": {
@@ -48,7 +48,34 @@
       "credentials": {
         "brevo_api_key_env": "BREVO_API_KEY_DECOLE",
         "hotmart_token_env": "HOTMART_WEBHOOK_TOKEN_DECOLE",
-        "replyToEmail": "contato@decolesuacarreiraesg.com.br"
+        "replyToEmail": "contato@decolesuacarreiraesg.com.br",
+        "meta_access_token_env": "META_SYSTEM_USER_ACCESS_TOKEN_DECOLE",
+        "meta_app_secret_env": "META_APP_SECRET_DECOLE",
+        "meta_webhook_verify_token_env": "META_WEBHOOK_VERIFY_TOKEN_DECOLE"
+      },
+      "metaApp": {
+        "_note": "Identificadores nao-secret do App Meta (App Id / Business Id). Nao confundir com products.{CODE}.meta (config de Pixel/CAPI por produto, shape diferente).",
+        "appId": "1561616212633179",
+        "businessId": "577362448377604"
+      },
+      "socialAccounts": {
+        "_note": "Mapa Page/IG Business Account id -> produto, usado pelo ingress de comment-automation pra resolver tenant/produto a partir do payload do webhook Meta.",
+        "facebookPages": {
+          "483391978198375": {
+            "productCodes": [
+              "DECOLE_PLANOVOO",
+              "DECOLE_ESG_MENTORIA"
+            ]
+          }
+        },
+        "instagramBusinessAccounts": {
+          "17841401638634396": {
+            "productCodes": [
+              "DECOLE_PLANOVOO",
+              "DECOLE_ESG_MENTORIA"
+            ]
+          }
+        }
       },
       "_v5_note": "Campos v5 ativos no runtime multi-tenant. Legados v4 removidos no cleanup pós-migração.",
       "allowedOrigins": [
@@ -1111,6 +1138,33 @@
             "metaAds": {
               "adAccountIdEnv": "META_AD_ACCOUNT_ID_DECOLE_PLANOVOO"
             }
+          },
+          "commentAutomation": {
+            "_note": "Regras de auto-resposta a comentarios Facebook/Instagram (motor generico, ver packages/shared/src/comment-automation.ts). Primeira regra que casar vence.",
+            "rules": [
+              {
+                "id": "planovoo_traducao_esg",
+                "keyword": "tradução",
+                "matchType": "contains",
+                "caseSensitive": false,
+                "platforms": [
+                  "facebook",
+                  "instagram"
+                ],
+                "publicReply": {
+                  "enabled": true,
+                  "text": "Oi! Te mandei uma mensagem no privado 💬",
+                  "textByPlatform": {
+                    "facebook": "Oi! Te mandei uma mensagem no privado 💬 (ou acesse direto: https://decolesuacarreiraesg.com.br/planodevoo)",
+                    "instagram": "Veja o link do Plano de Voo no link da bio 🔗"
+                  }
+                },
+                "privateReply": {
+                  "enabled": false,
+                  "text": "Oi! Vi seu comentário sobre 'tradução' 🙌 O Plano de Voo traduz sua experiência pra linguagem ESG em até 5 minutos — você confere aqui: https://decolesuacarreiraesg.com.br/planodevoo (garantia de 7 dias, sem risco)"
+                }
+              }
+            ]
           },
           "n8nForward": {
             "enrichPayload": true,

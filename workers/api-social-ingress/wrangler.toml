@@ -1,0 +1,30 @@
+name = "decole-api-social-ingress"
+main = "src/index.ts"
+compatibility_date = "2026-04-22"
+workers_dev = false
+routes = [
+  "api.decolesuacarreiraesg.com.br/webhooks/v1/meta*"
+]
+
+# ── Cloudflare Secrets Store bindings ───────────────────────────────────────
+[[secrets_store_secrets]]
+binding = "META_APP_SECRET_DECOLE"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "meta_app_secret_decole"
+
+[[secrets_store_secrets]]
+binding = "META_WEBHOOK_VERIFY_TOKEN_DECOLE"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "meta_webhook_verify_token_decole"
+
+# ── Fila ─────────────────────────────────────────────────────────────────────
+[[queues.producers]]
+binding = "SOCIAL_EVENTS"
+queue = "decole-q-social-events"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+invocation_logs = true

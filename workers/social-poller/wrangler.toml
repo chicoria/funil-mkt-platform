@@ -1,0 +1,30 @@
+name = "decole-social-poller"
+main = "src/index.ts"
+compatibility_date = "2026-04-22"
+workers_dev = false
+
+[triggers]
+crons = ["*/2 * * * *"]
+
+# ── Cloudflare Secrets Store ─────────────────────────────────────────────────
+[[secrets_store_secrets]]
+binding = "META_SYSTEM_USER_ACCESS_TOKEN_DECOLE"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "meta_system_user_access_token_decole"
+
+# ── KV (deduplicação — partilhado com social-dispatcher) ─────────────────────
+[[kv_namespaces]]
+binding = "SOCIAL_DEDUPE_KV"
+id = "ba79379ce2094ae48b2657ee3c75db62"
+
+# ── Fila ─────────────────────────────────────────────────────────────────────
+[[queues.producers]]
+binding = "SOCIAL_EVENTS"
+queue = "decole-q-social-events"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+invocation_logs = true
