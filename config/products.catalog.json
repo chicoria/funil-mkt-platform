@@ -51,7 +51,8 @@
         "replyToEmail": "contato@decolesuacarreiraesg.com.br",
         "meta_access_token_env": "META_SYSTEM_USER_ACCESS_TOKEN_DECOLE",
         "meta_app_secret_env": "META_APP_SECRET_DECOLE",
-        "meta_webhook_verify_token_env": "META_WEBHOOK_VERIFY_TOKEN_DECOLE"
+        "meta_webhook_verify_token_env": "META_WEBHOOK_VERIFY_TOKEN_DECOLE",
+        "zernio_api_key_env": "ZERNIO_API_KEY_DECOLE"
       },
       "metaApp": {
         "_note": "Identificadores nao-secret do App Meta (App Id / Business Id). Nao confundir com products.{CODE}.meta (config de Pixel/CAPI por produto, shape diferente).",
@@ -65,7 +66,8 @@
             "productCodes": [
               "DECOLE_PLANOVOO",
               "DECOLE_ESG_MENTORIA"
-            ]
+            ],
+            "zernioAccountId": "6a4fb34c3ecd8aa3447bda9b"
           }
         },
         "instagramBusinessAccounts": {
@@ -73,7 +75,8 @@
             "productCodes": [
               "DECOLE_PLANOVOO",
               "DECOLE_ESG_MENTORIA"
-            ]
+            ],
+            "zernioAccountId": "6a513aa13ecd8aa344a06780"
           }
         }
       },
@@ -1160,7 +1163,7 @@
                   }
                 },
                 "privateReply": {
-                  "enabled": false,
+                  "enabled": true,
                   "text": "Oi! Vi seu comentário sobre 'tradução' 🙌 O Plano de Voo traduz sua experiência pra linguagem ESG em até 5 minutos — você confere aqui: https://decolesuacarreiraesg.com.br/planodevoo (garantia de 7 dias, sem risco)"
                 }
               }
