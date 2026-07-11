@@ -5,6 +5,7 @@ import {
   matchCommentRule,
   resolveCommentAutomationRules,
   resolveProductCodeForSocialAccount,
+  resolveZernioAccountId,
 } from "../../src/comment-automation";
 import { SocialCommentEvent } from "../../src/social-comment-event";
 
@@ -160,5 +161,38 @@ describe("resolveProductCodeForSocialAccount", () => {
       { tenantId: "decole", productCode: "DECOLE_PLANOVOO" },
       { tenantId: "decole", productCode: "DECOLE_ESG_MENTORIA" },
     ]);
+  });
+});
+
+describe("resolveZernioAccountId", () => {
+  const catalogWithZernio: CommentAutomationCatalog = {
+    tenants: {
+      decole: {
+        socialAccounts: {
+          facebookPages: { "483391978198375": { productCodes: ["DECOLE_PLANOVOO"] } },
+          instagramBusinessAccounts: {
+            "17841401638634396": {
+              productCodes: ["DECOLE_PLANOVOO"],
+              zernioAccountId: "6a513aa13ecd8aa344a06780",
+            },
+          },
+        },
+      },
+    },
+  };
+
+  it("resolves the Zernio-internal accountId for a connected instagram account, not the Meta id", () => {
+    expect(resolveZernioAccountId(catalogWithZernio, "decole", "instagram", "17841401638634396")).toBe(
+      "6a513aa13ecd8aa344a06780"
+    );
+  });
+
+  it("returns undefined when the account is mapped but has no zernioAccountId (not connected in Zernio yet)", () => {
+    expect(resolveZernioAccountId(catalogWithZernio, "decole", "facebook", "483391978198375")).toBeUndefined();
+  });
+
+  it("returns undefined for an unknown tenant or account id", () => {
+    expect(resolveZernioAccountId(catalogWithZernio, "unknown_tenant", "instagram", "17841401638634396")).toBeUndefined();
+    expect(resolveZernioAccountId(catalogWithZernio, "decole", "instagram", "unknown_account")).toBeUndefined();
   });
 });

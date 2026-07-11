@@ -9,6 +9,11 @@ binding = "META_SYSTEM_USER_ACCESS_TOKEN_DECOLE"
 store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
 secret_name = "meta_system_user_access_token_decole"
 
+[[secrets_store_secrets]]
+binding = "ZERNIO_API_KEY_DECOLE"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "zernio_api_key_decole"
+
 # ── Fila + KV (criados no Slice 6) ──────────────────────────────────────────
 [[queues.consumers]]
 queue = "decole-q-social-events"

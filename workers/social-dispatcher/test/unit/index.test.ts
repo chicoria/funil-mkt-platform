@@ -1,13 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import worker from "../../src/index";
 import { clearSecretCache } from "../../../../packages/shared/src/secrets-store-wrapper";
-import { clearPageTokenCache } from "../../src/handlers/reply-handlers";
 import type { DispatcherEnv } from "../../src/dispatcher";
 import type { SocialCommentEvent } from "../../../../packages/shared/src/social-comment-event";
 
 const ACCESS_TOKEN_DECOLE = "graph-token-decole";
 const ACCESS_TOKEN_SUPERARE = "graph-token-superare";
 
+// NOTA (Slice 9): default de provider agora é Zernio nas duas plataformas
+// (ver social-responder-selection.ts). Estes fixtures forçam `meta` via
+// responderProvider pra continuar exercitando o pipeline via Graph API
+// (mocks de graph.facebook.com já escritos abaixo) — cobertura do caminho
+// Zernio (default real de produção) vive em social-responder-selection.test.ts.
 const CATALOG = {
   tenants: {
     decole: {
@@ -15,6 +19,7 @@ const CATALOG = {
       products: {
         DECOLE_PLANOVOO: {
           commentAutomation: {
+            responderProvider: { facebook: "meta", instagram: "meta" },
             rules: [
               {
                 id: "planovoo_traducao",
@@ -35,6 +40,7 @@ const CATALOG = {
       products: {
         SUPERARE_CURSO_X: {
           commentAutomation: {
+            responderProvider: { facebook: "meta", instagram: "meta" },
             rules: [
               {
                 id: "superare_curso",
@@ -102,7 +108,6 @@ function errorResponse(): Response {
 describe("social-dispatcher", () => {
   afterEach(() => {
     clearSecretCache();
-    clearPageTokenCache();
     vi.unstubAllGlobals();
   });
 
@@ -253,9 +258,79 @@ describe("social-dispatcher", () => {
       env
     );
 
-    expect(fetchMock).toHaveBeenCalledTimes(5); // evt-a: 1 page tok + 1 reply + 1 DM; evt-b: cache hit + 1 reply + 1 DM
+    // Slice 7: cada evento constrói seu próprio MetaGraphSocialResponder
+    // (cache de page token por instância, não mais módulo-level) — evt-b
+    // não reaproveita o token buscado por evt-a, mesmo mesma página.
+    expect(fetchMock).toHaveBeenCalledTimes(6); // evt-a: 1 page tok + 1 reply + 1 DM; evt-b: 1 page tok + 1 reply + 1 DM
     const kv = env.SOCIAL_DEDUPE_KV as ReturnType<typeof makeKVStub>;
     expect(kv.put).toHaveBeenCalledTimes(4);
+  });
+
+  it("21. provider zernio usa o accountId interno da Zernio (socialAccounts.*.zernioAccountId), não o account_id bruto do Meta", async () => {
+    const catalog = structuredClone(CATALOG);
+    catalog.tenants.decole.products.DECOLE_PLANOVOO.commentAutomation.responderProvider = {
+      facebook: "zernio",
+      instagram: "zernio",
+    };
+    (catalog.tenants.decole as Record<string, unknown>).socialAccounts = {
+      instagramBusinessAccounts: {
+        ig_meta_account_raw: { productCodes: ["DECOLE_PLANOVOO"], zernioAccountId: "zernio_internal_acc_id" },
+      },
+    };
+    (catalog.tenants.decole.credentials as Record<string, unknown>).zernio_api_key_env = "ZERNIO_API_KEY_DECOLE";
+
+    const bodies: string[] = [];
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      bodies.push(String(init?.body ?? ""));
+      return okResponse();
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await worker.queue(
+      {
+        messages: [
+          {
+            body: makeEvent({
+              platform: "instagram",
+              account_id: "ig_meta_account_raw",
+              post_id: "media_1",
+            }),
+          },
+        ],
+      },
+      makeEnv({ CATALOG_JSON: JSON.stringify(catalog), ZERNIO_API_KEY_DECOLE: "zernio-key-decole" })
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2); // 1 reply + 1 DM, sem troca de page token (Zernio não usa)
+    for (const body of bodies) {
+      const parsed = JSON.parse(body) as { accountId: string };
+      expect(parsed.accountId).toBe("zernio_internal_acc_id");
+      expect(parsed.accountId).not.toBe("ig_meta_account_raw");
+    }
+  });
+
+  it("22. provider zernio sem zernioAccountId mapeado falha fail-fast, sem chamar fetch", async () => {
+    const catalog = structuredClone(CATALOG);
+    catalog.tenants.decole.products.DECOLE_PLANOVOO.commentAutomation.responderProvider = {
+      facebook: "zernio",
+      instagram: "zernio",
+    };
+    // socialAccounts ausente de propósito — conta ainda não conectada na Zernio
+    (catalog.tenants.decole.credentials as Record<string, unknown>).zernio_api_key_env = "ZERNIO_API_KEY_DECOLE";
+
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => okResponse());
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      worker.queue(
+        {
+          messages: [{ body: makeEvent({ platform: "instagram", account_id: "ig_meta_account_raw" }) }],
+        },
+        makeEnv({ CATALOG_JSON: JSON.stringify(catalog), ZERNIO_API_KEY_DECOLE: "zernio-key-decole" })
+      )
+    ).rejects.toThrow(/zernioAccountId/);
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("20. isolamento entre tenants: cada evento usa o access_token do seu próprio tenant", async () => {

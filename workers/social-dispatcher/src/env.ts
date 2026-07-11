@@ -1,4 +1,5 @@
 import type { CommentAutomationRule } from "../../../packages/shared/src/comment-automation";
+import type { SocialResponderProviderOverrides } from "../../../packages/shared/src/social-responder-selection";
 import bundledCatalog from "../../../config/products.catalog.json";
 
 export interface KVNamespaceLike {
@@ -13,8 +14,16 @@ export interface DispatcherEnv {
 }
 
 export interface DispatcherCatalogTenant {
-  credentials?: { meta_access_token_env?: string };
-  products?: Record<string, { commentAutomation?: { rules?: CommentAutomationRule[] } }>;
+  credentials?: { meta_access_token_env?: string; zernio_api_key_env?: string };
+  products?: Record<
+    string,
+    {
+      commentAutomation?: {
+        rules?: CommentAutomationRule[];
+        responderProvider?: SocialResponderProviderOverrides;
+      };
+    }
+  >;
 }
 
 export interface DispatcherCatalog {

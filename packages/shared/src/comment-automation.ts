@@ -20,6 +20,16 @@ export interface CommentAutomationRule {
 
 export interface SocialAccountMapping {
   productCodes: string[];
+  /**
+   * accountId interno da Zernio pra essa conta (formato deles, ex.:
+   * ObjectId hex de 24 chars) — obtido via `GET /v1/accounts` no dashboard
+   * da Zernio. Distinto do accountId do Meta Graph API (a chave deste mapa):
+   * a Zernio não aceita o ID do Meta como accountId nas chamadas de inbox
+   * (reply/DM), rejeita com 400 "Invalid accountId format". Obrigatório
+   * pra usar o provider zernio nessa conta; ausência é fail-fast em
+   * dispatcher.ts.
+   */
+  zernioAccountId?: string;
 }
 
 export interface CommentAutomationCatalog {
@@ -101,4 +111,24 @@ export function resolveProductCodeForSocialAccount(
     if (mapping) return mapping.productCodes.map((productCode) => ({ tenantId, productCode }));
   }
   return [];
+}
+
+/**
+ * Resolve o accountId interno da Zernio pra uma conta social (Meta accountId
+ * -> Zernio accountId), a partir de `tenant.socialAccounts`. `undefined` se
+ * a conta não estiver mapeada ou não tiver `zernioAccountId` configurado
+ * (ex.: conta ainda não conectada na Zernio) — chamador deve fail-fast.
+ */
+export function resolveZernioAccountId(
+  catalog: CommentAutomationCatalog,
+  tenantId: string,
+  platform: SocialPlatform,
+  accountId: string
+): string | undefined {
+  const tenant = catalog.tenants?.[tenantId];
+  const accounts =
+    platform === "facebook"
+      ? tenant?.socialAccounts?.facebookPages
+      : tenant?.socialAccounts?.instagramBusinessAccounts;
+  return accounts?.[accountId]?.zernioAccountId;
 }
