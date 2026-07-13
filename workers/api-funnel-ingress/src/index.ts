@@ -175,7 +175,7 @@ async function verifyAppWebhookSignature(
 // Params forwarded from precheckout form to checkout URL so links-redirect can
 // create BEGIN_CHECKOUT with email and attribution — enabling Brevo funnel updates.
 const CHECKOUT_FORWARD_PARAMS = [
-  "email", "anonymous_id", "session_id", "lead_id",
+  "email", "name", "phoneac", "phonenumber", "anonymous_id", "session_id", "lead_id",
   "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
   "fbp", "fbc", "fbclid", "gclid", "wbraid", "gbraid",
 ];
