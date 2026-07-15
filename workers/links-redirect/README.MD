@@ -29,6 +29,28 @@ Links de recuperação enviados pelo Brevo podem usar `rid=<token>`. O worker re
 - `https://links.decolesuacarreiraesg.com.br/plano-de-voo/checkout/offer/{codigo}`
   - Sobrescreve a oferta via path (ex.: `/plano-de-voo/checkout/offer/abc123`).
 
+### Slugs de referral por canal (`channel_referral`)
+
+Redirect puro (`302`) para a landing page do produto, aplicando `defaultParams`
+(`utm_source`, `utm_medium`, `utm_campaign`) somente quando ausentes na query
+string recebida. Não emite evento de funil — a atribuição é capturada pelo
+GTM Web/GA4 na própria visita à landing page.
+
+Slugs ativos: `cecilia`, `deise`, `efazza`, `carreira-esg`, `biancamosquera`.
+
+- Plano de Voo (`/planodevoo/ref/{slug}` → `DECOLE_PLANOVOO`):
+  - `https://links.decolesuacarreiraesg.com.br/planodevoo/ref/cecilia`
+  - `https://links.decolesuacarreiraesg.com.br/planodevoo/ref/deise`
+  - `https://links.decolesuacarreiraesg.com.br/planodevoo/ref/efazza`
+  - `https://links.decolesuacarreiraesg.com.br/planodevoo/ref/carreira-esg`
+  - `https://links.decolesuacarreiraesg.com.br/planodevoo/ref/biancamosquera`
+- Decole ESG (`/ref/{slug}` → `DECOLE_ESG_MENTORIA`):
+  - `https://links.decolesuacarreiraesg.com.br/ref/cecilia`
+  - `https://links.decolesuacarreiraesg.com.br/ref/deise`
+  - `https://links.decolesuacarreiraesg.com.br/ref/efazza`
+  - `https://links.decolesuacarreiraesg.com.br/ref/carreira-esg`
+  - `https://links.decolesuacarreiraesg.com.br/ref/biancamosquera`
+
 ## Variaveis
 
 - `ELIZETE_WHATSAPP_NUMBER` (ex.: `5511999999999`)

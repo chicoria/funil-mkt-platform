@@ -203,6 +203,17 @@
             }
           },
           {
+            "path": "/planodevoo/ref/biancamosquera",
+            "type": "channel_referral",
+            "productCode": "DECOLE_PLANOVOO",
+            "redirectUrl": "https://decolesuacarreiraesg.com.br/planodevoo",
+            "defaultParams": {
+              "utm_source": "indicacao",
+              "utm_medium": "referral",
+              "utm_campaign": "biancamosquera"
+            }
+          },
+          {
             "path": "/ref/cecilia",
             "type": "channel_referral",
             "productCode": "DECOLE_ESG_MENTORIA",
@@ -244,6 +255,17 @@
               "utm_source": "indicacao",
               "utm_medium": "referral",
               "utm_campaign": "carreira-esg"
+            }
+          },
+          {
+            "path": "/ref/biancamosquera",
+            "type": "channel_referral",
+            "productCode": "DECOLE_ESG_MENTORIA",
+            "redirectUrl": "https://decolesuacarreiraesg.com.br",
+            "defaultParams": {
+              "utm_source": "indicacao",
+              "utm_medium": "referral",
+              "utm_campaign": "biancamosquera"
             }
           }
         ],
