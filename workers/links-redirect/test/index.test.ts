@@ -50,7 +50,7 @@ describe("links-redirect worker", () => {
     const location = res.headers.get("location") || "";
     const url = new URL(location);
     expect(url.origin).toBe("https://wa.me");
-    expect(url.pathname).toBe("/351915787088");
+    expect(url.pathname).toBe("/351915787081");
     expect(url.searchParams.get("text")).toContain("Elizete");
   });
 
