@@ -181,7 +181,7 @@ const CHECKOUT_FORWARD_PARAMS = [
   "email", "name", "phoneac", "phonenumber", "anonymous_id", "session_id", "lead_id",
   "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
   "fbp", "fbc", "fbclid", "gclid", "wbraid", "gbraid",
-  "event_id",
+  "event_id", "test_event_code",
 ];
 
 function buildCheckoutRedirect(

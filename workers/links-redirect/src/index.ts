@@ -325,6 +325,7 @@ function buildBeginCheckoutEvent(request: Request, url: URL, result: HandlerResu
   const leadId = firstSearchParam(url.searchParams, ["lead_id", "leadId", "LEAD_ID"]);
   const email = firstSearchParam(url.searchParams, ["email", "EMAIL"]);
   const phone = firstSearchParam(url.searchParams, ["phone", "PHONE", "SMS", "phonenumber", "phoneNumber"]);
+  const testEventCode = firstSearchParam(url.searchParams, ["test_event_code", "meta_test_event_code"]);
 
   return {
     event_id: eventId,
@@ -359,6 +360,7 @@ function buildBeginCheckoutEvent(request: Request, url: URL, result: HandlerResu
       link_url: url.toString(),
       event_source_url: request.headers.get("referer") || url.origin,
       offer_code: firstSearchParam(target.searchParams, ["off", "offer"]),
+      ...(testEventCode ? { test_event_code: testEventCode } : {}),
     },
   };
 }

@@ -99,6 +99,26 @@ describe("links-redirect worker", () => {
     });
   });
 
+  it("captura test_event_code no payload do BEGIN_CHECKOUT (checkout de teste sem poluir relatorios)", async () => {
+    const sent: unknown[] = [];
+    const res = await worker.fetch(
+      makeRequest("plano-de-voo/checkout?event_id=evt-begin-test&test_event_code=TEST12345"),
+      makeEnv({
+        FUNNEL_EVENTS: {
+          send: async (body: unknown) => {
+            sent.push(body);
+          },
+        },
+      })
+    );
+
+    expect(res.status).toBe(302);
+    expect(sent[0]).toMatchObject({
+      event_id: "evt-begin-test",
+      payload: { test_event_code: "TEST12345" },
+    });
+  });
+
   it("padroniza oferta via parametro offer", async () => {
     const res = await worker.fetch(makeRequest("plano-de-voo/checkout?offer=n82b9jqz&utm_source=ig"), makeEnv());
     const location = res.headers.get("location") || "";
