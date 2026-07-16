@@ -92,6 +92,18 @@ describe("precheckout — catalog-driven redirect", () => {
     expect(json.redirect_url as string).toContain("anonymous_id=anon-abc-123");
   });
 
+  it("propaga event_id no redirect_url do JSON (dedup Meta CAPI navegador/servidor)", async () => {
+    const req = precheckoutRequest({
+      email: "carla@example.com",
+      product_code: "DECOLE_PLANOVOO",
+      event_id: "begin_checkout-abc-123",
+    });
+    const res = await worker.fetch(req, makeEnv());
+    const json = await res.json() as Record<string, unknown>;
+
+    expect(json.redirect_url as string).toContain("event_id=begin_checkout-abc-123");
+  });
+
   it("enfileira o evento na queue antes de redirecionar", async () => {
     const sendMock = vi.fn(async () => {});
     const req = precheckoutRequest({

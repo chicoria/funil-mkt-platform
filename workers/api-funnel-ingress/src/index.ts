@@ -174,10 +174,14 @@ async function verifyAppWebhookSignature(
 
 // Params forwarded from precheckout form to checkout URL so links-redirect can
 // create BEGIN_CHECKOUT with email and attribution — enabling Brevo funnel updates.
+// event_id: gerado no navegador (mesmo valor usado no dataLayer.push do
+// begin_checkout) para que links-redirect reaproveite este ID em vez de gerar
+// o seu, permitindo dedup Meta CAPI entre o Pixel do navegador e o CAPI server-side.
 const CHECKOUT_FORWARD_PARAMS = [
   "email", "name", "phoneac", "phonenumber", "anonymous_id", "session_id", "lead_id",
   "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
   "fbp", "fbc", "fbclid", "gclid", "wbraid", "gbraid",
+  "event_id",
 ];
 
 function buildCheckoutRedirect(
