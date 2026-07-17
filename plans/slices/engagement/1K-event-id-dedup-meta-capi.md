@@ -10,8 +10,8 @@
 | Estado | DONE |
 | Started | 2026-07-16 por Claude Sonnet 5 |
 | Completed | 2026-07-16 por Claude Sonnet 5 |
-| Commit final | `696fd5c`/`9cf6d07` (api-funnel-ingress), `835ad54` (links-redirect, fix não relacionado), `26e421c` (site, test_event_code) |
-| PR | — (push direto em `main`, deploy via `deploy-all-workers.yml` runs `29507238316`/`29510796246`) |
+| Commit final | `696fd5c`/`9cf6d07` (api-funnel-ingress), `835ad54` (links-redirect, fix não relacionado), `26e421c` (site, test_event_code), `c27b5c1`/`249e56d` (api-funnel-ingress autofill Hotmart + teste D1 desatualizado) |
+| PR | — (push direto em `main`, deploy via `deploy-all-workers.yml` runs `29507238316`/`29510796246`/`29571164074`) |
 
 ## Contexto
 
@@ -54,6 +54,9 @@ gerar o ID e o `api-funnel-ingress` não descartá-lo no caminho.
 | GTM Web `GTM-58CQ9K7X` (variável `Get_Event_ID`, id `65`, pixel Plano de Voo `2220600768748665`) | container Google Tag Manager | **descoberto depois da 1ª publicação**: cada pixel tem sua própria variável `Get_Event_ID` gerada isoladamente pelo assistente da Meta — a var `65` tinha o mesmo bug e não foi tocada na 1ª rodada. Corrigida igual à `36` (reaproveitando `DL - event_id`), publicado como versão 22 |
 | `workers/api-funnel-ingress/src/index.ts`, `workers/links-redirect/src/index.ts` | `funil-mkt-platform` | `test_event_code`/`meta_test_event_code` propagado (allowlist + payload do `BEGIN_CHECKOUT`) pra permitir checkout de teste sem poluir relatórios reais (Meta Test Events) |
 | `workers/links-redirect/test/index.test.ts` | `funil-mkt-platform` | fix não relacionado: teste do WhatsApp `elizete-wp` esperava número antigo (pré-existente, bloqueava o pipeline de deploy); + novo teste cobrindo `test_event_code` no payload |
+| `workers/api-funnel-ingress/src/index.ts` (`buildCheckoutRedirect`) | `funil-mkt-platform` | **bug separado, achado em 2026-07-17**: lia `payload.email`/`name`/`phoneac`/`phonenumber` (minúsculo), mas o form real (`EMAIL`/`FIRSTNAME`/`LASTNAME`/`SMS__COUNTRY_CODE`/`SMS`) nunca batia — nenhum desses campos chegava na URL de checkout do Hotmart (sem autofill). Corrigido com `resolveCheckoutForwardValue()` mapeando os nomes reais |
+| `workers/funnel-dispatcher/test/unit/d1-migration.node.test.mts` | `funil-mkt-platform` | teste desatualizado (pré `3bb7afd`, regra de identidade mudou em 2026-05-19) bloqueava `deploy-all-workers.yml`; ajustado pra refletir a regra atual (email determinístico > anonymous_id) |
+| GTM Server `GTM-K6Q4H6BR` (tag `Meta CAPI - Dynamic by Tenant/Product`, id `10`, workspace 23 → versão 23) | container Google Tag Manager | **causa raiz do "Servidor" nunca aparecer em Test Events**: parâmetro `testEventCode` estava fixo em `{{LT - Meta Test Event Code by Tenant/Product}}` (lookup table hardcoded: `TEST44710` Plano de Voo / `TEST19244` ESG), nunca no valor dinâmico do evento — todo tráfego real (não só teste) era marcado com esse código fixo. Corrigido pra `{{ED - test_event_code}}` (variável já existia, não era usada nesse parâmetro) |
 
 ### O que NÃO mudou
 
@@ -87,6 +90,14 @@ Verificação end-to-end pendente (não executada nesta sessão):
    WEB_ONLY/SERVER_ONLY) pros datasets `1329973348435032` **e**
    `2220600768748665` e confirmar queda real no volume não-deduplicado
    nos dois.
+
+**Ainda pendente após a sessão de 2026-07-17** (ver detalhes na seção de
+Execução abaixo): confirmar que a linha de **Servidor** passa a aparecer
+em Test Events pro Plano de Voo com `test_event_code=TEST78251` depois do
+fix da tag `Meta CAPI - Dynamic by Tenant/Product` (versão 23). Não foi
+possível confirmar ao vivo nesta sessão porque o Preview do GTM Server
+não rastreia chamadas servidor-a-servidor (ver Gotchas). Reconsultar
+`ads_get_dataset_stats`/checar a tela de Test Events numa sessão futura.
 
 ## Rollback
 
@@ -138,6 +149,66 @@ Verificação end-to-end pendente (não executada nesta sessão):
 - Confirmado (via listagem de variáveis `FB_CONVERSIONS_API-*-Web-*`) que
   não há mais nenhum outro pixel neste mesmo container.
 
+### 2026-07-17 por Claude Sonnet 5 (verificação end-to-end pendente — dois bugs novos achados e corrigidos)
+
+- Usuário pediu pra conduzir o teste end-to-end pendente (item 1 acima).
+  Ao inspecionar a URL de redirect real pro Hotmart, faltavam
+  `email`/`name`/`phoneac`/`phonenumber` — achado o bug de
+  `buildCheckoutRedirect` (nomes de campo divergentes, ver tabela acima).
+  Corrigido com TDD (teste novo reproduzindo o bug com os nomes reais do
+  form → red → fix → green), commit `c27b5c1`.
+- Ao tentar deployar, `npx vitest run` na raiz revelou falha pré-existente
+  e não-relacionada em `d1-migration.node.test.mts` (bloqueava
+  `deploy-all-workers.yml`). Investigado: encontrada em `git log` que a
+  regra de identidade mudou intencionalmente em `3bb7afd` (2026-05-19,
+  email determinístico > anonymous_id) e esse teste específico nunca foi
+  atualizado. Corrigidas as asserções pra refletir a regra atual, commit
+  `249e56d`.
+- Deploy disparado via `gh workflow run deploy-all-workers.yml` **sem**
+  `-f dry_run=false` rodou em modo dry-run (default do workflow) — nada
+  foi publicado. Percebido só depois de testar o endpoint de produção via
+  `curl` direto e ver que nada tinha mudado. Redisparado com
+  `dry_run=false`, aí sim publicou de verdade.
+- Verificação via `curl` direto no `/funnel/precheckout` e seguindo o
+  redirect até `pay.hotmart.com` confirmou o fix funcionando
+  (`email`/`name`/`phoneac`/`phonenumber` corretos na URL final).
+  Confirmado depois também via browser real (screenshot do checkout do
+  Hotmart com email/nome preenchidos).
+- Usuário reportou que a tela "Eventos de teste" (Plano de Voo, Meta
+  Events Manager) nunca mostrava linha de **Servidor**, só Navegador —
+  mesmo com `test_event_code` correto na URL. Investigado via GTM API
+  (credenciais em `~/.env.local` → `GOOGLE_APPLICATION_CREDENTIALS`,
+  script ad-hoc de OAuth2 JWT + REST direto, sem `gcloud`/`googleapis`
+  instalados): achada a tag `Meta CAPI - Dynamic by Tenant/Product` com
+  `testEventCode` fixo numa lookup table (`TEST44710` pro Plano de Voo),
+  nunca lendo o valor dinâmico do evento. Corrigido pra
+  `{{ED - test_event_code}}`.
+- **Quase-incidente durante o fix:** o workspace do GTM Server usado pra
+  editar a tag estava desatualizado em relação à versão publicada — um
+  `workspaces.sync` revelou `mergeConflict: true` com duas diferenças
+  reais: `enableEventEnhancement` (live=`true`, workspace=`false`) e um
+  `blockingTriggerId: ["27"]` ("Meta Blocker — section_view/vsl_section_*")
+  que existia na produção mas não no workspace. Publicar direto teria
+  revertido essas duas coisas. Corrigido reaplicando a tag com o estado
+  completo (fix + `enableEventEnhancement: true` + `blockingTriggerId`
+  restaurados) antes de sincronizar/criar versão/publicar.
+- `ads_get_dataset_stats` (`SERVER_ONLY`) confirmou `InitiateCheckout`
+  chegando via servidor mesmo **antes** do fix — ou seja, a tag sempre
+  funcionou, só nunca foi marcada como teste corretamente.
+- Tentativa de confirmar ao vivo via GTM Server Preview: usuário conseguiu
+  abrir Preview e capturou um evento `cta_click` disparando as duas tags
+  (Meta CAPI + GA4) sem bloqueio — mas esse payload não tinha
+  `test_event_code` nenhum (só embutido dentro de `event_source_url`),
+  porque eventos genéricos do GTM Web (`cta_click`, `section_view` etc.)
+  nunca propagam esse parâmetro — só o fluxo do worker propaga. Não foi
+  possível ver o evento `begin_checkout` real no Preview porque ele é
+  gerado servidor-a-servidor (`funnel-dispatcher` → `/mp/collect`), e o
+  Preview do GTM Server só rastreia requisições que carregam o header
+  `X-Gtm-Server-Preview` gerado pelo `gtm.js` no navegador — uma chamada
+  direta do Worker nunca carrega esse header. **Verificação ao vivo
+  ficou estruturalmente bloqueada**; ver item pendente na seção de
+  Validação executável.
+
 ## Gotchas / lições aprendidas
 
 - O container GTM Server (`GTM-K6Q4H6BR`, conta `6266094107`, container
@@ -166,3 +237,46 @@ Verificação end-to-end pendente (não executada nesta sessão):
   `27` neste container) — sempre confirmar o ID do workspace atual via
   `workspaces.list` antes de editar, não reusar um ID de uma sessão
   anterior.
+- **`buildCheckoutRedirect` só repassa campos cujo nome bate exatamente**
+  com `CHECKOUT_FORWARD_PARAMS` (`email`/`name`/`phoneac`/`phonenumber`).
+  O form HTML usa `EMAIL`/`FIRSTNAME`/`LASTNAME`/`SMS__COUNTRY_CODE`/`SMS`
+  — não presumir que "o form já manda tudo via `FormData`" garante que o
+  worker sabe ler; sempre checar o mapeamento explícito.
+- `deploy-all-workers.yml` tem `dry_run` com **default `"true"`** — rodar
+  `gh workflow run` sem `-f dry_run=false` não publica nada, mas o run
+  aparece verde ("success") do mesmo jeito. Sempre conferir o nome do job
+  nos logs (`Deploy workers (dry-run)` vs `(produção)`) ou testar o
+  endpoint de produção diretamente antes de assumir que o deploy surtiu
+  efeito.
+- Não há `googleapis`/`jsonwebtoken`/`gcloud` instalados neste ambiente
+  pra falar com APIs do Google. Funciona escrever um script Node ad-hoc
+  usando só `node:crypto`/`node:fs`/`fetch` pra fazer o fluxo OAuth2 JWT
+  Bearer de service account (ver script usado nesta sessão) — tanto pra
+  Tag Manager API (`tagmanager.readonly`/`edit.containers`/
+  `edit.containerversions`/`publish`) quanto pra Cloud Logging API
+  (`logging.read`, projeto `gtm-k6q4h6br-ndq3n`, serviço Cloud Run
+  `server-side-tagging`).
+- **GTM API: workspace desatualizado não avisa sozinho.** Um `GET` na tag
+  não informa se o workspace está fora de sincronia com a versão
+  publicada — só um `workspaces.sync` revela `mergeConflict`. Antes de
+  fazer `PUT` numa tag/trigger em qualquer container que outra sessão
+  possa ter publicado depois, rodar `sync` primeiro (ou pelo menos depois
+  do `PUT`, antes do `create_version`) pra não sobrescrever campos que
+  mudaram na produção sem seu conhecimento.
+- `quick_preview` via API retorna HTML de erro (não JSON) quando falha —
+  não confiável pra scripts ad-hoc; é pensado pra sessão interativa no
+  navegador. Pra validação sem UI, criar a versão e conferir os `tag[]`
+  retornados no corpo da resposta de `create_version` antes de publicar.
+- **Cloud Run do sGTM não loga por padrão a chamada HTTP de saída pra
+  Meta CAPI** — só avisos genéricos de infra (beacon de uso, versão
+  desatualizada). Não dá pra confirmar o payload exato enviado à Meta via
+  `gcloud logging`/Cloud Logging API; só via GTM Preview (e só pra
+  requisições client-side) ou instrumentação manual temporária.
+- **GTM Server Preview não vê chamadas servidor-a-servidor.** A
+  correlação de requisições no Preview usa o header `X-Gtm-Server-Preview`
+  injetado pelo `gtm.js` no navegador — uma chamada feita direto por um
+  Worker/backend (sem navegador no meio) nunca carrega esse header e
+  nunca aparece no painel de Preview, mesmo enviando pro mesmo endpoint.
+  Reproduzir isso via `curl` exigiria capturar esse header (não um cookie
+  comum) de uma requisição real do navegador em Preview — não tentado
+  nesta sessão por custo.
