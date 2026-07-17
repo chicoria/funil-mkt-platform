@@ -136,7 +136,7 @@ describe("D1 tenant migrations", () => {
     ).toBeUndefined();
   });
 
-  it("preserves previous email aliases when the same anonymous_id submits a new email", async () => {
+  it("cria profile_id separado quando o mesmo anonymous_id envia um email novo, preservando o alias do email anterior (regra: email determinístico > anonymous_id)", async () => {
     const identityDb = new DatabaseSync(":memory:");
     const eventStoreDb = createLegacyEventStoreDb();
     const env = {
@@ -180,9 +180,17 @@ describe("D1 tenant migrations", () => {
     await worker.queue({ messages: [{ body: firstEvent }, { body: secondEvent }] }, env);
 
     const eventProfiles = eventStoreDb
-      .prepare("SELECT DISTINCT profile_id FROM funnel_events WHERE event_id IN ('evt-old-email', 'evt-new-email')")
+      .prepare(
+        "SELECT event_id, profile_id FROM funnel_events WHERE event_id IN ('evt-old-email', 'evt-new-email') ORDER BY event_id"
+      )
       .all();
-    expect(eventProfiles).toHaveLength(1);
+    // Regra 2 (identity.ts): email novo no mesmo device → profile_id separado,
+    // NAO herda do anonymous_id (evita merge incorreto entre pessoas distintas
+    // que compartilham o mesmo browser/device).
+    expect(eventProfiles).toHaveLength(2);
+    const oldProfileId = eventProfiles.find((row) => row.event_id === "evt-old-email").profile_id;
+    const newProfileId = eventProfiles.find((row) => row.event_id === "evt-new-email").profile_id;
+    expect(oldProfileId).not.toBe(newProfileId);
 
     const aliasRows = identityDb
       .prepare(
@@ -193,7 +201,12 @@ describe("D1 tenant migrations", () => {
       )
       .all();
     expect(aliasRows).toHaveLength(3);
-    expect(aliasRows.filter((row) => row.email_hash)).toHaveLength(2);
-    expect(new Set(aliasRows.map((row) => row.profile_id))).toEqual(new Set([eventProfiles[0].profile_id]));
+    const emailAliases = aliasRows.filter((row) => row.email_hash);
+    expect(emailAliases).toHaveLength(2);
+    // alias do email antigo é preservado, ainda apontando pro profile antigo
+    expect(emailAliases.map((row) => row.profile_id).sort()).toEqual([oldProfileId, newProfileId].sort());
+    // o anonymous_id (device) segue o profile mais recente
+    const anonAlias = aliasRows.find((row) => row.anonymous_id);
+    expect(anonAlias.profile_id).toBe(newProfileId);
   });
 });
