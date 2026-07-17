@@ -184,6 +184,35 @@ const CHECKOUT_FORWARD_PARAMS = [
   "event_id", "test_event_code",
 ];
 
+function pickString(payload: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    const val = payload[key];
+    if (typeof val === "string" && val) return val;
+  }
+  return "";
+}
+
+// Nomes reais dos campos do form de precheckout (site/planodevoo/index.html)
+// nao batem com CHECKOUT_FORWARD_PARAMS (EMAIL/FIRSTNAME/LASTNAME/SMS__COUNTRY_CODE/SMS
+// em vez de email/name/phoneac/phonenumber) — mapeia explicitamente pra nao perder
+// esses campos na URL de redirect pro Hotmart.
+function resolveCheckoutForwardValue(payload: Record<string, unknown>, key: string): string {
+  switch (key) {
+    case "email":
+      return pickString(payload, ["email", "EMAIL"]);
+    case "name":
+      return [pickString(payload, ["name", "FIRSTNAME"]), pickString(payload, ["LASTNAME"])]
+        .filter(Boolean)
+        .join(" ");
+    case "phoneac":
+      return pickString(payload, ["phoneac", "SMS__COUNTRY_CODE"]);
+    case "phonenumber":
+      return pickString(payload, ["phonenumber", "SMS"]);
+    default:
+      return pickString(payload, [key]);
+  }
+}
+
 function buildCheckoutRedirect(
   catalog: CatalogV5,
   tenantId: string,
@@ -198,7 +227,7 @@ function buildCheckoutRedirect(
 
   const url = new URL(`https://${tenantLinks.linksDomain}${route.path}`);
   for (const key of CHECKOUT_FORWARD_PARAMS) {
-    const val = typeof payload[key] === "string" && payload[key] ? payload[key] as string : "";
+    const val = resolveCheckoutForwardValue(payload, key);
     if (val) url.searchParams.set(key, val);
   }
   return url;

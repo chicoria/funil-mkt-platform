@@ -131,6 +131,24 @@ describe("precheckout — catalog-driven redirect", () => {
     expect(body.ok).toBe(true);
   });
 
+  it("propaga email/name/phone no redirect_url usando os nomes reais dos campos do form (EMAIL/FIRSTNAME/LASTNAME/SMS__COUNTRY_CODE/SMS)", async () => {
+    const req = precheckoutRequest({
+      EMAIL: "lucia@example.com",
+      FIRSTNAME: "Lucia",
+      LASTNAME: "Fazza",
+      SMS__COUNTRY_CODE: "+55",
+      SMS: "11999999999",
+      product_code: "DECOLE_PLANOVOO",
+    });
+    const res = await worker.fetch(req, makeEnv());
+    const json = await res.json() as Record<string, unknown>;
+
+    expect(json.redirect_url as string).toContain("email=lucia%40example.com");
+    expect(json.redirect_url as string).toContain("name=Lucia+Fazza");
+    expect(json.redirect_url as string).toContain("phoneac=%2B55");
+    expect(json.redirect_url as string).toContain("phonenumber=11999999999");
+  });
+
   it("nao inclui email vazio no redirect URL", async () => {
     const req = precheckoutRequest({
       product_code: "DECOLE_PLANOVOO",
