@@ -233,6 +233,42 @@ function buildCheckoutRedirect(
   return url;
 }
 
+// Espelha buildCheckoutRedirect: monta o destino do resgate promocional
+// gratuito (Fatia B, links-redirect) em vez do checkout Hotmart. O prefixo de
+// produto vem de uma rota channel_referral já existente no catálogo
+// ("/planodevoo/ref/{slug}" -> prefixo "planodevoo") — mesma convenção usada
+// por resolvePromoByCatalog no links-redirect. Produtos sem esse tipo de rota
+// (ex.: um produto cujo referral usa "/ref/{slug}", sem prefixo) não têm destino promocional —
+// buildPromoRedirect devolve null e o handler cai no checkout normal.
+function buildPromoRedirect(
+  catalog: CatalogV5,
+  tenantId: string,
+  productCode: string,
+  promoCode: string,
+  payload: Record<string, unknown>
+): URL | null {
+  if (!promoCode) return null;
+  const tenantLinks = (catalog.tenants as Record<string, { links?: { linksDomain?: string; routes?: Array<{ path: string; productCode: string; type?: string }> } }>)[tenantId]?.links;
+  if (!tenantLinks?.linksDomain || !tenantLinks.routes) return null;
+
+  const route = tenantLinks.routes.find((r) => r.productCode === productCode && r.type === "channel_referral");
+  if (!route) return null;
+
+  const segments = route.path.replace(/^\/+|\/+$/g, "").split("/");
+  const refIndex = segments.indexOf("ref");
+  const prefix = refIndex > 0 ? segments.slice(0, refIndex).join("/") : "";
+  if (!prefix) return null;
+
+  // promoCode entra apenas como segmento de path devidamente encodado, nunca
+  // concatenado cru — o host sempre vem de linksDomain do catálogo.
+  const url = new URL(`https://${tenantLinks.linksDomain}/${prefix}/promo/${encodeURIComponent(promoCode)}`);
+  for (const key of CHECKOUT_FORWARD_PARAMS) {
+    const val = resolveCheckoutForwardValue(payload, key);
+    if (val) url.searchParams.set(key, val);
+  }
+  return url;
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const { pathname } = new URL(request.url);
@@ -295,7 +331,16 @@ export default {
       // links-redirect creates BEGIN_CHECKOUT with email → Brevo funnel step updated.
       // Returns redirect_url in JSON (not HTTP 302) — compatible with fetch()-based forms
       // that cannot follow cross-origin redirects via XHR.
-      const checkoutRedirect = buildCheckoutRedirect(catalog, tenantId, event.product_code, payload);
+      // promo_code (campanha gratuita, Fatia C) desvia pro resgate em vez do
+      // checkout pago; fallback intacto se o produto não tiver destino promo.
+      // promo_code de propósito NÃO entra em CHECKOUT_FORWARD_PARAMS: ele vira
+      // segmento de path (encodado) no destino promocional, não query param —
+      // adicioná-lo lá duplicaria/double-encodaria o valor na query string.
+      const promoCode = resolveCheckoutForwardValue(payload, "promo_code");
+      const checkoutRedirect = promoCode
+        ? buildPromoRedirect(catalog, tenantId, event.product_code, promoCode, payload) ??
+          buildCheckoutRedirect(catalog, tenantId, event.product_code, payload)
+        : buildCheckoutRedirect(catalog, tenantId, event.product_code, payload);
       const redirectUrl = checkoutRedirect ? checkoutRedirect.toString() : undefined;
       if (redirectUrl) {
         logIngress({ stage: "queued_with_redirect", pathname, tenant_id: tenantId, event_id: event.event_id, redirect_to: checkoutRedirect!.pathname, status: 202 });

@@ -9,10 +9,10 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | BLOCKED |
-| Started | — |
+| Estado | Em revisão final — código completo e verde, aguardando decisão do usuário sobre commit/deploy |
+| Started | 2026-09-11 |
 | Completed | — |
-| Commit final | — |
+| Commit final | — (nenhum commit criado ainda; ver Execução) |
 
 ## ⚠️ Bloqueio a resolver antes de começar
 
@@ -99,11 +99,51 @@ Pontos de atenção:
 
 ## Execução (append-only)
 
-(a preencher)
+**2026-09-11** — Bloqueio resolvido e implementação completa, TDD Red→Green:
+
+- Bloqueio: `precheckout-catalog-redirect.md` estava desatualizado (descrevia 302,
+  código real sempre foi 202 JSON + `redirect_url` — mudança técnica posterior à
+  aprovação G.12 original, não revert/incompletude). Reconciliado e marcado DONE.
+- Red: `test/unit/promo-redirect.test.ts` (7 casos do plano + verificação de
+  agnosticismo), confirmado com 2/7 falhando antes da implementação.
+- Green: `buildPromoRedirect()` em `workers/api-funnel-ingress/src/index.ts`,
+  espelhando `buildCheckoutRedirect`. Prefixo de produto derivado de uma rota
+  `channel_referral` existente no catálogo (mesma convenção do
+  `resolvePromoByCatalog` da Fatia B). 34/34 testes verdes (0 regressão nos 26
+  pré-existentes), `tsc --noEmit` limpo, `check-config` limpo.
+- Revisão G.12 por agente separado (`ecc:code-reviewer`, sem contexto prévio):
+  **0 MUST-FIX — APPROVE**. Verificou de forma independente (lendo o catálogo e o
+  código do `links-redirect`, não só confiando na minha descrição) que o filtro
+  `channel_referral`-only é necessário para bater com o que `resolvePromoByCatalog`
+  aceita, e que produtos sem prefixo (`/ref/{slug}` puro) corretamente caem no
+  fallback. 2 SHOULD-FIX aplicados: teste de agnosticismo adicionado (mesmo padrão
+  da Fatia B) e comentário explicando por que `promo_code` fica fora de
+  `CHECKOUT_FORWARD_PARAMS`. 1 SHOULD-FIX registrado como follow-up, não corrigido
+  agora (ver Gotchas). Suite final: 34/34 verde.
+- **Pendente**: nenhum commit criado, nenhum deploy disparado.
 
 ## Gotchas / lições aprendidas
 
-(a preencher)
+- **Teste de agnosticismo pegou hardcode no próprio comentário que eu escrevi**:
+  o teste novo (`match(/DECOLE|PLANOVOO|ESG/g)` sobre o source via `?raw`) falhou
+  porque um comentário explicativo citava "ESG" como exemplo — reescrito de forma
+  genérica. Prova que o teste funciona (pegou uma violação real, não só passou por
+  acaso) e reforça por que vale a pena ter esse guard automatizado.
+- **Follow-up não corrigido nesta fatia**: o `.find()` que resolve a rota
+  `channel_referral` por `productCode` assume implicitamente que todas as rotas
+  desse tipo para o mesmo produto compartilham o mesmo prefixo — verdade hoje
+  (verificado contra o catálogo real), mas não é validado por `check-config` nem
+  por tipo. Se um dia um produto ganhar uma segunda rota `channel_referral` com
+  prefixo divergente, `buildPromoRedirect` pode escolher a rota errada
+  dependendo da ordem do array, sem nenhum erro — silencioso. Registrado pelo
+  revisor como SHOULD-FIX; decidi não resolver agora (mudança em `check-config`
+  é escopo maior, fora desta fatia) — fica como follow-up explícito.
+
+## Decisões tomadas (execução)
+
+- `buildPromoRedirect` recebe `productCode` explicitamente (diferente do
+  pseudocódigo original do slice, que não tinha esse parâmetro) — sem ele não há
+  como resolver o prefixo de produto a partir do catálogo.
 
 ## Decisões tomadas
 
