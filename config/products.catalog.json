@@ -1,6 +1,6 @@
 {
   "schemaVersion": 5,
-  "updatedAt": "2026-06-21",
+  "updatedAt": "2026-09-11",
   "description": "Catálogo central multi-tenant — tenants.{id}.products.{code} declara cada produto. Fonte única para tracking, integrações, links e dashboard por tenant/produto.",
   "global": {
     "hotmart": {
@@ -214,6 +214,17 @@
             }
           },
           {
+            "path": "/planodevoo/ref/ana-rizzo",
+            "type": "channel_referral",
+            "productCode": "DECOLE_PLANOVOO",
+            "redirectUrl": "https://decolesuacarreiraesg.com.br/planodevoo",
+            "defaultParams": {
+              "utm_source": "indicacao",
+              "utm_medium": "referral",
+              "utm_campaign": "ana-rizzo"
+            }
+          },
+          {
             "path": "/ref/cecilia",
             "type": "channel_referral",
             "productCode": "DECOLE_ESG_MENTORIA",
@@ -266,6 +277,61 @@
               "utm_source": "indicacao",
               "utm_medium": "referral",
               "utm_campaign": "biancamosquera"
+            }
+          },
+          {
+            "path": "/ref/ana-rizzo",
+            "type": "channel_referral",
+            "productCode": "DECOLE_ESG_MENTORIA",
+            "redirectUrl": "https://decolesuacarreiraesg.com.br",
+            "defaultParams": {
+              "utm_source": "indicacao",
+              "utm_medium": "referral",
+              "utm_campaign": "ana-rizzo"
+            }
+          },
+          {
+            "path": "/planodevoo/ref/reativacao-comunidade-presente-whatsapp",
+            "type": "channel_referral",
+            "productCode": "DECOLE_PLANOVOO",
+            "redirectUrl": "https://decolesuacarreiraesg.com.br/planodevoo",
+            "defaultParams": {
+              "utm_source": "whatsapp",
+              "utm_medium": "reativacao_base",
+              "utm_campaign": "comunidade_presente"
+            }
+          },
+          {
+            "path": "/planodevoo/ref/reativacao-comunidade-presente-email",
+            "type": "channel_referral",
+            "productCode": "DECOLE_PLANOVOO",
+            "redirectUrl": "https://decolesuacarreiraesg.com.br/planodevoo",
+            "defaultParams": {
+              "utm_source": "email",
+              "utm_medium": "reativacao_base",
+              "utm_campaign": "comunidade_presente"
+            }
+          },
+          {
+            "path": "/planodevoo/ref/reativacao-comunidade-egressa-email",
+            "type": "channel_referral",
+            "productCode": "DECOLE_PLANOVOO",
+            "redirectUrl": "https://decolesuacarreiraesg.com.br/planodevoo",
+            "defaultParams": {
+              "utm_source": "email",
+              "utm_medium": "reativacao_base",
+              "utm_campaign": "comunidade_egressa"
+            }
+          },
+          {
+            "path": "/planodevoo/ref/reativacao-somente-email-email",
+            "type": "channel_referral",
+            "productCode": "DECOLE_PLANOVOO",
+            "redirectUrl": "https://decolesuacarreiraesg.com.br/planodevoo",
+            "defaultParams": {
+              "utm_source": "email",
+              "utm_medium": "reativacao_base",
+              "utm_campaign": "somente_email"
             }
           }
         ],
@@ -1157,7 +1223,8 @@
             "checkoutPath": "/plano-de-voo/checkout",
             "checkoutBaseUrl": "https://pay.hotmart.com/R105463680A?off=f3yweqek",
             "offerPathTemplate": "/plano-de-voo/checkout/offer/{offerCode}",
-            "checkoutOfferPathTemplate": "/plano-de-voo/checkout/offer/{offerCode}"
+            "checkoutOfferPathTemplate": "/plano-de-voo/checkout/offer/{offerCode}",
+            "promoBaseUrl": "https://plano.decolesuacarreiraesg.com.br"
           },
           "dashboard": {
             "metaAds": {

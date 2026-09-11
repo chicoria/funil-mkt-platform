@@ -36,7 +36,7 @@ Redirect puro (`302`) para a landing page do produto, aplicando `defaultParams`
 string recebida. Não emite evento de funil — a atribuição é capturada pelo
 GTM Web/GA4 na própria visita à landing page.
 
-Slugs ativos: `cecilia`, `deise`, `efazza`, `carreira-esg`, `biancamosquera`.
+Slugs ativos: `cecilia`, `deise`, `efazza`, `carreira-esg`, `biancamosquera`, `ana-rizzo`.
 
 - Plano de Voo (`/planodevoo/ref/{slug}` → `DECOLE_PLANOVOO`):
   - `https://links.decolesuacarreiraesg.com.br/planodevoo/ref/cecilia`
@@ -44,12 +44,30 @@ Slugs ativos: `cecilia`, `deise`, `efazza`, `carreira-esg`, `biancamosquera`.
   - `https://links.decolesuacarreiraesg.com.br/planodevoo/ref/efazza`
   - `https://links.decolesuacarreiraesg.com.br/planodevoo/ref/carreira-esg`
   - `https://links.decolesuacarreiraesg.com.br/planodevoo/ref/biancamosquera`
+  - `https://links.decolesuacarreiraesg.com.br/planodevoo/ref/ana-rizzo`
 - Decole ESG (`/ref/{slug}` → `DECOLE_ESG_MENTORIA`):
   - `https://links.decolesuacarreiraesg.com.br/ref/cecilia`
   - `https://links.decolesuacarreiraesg.com.br/ref/deise`
   - `https://links.decolesuacarreiraesg.com.br/ref/efazza`
   - `https://links.decolesuacarreiraesg.com.br/ref/carreira-esg`
   - `https://links.decolesuacarreiraesg.com.br/ref/biancamosquera`
+  - `https://links.decolesuacarreiraesg.com.br/ref/ana-rizzo`
+
+### Resgate promocional gratuito (`/{produto}/promo/{code}`)
+
+Redirect puro (`302`) para `{promoBaseUrl}/promo/{code}`, repassando toda a query
+string recebida (`email`, `name`, `utm_*`). Não emite evento de funil — o resgate
+em si não é um `BEGIN_CHECKOUT` (não há checkout).
+
+`{produto}` reaproveita o mesmo prefixo já usado por uma rota `checkout` ou
+`channel_referral` existente no catálogo — criar uma campanha nova nunca exige
+mexer no worker nem no catálogo, só inserir uma linha na tabela
+`plano_voo_promo_codes` (ver `decole-plano-de-voo-app`, Fatia A). O catálogo só
+precisa de `products.{productCode}.links.promoBaseUrl`, configurado uma vez por
+produto.
+
+- `https://links.decolesuacarreiraesg.com.br/planodevoo/promo/{code}`
+  - Redireciona para `https://plano.decolesuacarreiraesg.com.br/promo/{code}`.
 
 ## Variaveis
 

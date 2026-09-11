@@ -46,7 +46,7 @@ interface LinksCatalog {
       }>;
       contacts?: Record<string, { readonly type: string; readonly number?: string; readonly defaultText?: string }>;
     };
-    products?: Record<string, { links?: { readonly checkoutBaseUrl?: string } }>;
+    products?: Record<string, { links?: { readonly checkoutBaseUrl?: string; readonly promoBaseUrl?: string } }>;
   }>;
 }
 
@@ -77,6 +77,35 @@ export function resolveCheckoutByCatalog(
     checkoutBaseUrl,
     productCode: route.productCode,
   };
+}
+
+export function resolvePromoByCatalog(
+  catalog: LinksCatalog,
+  tenantId: string,
+  productPrefix: string
+): { promoBaseUrl: string; productCode: string } | null {
+  const normalizedPrefix = lowercasePath(normalizePath(productPrefix));
+  if (!normalizedPrefix) return null;
+  const tenant = catalog.tenants[tenantId];
+  if (!tenant) return null;
+  const routes = tenant.links?.routes ?? [];
+  // Reaproveita uma rota channel_referral já existente para esse prefixo —
+  // criar uma campanha promo nova nunca exige nova entrada aqui, só uma
+  // linha na tabela de códigos (ver PromoRepository). Não reaproveita rotas
+  // "checkout" de propósito: o prefixo de checkout (ex.: "plano-de-voo") é
+  // uma convenção de slug da Hotmart, diferente do prefixo de produto
+  // "planodevoo" usado em channel_referral/promo — aceitar ambos criaria
+  // uma segunda URL canônica não documentada para o mesmo destino.
+  const route = routes.find((r) => {
+    if (r.legacy || r.deprecated) return false;
+    if (r.type !== "channel_referral") return false;
+    const routePath = lowercasePath(normalizePath(r.path));
+    return routePath === normalizedPrefix || routePath.startsWith(`${normalizedPrefix}/`);
+  });
+  if (!route) return null;
+  const promoBaseUrl = tenant.products?.[route.productCode]?.links?.promoBaseUrl ?? "";
+  if (!promoBaseUrl) return null;
+  return { promoBaseUrl, productCode: route.productCode };
 }
 
 export function resolveContact(
@@ -511,6 +540,22 @@ const worker = {
           return jsonResponse({ ok: false, error: "link_not_configured" }, 500);
         }
         return redirectResponse(request, requestUrl, result, env, { emitBeginCheckout: true });
+      }
+
+      const promoMatch = rawPath.match(/^(.+)\/promo\/([^/]+)$/i);
+      if (promoMatch) {
+        const productPrefix = normalizePath(promoMatch[1] || "");
+        const code = promoMatch[2] || "";
+        if (!productPrefix || !code) {
+          return jsonResponse({ ok: false, error: "not_found" }, 404);
+        }
+        const promo = resolvePromoByCatalog(bundledCatalogJson as LinksCatalog, tenantId, productPrefix);
+        if (!promo) {
+          return jsonResponse({ ok: false, error: "not_found" }, 404);
+        }
+        // Sem evento de funil: BEGIN_CHECKOUT não se aplica a um resgate gratuito.
+        const location = appendQueryParams(`${promo.promoBaseUrl}/promo/${encodeURIComponent(code)}`, url.searchParams);
+        return redirectResponse(request, url, { location, cacheControl: "no-store" }, env);
       }
 
       if (path === "checkout" || path.endsWith("/checkout")) {
