@@ -8,10 +8,10 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | TODO |
-| Started | — |
+| Estado | Em revisão final — código completo e verde, aguardando decisão do usuário sobre commit |
+| Started | 2026-09-11 |
 | Completed | — |
-| Commit final | — |
+| Commit final | — (nenhum commit criado ainda; ver Execução) |
 
 ## Contexto
 
@@ -124,11 +124,67 @@ Pontos de atenção para o revisor:
 
 ## Execução (append-only)
 
-(a preencher)
+**2026-09-11** — Implementação completa em `decole-plano-de-voo-app`, TDD Red→Green:
+
+- Red: `lib/promo/__tests__/promo-repository.test.ts`, `lib/promo/__tests__/promo-service.test.ts`,
+  `app/api/promo/[code]/route.test.ts` escritos primeiro, confirmados falhando (módulos inexistentes).
+- Green: `db/init.sql` (tabela `plano_voo_promo_codes`, coluna `plano_voo_tokens.promo_code`,
+  índice único `plano_voo_tokens_email_promo_uniq`), `PromoRepository`, `PromoService`,
+  `app/api/promo/[code]/route.ts`. 86/86 testes do repo passando, `tsc --noEmit` limpo,
+  `eslint` limpo.
+- Revisão G.12 por agente separado (`ecc:code-reviewer`, sem contexto prévio da sessão):
+  achou 2 MUST-FIX e 4 SHOULD-FIX/NICE-TO-HAVE. MUST-FIX e a maioria dos SHOULD-FIX corrigidos
+  na sequência (TDD Red→Green de novo: 6 testes novos/alterados, todos verificados vermelhos
+  antes do fix). Suite final: 91/91 verde, tsc e eslint limpos.
+- **Pendente**: nenhum commit foi criado (a sessão não commita sem pedido explícito do usuário).
+  Aplicação da migration em produção também pendente — `db/init.sql` só roda no primeiro init
+  do container Postgres; produção já tem schema sincronizado manualmente (ver comentário no
+  topo do arquivo), então este ALTER/CREATE precisa de um `psql` manual à parte, fora do escopo
+  desta sessão.
+- **Pendente de config (deploy)**: nova env var `BREVO_TEMPLATE_ID_PROMO` (id do template
+  transacional na Brevo) precisa ser criada e configurada — não reusei o `purchaseLink` (id 12)
+  hardcoded, decisão abaixo.
 
 ## Gotchas / lições aprendidas
 
-(a preencher)
+- **`packages/shared/transactional-email` não é importável de `decole-plano-de-voo-app`**: é um
+  repo git separado (remotes diferentes), sem `package.json`, sem tooling de workspace/monorepo
+  entre os dois. A classe `BrevoTransactionalEmailSender` foi *copiada* (não linkada) para
+  `lib/email/brevo-transactional-email-sender.ts`. Se isso incomodar no futuro, a correção real
+  é dar `package.json` ao pacote compartilhado e resolvê-lo via npm/workspace — fora do escopo
+  desta fatia.
+- **A cópia local DIVERGE do original de propósito**: a pedido do usuário, além de
+  `templateId`/`params` (modo do pacote original), a classe local também aceita
+  `sender`/`subject`/`htmlContent` (HTML bruto). Isso permitiu consolidar o
+  `/api/admin/tokens` legado (que mandava `fetch` inline pro Brevo com HTML hardcoded) para usar
+  a mesma classe da Fatia A, em vez de duplicar lógica de request/timeout/erro. Não presumir
+  paridade de contrato com `funil-mkt-platform/packages/shared/transactional-email` — está
+  documentado no topo do arquivo local. Testado em
+  `lib/email/__tests__/brevo-transactional-email-sender.test.ts` (5 casos, TDD Red→Green).
+  Comportamento do `admin/tokens` preservado 1:1 (mesmo guard "sem `BREVO_API_KEY` → pula envio
+  silenciosamente" que já existia — não foi endurecido, é escopo de outra decisão).
+- **Ordem dos checks em `PromoService.redeem` importa**: o dedupe (`findTokenByEmailAndCode`)
+  precisa vir *antes* dos checks de `invalid`/`expired`/`exhausted` — senão alguém que já
+  resgatou perde acesso ao próprio token quando a campanha é desativada ou expira depois. Isso
+  só apareceu na revisão G.12, não estava nos testes originais do plano.
+- **E-mail é best-effort, não pode ser síncrono-obrigatório**: como o índice único bloqueia um
+  segundo resgate do mesmo `(email, code)`, se o envio de e-mail falhasse *depois* do commit do
+  token (Brevo fora do ar, `BREVO_API_KEY` ausente etc.) o usuário ficaria sem link e sem
+  caminho de recuperação (a resposta `already_redeemed` não reenvia). Corrigido para capturar
+  falha de envio, logar (`console.error`), e retornar `created` com `formUrl` mesmo assim —
+  a resposta HTTP síncrona é o caminho garantido de entrega, o e-mail é redundância.
+
+## Decisões tomadas (execução)
+
+- **Template Brevo não hardcoded**: `CLAUDE.md` do workspace proíbe hardcodar template IDs.
+  Em vez de reusar o `purchaseLink` (id 12) como o plano sugeria como opção, criei um template
+  dedicado via nova env var `BREVO_TEMPLATE_ID_PROMO` — ainda não configurada em nenhum
+  ambiente, precisa ser criada na Brevo e no `.env`/secrets de deploy antes de ir para produção.
+- **Validação de formato de e-mail adicionada** (não estava no plano original): rota é pública
+  por design (cota + validade + dedupe como única contenção), então uma checagem mínima de
+  formato (`/^[^\s@]+@[^\s@]+\.[^\s@]+$/`) evita queimar a cota da campanha piloto (207 pessoas)
+  com strings arbitrárias. Achado da revisão G.12, não rate-limit (fora de escopo — depende de
+  infra que não foi investigada).
 
 ## Decisões tomadas
 
