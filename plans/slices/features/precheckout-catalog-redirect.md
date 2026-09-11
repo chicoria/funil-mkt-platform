@@ -7,10 +7,36 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | IN_PROGRESS |
+| Estado | DONE (reconciliado 2026-09-11 — ver nota abaixo) |
 | Started | 2026-05-19 por Claude Sonnet 4.6 |
-| Completed | — |
-| Commit final | — |
+| Completed | 2026-09-11 (reconciliação; implementação real já estava em produção) |
+| Commit final | ver Execução — implementação real diverge do texto original deste doc |
+
+## ⚠️ Reconciliação 2026-09-11
+
+Este doc descrevia (e a revisão G.12 de 2026-05-19 aprovou) um handler que devolve
+`Response.redirect(url, 302)`. **O código em produção não faz isso** — devolve
+`202 JSON` com `redirect_url` no corpo, e a LP (`site/planodevoo/index.html`) lê
+`result.json.redirect_url` e faz `window.location.href = redirectUrl` no cliente.
+
+Isso não é implementação incompleta nem revert silencioso: é uma correção técnica
+posterior à aprovação (comentário no próprio código, `src/index.ts` ~linha 280:
+*"compatible with fetch()-based forms that cannot follow cross-origin redirects via
+XHR"*) — `fetch()` cross-origin não deixa o JS ler para onde um `302` real
+redirecionou, então um redirect HTTP de verdade não funcionaria com o form
+client-side. `202 + redirect_url` resolve isso. Os testes em
+`test/unit/precheckout-redirect.test.ts` já testam exatamente esse comportamento
+(`expect(res.status).toBe(202)` + `json.redirect_url`) — só o comentário de
+cabeçalho do arquivo de teste (linha 3) ficou com o texto antigo ("retorna 302"),
+corrigido nesta reconciliação. O doc deste slice era o único artefato desatualizado;
+código, testes e LP sempre estiveram consistentes entre si.
+
+Motivo real do bloqueio original (funil Brevo travava em `GENERATE_LEAD` por falta
+de `email` no `BEGIN_CHECKOUT`) **continua resolvido** pelo mecanismo atual: o
+`email` vai como query param no `redirect_url`, o `links-redirect` cria o
+`BEGIN_CHECKOUT` com email, `update_brevo_funnel` avança normalmente. O princípio
+de segurança do doc original (URL de redirect vem só do catálogo, zero risco de
+open redirect) permanece válido e verificado no código atual.
 
 ## Contexto
 

@@ -1,7 +1,8 @@
 /**
- * TDD Red — precheckout catalog-driven redirect
- * Garante que /funnel/precheckout retorna 302 para o checkout URL do catálogo
- * incluindo email e attribution params, em vez de 202 JSON.
+ * precheckout catalog-driven redirect
+ * Garante que /funnel/precheckout retorna 202 JSON com redirect_url apontando
+ * pro checkout do catálogo (email + attribution params), não 302 direto —
+ * fetch() cross-origin não deixa o JS ler o destino de um redirect real.
  */
 import { describe, it, expect, vi } from "vitest";
 import worker from "../../src/index";
