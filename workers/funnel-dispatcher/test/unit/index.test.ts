@@ -622,6 +622,116 @@ describe("funnel-dispatcher", () => {
     vi.unstubAllGlobals();
   });
 
+  it("GENERATE_LEAD com promo_code usa template de isca e redirectionUrl com rid gravado no KV", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const env = makeEnv({
+      BREVO_API_KEY: "set",
+      CATALOG_JSON: JSON.stringify({
+        products: {
+          DECOLE_PLANOVOO: {
+            brevo: {
+              doiRedirectUrl: "https://links.decolesuacarreiraesg.com.br/plano-de-voo/signup",
+              promoDoiTemplateId: "20",
+              promoSignupUrl: "https://links.decolesuacarreiraesg.com.br/planodevoo/promo-signup",
+              lists: { precheckout: { id: "8" } },
+              templates: { doi: { id: "10" } },
+            },
+            funnelEventArchitecture: {
+              events: [{ eventType: "GENERATE_LEAD", chain: ["send_brevo_doi"], brevoConfig: {} }],
+            },
+          },
+        },
+      }),
+    });
+
+    const event: any = {
+      event_id: "evt-doi-promo-1",
+      event_type: "GENERATE_LEAD",
+      product_code: "DECOLE_PLANOVOO",
+      source: "site",
+      occurred_at: new Date().toISOString(),
+      lead: { email: "qa.promo.doi@example.com" },
+      payload: { promo_code: "ESG-PILOTO", FIRSTNAME: "Ana" },
+    };
+
+    await worker.queue({ messages: [{ body: event }] }, env);
+
+    const doiCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/contacts/doubleOptinConfirmation"));
+    expect(doiCall).toBeTruthy();
+    const body = JSON.parse(String((doiCall?.[1] as RequestInit)?.body || "{}")) as {
+      templateId?: number;
+      redirectionUrl?: string;
+    };
+    expect(body.templateId).toBe(20);
+    expect(body.redirectionUrl).toMatch(/^https:\/\/links\.decolesuacarreiraesg\.com\.br\/planodevoo\/promo-signup\?rid=.+/);
+
+    const rid = new URL(String(body.redirectionUrl)).searchParams.get("rid");
+    const putCall = (env.IDENTITY_KV.put as any).mock.calls.find((call: unknown[]) =>
+      String(call[0]).startsWith(`promo_confirmation:${rid}`)
+    );
+    expect(putCall).toBeTruthy();
+    const record = JSON.parse(String(putCall?.[1]));
+    expect(record).toMatchObject({ email: "qa.promo.doi@example.com", nome: "Ana", promo_code: "ESG-PILOTO" });
+
+    vi.unstubAllGlobals();
+  });
+
+  it("GENERATE_LEAD sem promo_code segue usando o DOI padrao (regressao zero no fluxo pago)", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const env = makeEnv({
+      BREVO_API_KEY: "set",
+      CATALOG_JSON: JSON.stringify({
+        products: {
+          DECOLE_PLANOVOO: {
+            brevo: {
+              doiRedirectUrl: "https://links.decolesuacarreiraesg.com.br/plano-de-voo/signup",
+              promoDoiTemplateId: "20",
+              promoSignupUrl: "https://links.decolesuacarreiraesg.com.br/planodevoo/promo-signup",
+              lists: { precheckout: { id: "8" } },
+              templates: { doi: { id: "10" } },
+            },
+            funnelEventArchitecture: {
+              events: [{ eventType: "GENERATE_LEAD", chain: ["send_brevo_doi"], brevoConfig: {} }],
+            },
+          },
+        },
+      }),
+    });
+
+    const event: any = {
+      event_id: "evt-doi-no-promo-1",
+      event_type: "GENERATE_LEAD",
+      product_code: "DECOLE_PLANOVOO",
+      source: "site",
+      occurred_at: new Date().toISOString(),
+      lead: { email: "qa.paid.doi@example.com" },
+      payload: {},
+    };
+
+    await worker.queue({ messages: [{ body: event }] }, env);
+
+    const doiCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/contacts/doubleOptinConfirmation"));
+    const body = JSON.parse(String((doiCall?.[1] as RequestInit)?.body || "{}")) as {
+      templateId?: number;
+      redirectionUrl?: string;
+    };
+    expect(body.templateId).toBe(10);
+    expect(body.redirectionUrl).toBe("https://links.decolesuacarreiraesg.com.br/plano-de-voo/signup");
+    expect(
+      (env.IDENTITY_KV.put as any).mock.calls.some((call: unknown[]) => String(call[0]).startsWith("promo_confirmation:"))
+    ).toBe(false);
+
+    vi.unstubAllGlobals();
+  });
+
   it("nao chama Brevo DOI quando falta configuracao obrigatoria", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
