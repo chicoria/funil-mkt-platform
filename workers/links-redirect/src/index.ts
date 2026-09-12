@@ -13,6 +13,7 @@ interface KVNamespaceLike {
 interface Env {
   FUNNEL_EVENTS?: QueueBinding;
   IDENTITY_KV?: KVNamespaceLike;
+  PROMO_SIGNUP_SECRET?: string;
 }
 
 type HandlerResult = {
@@ -136,6 +137,34 @@ export async function resolvePromoConfirmation(
   } catch {
     return null;
   }
+}
+
+const PROMO_TOKEN_TTL_SECONDS = 300;
+
+function base64UrlEncode(str: string): string {
+  const b64 = btoa(unescape(encodeURIComponent(str)));
+  return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function bufToHex(buf: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+// Achado CRITICAL do G.12 (2ª rodada, Fatia G): o app final aceitava
+// "email" cru vindo da query string de um domínio público — bastava
+// conhecer domínio + promo_code pra resgatar sem nunca confirmar DOI. Este
+// token amarra email+code+expiração com uma assinatura HMAC-SHA256, usando
+// um segredo compartilhado só com o app (PROMO_SIGNUP_SECRET, nunca
+// hardcoded) — só quem passou por esta função (ou seja, só depois de DOI
+// confirmado via KV) consegue produzir um token válido para aquele code.
+export async function signPromoToken(secret: string, code: string, email: string): Promise<string> {
+  const payload = JSON.stringify({ c: code, e: email, exp: Date.now() + PROMO_TOKEN_TTL_SECONDS * 1000 });
+  const payloadB64 = base64UrlEncode(payload);
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sigBuf = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payloadB64));
+  return `${payloadB64}.${bufToHex(sigBuf)}`;
 }
 
 export function resolveContact(
@@ -584,7 +613,16 @@ const worker = {
           return jsonResponse({ ok: false, error: "not_found" }, 404);
         }
         // Sem evento de funil: BEGIN_CHECKOUT não se aplica a um resgate gratuito.
-        const location = appendQueryParams(`${promo.promoBaseUrl}/promo/${encodeURIComponent(code)}`, url.searchParams);
+        // Achado CRITICAL do G.12 (Fatia G): esta rota é pública e sem
+        // confirmação nenhuma — repassar "email" da query pra frente permitia
+        // resgate instantâneo pra qualquer e-mail, pulando o gate de DOI por
+        // completo. O único caminho legítimo pra email chegar ao app é via
+        // /promo-signup?rid=... (KV confirmado). Demais params (utm_*, etc.)
+        // continuam sendo repassados — são atribuição, não identidade.
+        const safeParams = new URLSearchParams(url.searchParams);
+        safeParams.delete("email");
+        safeParams.delete("EMAIL");
+        const location = appendQueryParams(`${promo.promoBaseUrl}/promo/${encodeURIComponent(code)}`, safeParams);
         return redirectResponse(request, url, { location, cacheControl: "no-store" }, env);
       }
 
@@ -600,9 +638,17 @@ const worker = {
         if (!promo) {
           return jsonResponse({ ok: false, error: "not_found" }, 404);
         }
+        const secret = asTrimmedString(env.PROMO_SIGNUP_SECRET);
+        if (!secret) {
+          // Falha fechada: sem segredo configurado, NUNCA cai pra email cru
+          // na URL — isso reabriria o CRITICAL do G.12.
+          console.log(JSON.stringify({ stage: "promo_signup_error", error: "promo_signup_secret_missing" }));
+          return jsonResponse({ ok: false, error: "misconfigured" }, 500);
+        }
+        const token = await signPromoToken(secret, confirmation.promoCode, confirmation.email);
         const location =
           `${promo.promoBaseUrl}/promo/${encodeURIComponent(confirmation.promoCode)}` +
-          `?email=${encodeURIComponent(confirmation.email)}`;
+          `?token=${encodeURIComponent(token)}`;
         return redirectResponse(request, url, { location, cacheControl: "no-store" }, env);
       }
 

@@ -73,14 +73,20 @@ describe("links-redirect worker — /promo/:code", () => {
     expect(url.pathname).toBe("/promo/abc123");
   });
 
-  it("repassa email/utm_* recebidos no redirect", async () => {
+  it("repassa utm_* mas NUNCA email — achado CRITICAL do G.12: email na query desta rota pulava o gate de DOI", async () => {
+    // Esta rota é pública, sem qualquer verificação de confirmação — alguém
+    // que soubesse o promo_code e o prefixo do produto (ambos essencialmente
+    // públicos) podia bater aqui com ?email=qualquer e resgatar na hora, sem
+    // nunca confirmar e-mail. O único caminho legítimo pra email chegar ao
+    // app é via /promo-signup?rid=... (KV confirmado, ver promo-signup.test.ts).
     const res = await worker.fetch(
-      makeRequest("planodevoo/promo/abc123?email=a%40b.com&utm_source=whatsapp&utm_campaign=piloto"),
+      makeRequest("planodevoo/promo/abc123?email=a%40b.com&EMAIL=a%40b.com&utm_source=whatsapp&utm_campaign=piloto"),
       {}
     );
     const location = res.headers.get("location") || "";
     const url = new URL(location);
-    expect(url.searchParams.get("email")).toBe("a@b.com");
+    expect(url.searchParams.get("email")).toBeNull();
+    expect(url.searchParams.get("EMAIL")).toBeNull();
     expect(url.searchParams.get("utm_source")).toBe("whatsapp");
     expect(url.searchParams.get("utm_campaign")).toBe("piloto");
   });

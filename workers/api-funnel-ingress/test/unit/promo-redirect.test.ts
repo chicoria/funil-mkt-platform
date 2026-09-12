@@ -28,7 +28,13 @@ function precheckoutRequest(body: Record<string, string>, origin = "https://deco
 }
 
 describe("precheckout — desvio promocional gratuito", () => {
-  it("payload com promo_code -> redirect_url aponta para /planodevoo/promo/{code}", async () => {
+  // Fatia G: com o gate de DOI, a entrega do link deixa de ser síncrona (via
+  // redirect_url) — o único caminho passa a ser o e-mail de confirmação
+  // (funnel-dispatcher, assíncrono). Por isso, quando existe rota promocional
+  // configurada pro produto, a resposta não deve trazer redirect_url nenhum
+  // (nem pro resgate, nem pro checkout) — o frontend já trata a ausência de
+  // redirect_url mostrando "Confirme no e-mail para liberar o acesso."
+  it("payload com promo_code e rota promocional configurada -> sem redirect_url (entrega só via DOI)", async () => {
     const req = precheckoutRequest({
       email: "ana@example.com",
       product_code: "DECOLE_PLANOVOO",
@@ -38,9 +44,23 @@ describe("precheckout — desvio promocional gratuito", () => {
     const json = (await res.json()) as Record<string, unknown>;
 
     expect(res.status).toBe(202);
-    expect(json.redirect_url as string).toContain("links.decolesuacarreiraesg.com.br");
-    expect(json.redirect_url as string).toContain("/planodevoo/promo/ESG-PILOTO");
-    expect(json.redirect_url as string).not.toContain("/plano-de-voo/checkout");
+    expect(json.redirect_url).toBeUndefined();
+  });
+
+  it("payload com promo_code -> email/nome nunca aparecem em nenhum campo da resposta", async () => {
+    const req = precheckoutRequest({
+      EMAIL: "ana@example.com",
+      FIRSTNAME: "Ana",
+      LASTNAME: "Silva",
+      product_code: "DECOLE_PLANOVOO",
+      promo_code: "ESG-PILOTO",
+    });
+    const res = await worker.fetch(req, makeEnv());
+    const json = (await res.json()) as Record<string, unknown>;
+
+    const serialized = JSON.stringify(json);
+    expect(serialized).not.toContain("ana@example.com");
+    expect(serialized).not.toContain("Ana");
   });
 
   it("payload sem promo_code -> comportamento atual preservado (checkout Hotmart)", async () => {
@@ -82,22 +102,7 @@ describe("precheckout — desvio promocional gratuito", () => {
     expect(json.redirect_url as string).toContain("/decole-esg/checkout");
   });
 
-  it("propaga email e name no destino promocional", async () => {
-    const req = precheckoutRequest({
-      EMAIL: "ana@example.com",
-      FIRSTNAME: "Ana",
-      LASTNAME: "Silva",
-      product_code: "DECOLE_PLANOVOO",
-      promo_code: "ESG-PILOTO",
-    });
-    const res = await worker.fetch(req, makeEnv());
-    const json = (await res.json()) as Record<string, unknown>;
-
-    expect(json.redirect_url as string).toContain("email=ana%40example.com");
-    expect(json.redirect_url as string).toContain("name=Ana+Silva");
-  });
-
-  it("promo_code com caractere especial e encodado, sem escapar do path", async () => {
+  it("promo_code com caractere especial -> ainda sem redirect_url, sem crash", async () => {
     const req = precheckoutRequest({
       email: "ana@example.com",
       product_code: "DECOLE_PLANOVOO",
@@ -106,11 +111,8 @@ describe("precheckout — desvio promocional gratuito", () => {
     const res = await worker.fetch(req, makeEnv());
     const json = (await res.json()) as Record<string, unknown>;
 
-    const url = new URL(json.redirect_url as string);
-    expect(url.hostname).toBe("links.decolesuacarreiraesg.com.br");
-    // path continua sob /planodevoo/promo/ — nao escapa via ../ nem muda host
-    expect(url.pathname.startsWith("/planodevoo/promo/")).toBe(true);
-    expect(url.pathname).not.toContain("/../");
+    expect(res.status).toBe(202);
+    expect(json.redirect_url).toBeUndefined();
   });
 
   it("enfileira o evento antes de montar o redirect promocional", async () => {

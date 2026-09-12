@@ -175,6 +175,35 @@ de `PromoService.redeem()` já cobre clique duplicado no link de confirmação
 (`SELECT ... FOR UPDATE` + `UNIQUE(email, promo_code)` com recovery de
 conflito) — nenhuma mudança necessária no repo `decole-plano-de-voo-app`.
 
+## Execução (append-only) — correção CRITICAL pós-deploy
+
+**2026-09-12** — Usuário reportou em produção: "fui direcionado direto para o
+form do plano de voo após o cadastro" (sem passar pela confirmação de e-mail).
+Investigação encontrou DUAS falhas em cadeia, ambas fechadas nesta correção:
+
+1. `api-funnel-ingress` (`buildPromoRedirect`, Fatia C): montava `redirect_url`
+   síncrono com `email` na query, seguido na hora pelo navegador — corrigido,
+   ver nota em `promo-gratuito-C-funnel-ingress.md`.
+2. **[CRITICAL, achado pelo G.12 desta correção]** `links-redirect`
+   (`/{prefixo}/promo/{code}`, Fatia B): mesmo depois do fix #1, essa rota
+   pública continuava repassando **qualquer** `email` vindo da própria query
+   string do request, sem nenhuma verificação de confirmação. Isso significa
+   que o bug não dependia do `api-funnel-ingress` nem do formulário — bastava
+   conhecer `promo_code` + prefixo do produto (ambos essencialmente públicos)
+   e acessar `https://links.decolesuacarreiraesg.com.br/planodevoo/promo/{code}?email={qualquer}`
+   diretamente pra resgatar sem DOI. O fix #1 sozinho não resolvia o problema
+   real — só removia uma das formas de chegar lá.
+
+   Corrigido em `links-redirect/src/index.ts`: a rota `/promo/{code}` agora
+   remove explicitamente `email`/`EMAIL` da query antes de montar o redirect
+   pro app, mantendo `utm_*` e demais params de atribuição intactos. O único
+   caminho legítimo pra `email` chegar no app passa a ser
+   `/promo-signup?rid=...` (KV confirmado por DOI, já existente nesta fatia).
+
+Revisão G.12 rodada duas vezes: a primeira (sobre o fix #1 isolado) devolveu
+**BLOCK** com esse achado CRITICAL — o guard rail funcionou como devia,
+impedindo que uma correção incompleta fosse a produção.
+
 ## Decisões tomadas
 
 - DOI **nativo** do Brevo mantido (não self-hosted) — opt-in fica marcado

@@ -151,3 +151,28 @@ Pontos de atenção:
   decide destino, só obedece o `redirect_url`
 - Lead entra na lista do Brevo nos dois fluxos, sem exceção
 - Fallback silencioso para o checkout pago se o promo não resolver
+
+## Execução (append-only) — correção pós-Fatia G
+
+**2026-09-12** — Bug de produção reportado pelo usuário ("fui direcionado direto
+para o form do plano de voo após o cadastro") revelou que `buildPromoRedirect`
+(implementado nesta fatia, **antes** da G existir) continuava montando um
+`redirect_url` síncrono com `email`/`name` na query string
+(`CHECKOUT_FORWARD_PARAMS`), apontando direto pro endpoint de resgate
+(`/promo/{code}`). Isso furava por completo o gate de DOI da Fatia G: o
+navegador seguia esse redirect na hora, sem nenhuma confirmação de e-mail.
+
+Causa raiz: a Fatia G só gateou o caminho assíncrono (evento `GENERATE_LEAD` →
+funnel-dispatcher → e-mail de DOI), mas nunca revisitou/desativou este caminho
+síncrono mais antigo — G.12 da Fatia G não pegou essa lacuna porque revisou só
+o código novo, não o comportamento combinado dos dois.
+
+**Fix**: `buildPromoRedirect` removido; substituído por
+`hasPromoRouteConfigured` (boolean, não monta URL nem carrega email/nome).
+Quando há rota promocional configurada pro produto, a resposta do
+`/funnel/precheckout` não traz `redirect_url` nenhum — o frontend já trata essa
+ausência mostrando "Cadastro enviado! Confirme no e-mail para liberar o
+acesso." (`site/planodevoo/index.html`, comportamento pré-existente, não
+alterado). Entrega do link passa a depender exclusivamente do e-mail de DOI.
+Produtos sem rota promocional configurada continuam caindo no checkout normal,
+sem mudança.
