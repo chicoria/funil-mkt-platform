@@ -108,6 +108,36 @@ export function resolvePromoByCatalog(
   return { promoBaseUrl, productCode: route.productCode };
 }
 
+// Fatia G: lê a confirmação de DOI da isca gratuita gravada pelo
+// funnel-dispatcher (promo_confirmation:<rid> -> {email, nome, promo_code}).
+// Só indexa uma leitura de KV por chave opaca — o rid nunca compõe host/path
+// diretamente, nem aceita input livre do usuário além do próprio valor.
+export async function resolvePromoConfirmation(
+  env: Env,
+  rid: string
+): Promise<{ email: string; promoCode: string } | null> {
+  const trimmedRid = rid.trim();
+  if (!trimmedRid || !env.IDENTITY_KV) return null;
+
+  let raw: string | null;
+  try {
+    raw = await env.IDENTITY_KV.get(`promo_confirmation:${trimmedRid}`);
+  } catch {
+    return null;
+  }
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as { email?: unknown; promo_code?: unknown };
+    const email = asTrimmedString(parsed.email);
+    const promoCode = asTrimmedString(parsed.promo_code);
+    if (!email || !promoCode) return null;
+    return { email, promoCode };
+  } catch {
+    return null;
+  }
+}
+
 export function resolveContact(
   catalog: LinksCatalog,
   tenantId: string,
@@ -555,6 +585,24 @@ const worker = {
         }
         // Sem evento de funil: BEGIN_CHECKOUT não se aplica a um resgate gratuito.
         const location = appendQueryParams(`${promo.promoBaseUrl}/promo/${encodeURIComponent(code)}`, url.searchParams);
+        return redirectResponse(request, url, { location, cacheControl: "no-store" }, env);
+      }
+
+      const promoSignupMatch = rawPath.match(/^(.+)\/promo-signup$/i);
+      if (promoSignupMatch) {
+        const productPrefix = normalizePath(promoSignupMatch[1] || "");
+        const rid = asTrimmedString(url.searchParams.get("rid"));
+        const confirmation = productPrefix ? await resolvePromoConfirmation(env, rid) : null;
+        if (!confirmation) {
+          return jsonResponse({ ok: false, error: "not_found" }, 404);
+        }
+        const promo = resolvePromoByCatalog(bundledCatalogJson as LinksCatalog, tenantId, productPrefix);
+        if (!promo) {
+          return jsonResponse({ ok: false, error: "not_found" }, 404);
+        }
+        const location =
+          `${promo.promoBaseUrl}/promo/${encodeURIComponent(confirmation.promoCode)}` +
+          `?email=${encodeURIComponent(confirmation.email)}`;
         return redirectResponse(request, url, { location, cacheControl: "no-store" }, env);
       }
 

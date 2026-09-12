@@ -8,10 +8,10 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | TODO |
-| Started | — |
+| Estado | Em revisão final — código completo e verde, aguardando decisão do usuário sobre commit/deploy |
+| Started | 2026-09-11 |
 | Completed | — |
-| Commit final | — |
+| Commit final | — (ver Execução) |
 
 ## Contexto
 
@@ -88,11 +88,54 @@ Pontos de atenção:
 
 ## Execução (append-only)
 
-(a preencher)
+**2026-09-11** — TDD Red→Green nos dois repos:
+
+- `decolesuacarreiraesg`: `promo_code` adicionado a `UTM_KEYS` (site/src/precheckout.ts),
+  mesmo mecanismo do `test_event_code` — zero código paralelo. Bundle reconstruído
+  (`npm run build:precheckout`). `tsc --noEmit` limpo. **Testes escritos mas não
+  verificados por execução** — bug de ambiente pré-existente (Node 26.0.0 local +
+  vitest 2.1.9 + jsdom 25 quebram os 105 testes da suíte inteira, não só os novos;
+  confirmado que jsdom puro funciona standalone, só o wiring do vitest falha).
+  `environmentOptions.jsdom.url` adicionado ao vitest.config.ts como hardening
+  correto, mas não resolveu o sintoma observado neste Node — deixado mesmo assim,
+  documentado como não-verificado.
+- `decole-plano-de-voo-app`: `app/promo/[code]/page.tsx` (Server Component) — sem
+  e-mail redireciona pra LP com `promo_code` preservado; com e-mail chama
+  `PromoService.redeem` (Fatia A) e trata os 5 `kind` do union. 9/9 testes verdes,
+  `tsc`/`eslint` limpos.
+- Revisão G.12 por agente separado (`ecc:code-reviewer`, sem contexto prévio),
+  cobrindo os dois repos: **0 MUST-FIX**. 1 SHOULD-FIX real corrigido — e-mail
+  malformado na query (`?email=not-an-email`) não era capturado, estourava a
+  página de erro genérica do Next em vez de UX tratada; corrigido com try/catch
+  que distingue erro de validação (bounce pra LP) de erro de config real (ex.:
+  `NEXT_PUBLIC_BASE_URL` ausente — propaga, não vira bounce silencioso). O revisor
+  formou opinião independente sobre os dois caveats do processo (testes da LP não
+  executados; sem verificação visual em browser) e considerou ambos riscos
+  aceitáveis, não-bloqueantes, dado o formato das mudanças (array literal de 1
+  linha sobre função já testada; reuso de componente compartilhado já
+  visualmente comprovado). Suite final do app: 9/9 verde.
+- **Pendente**: nenhum commit criado ainda.
 
 ## Gotchas / lições aprendidas
 
-(a preencher)
+- **Bug de ambiente descoberto, não resolvido**: Node v26.0.0 + vitest 2.1.9 +
+  jsdom 25 quebram TODOS os testes de `decolesuacarreiraesg/site` (não só os
+  desta fatia) com `TypeError` em `localStorage.clear()`. Confirmado que não é
+  bug de código do projeto (jsdom puro funciona igual nesse Node quando testado
+  isolado). Fix real fica fora do escopo desta fatia — precisa de Node
+  compatível ou upgrade de deps, e idealmente um `.nvmrc`/Volta pin nesse repo
+  pra evitar reincidência.
+- **CTA da tela de esgotado reusa âncora existente**: em vez de inventar um novo
+  env var pra URL de checkout, `ofertaPagaUrl()` aponta pra
+  `{DECOLE_SITE_URL}/planodevoo#lp-secao-oferta` — mesmo padrão de âncora já usado
+  em `components/plano/CTARodape.tsx` dentro do próprio app.
+
+## Decisões tomadas (execução)
+
+- Erro de validação de e-mail (`redeem` lançando `"email inválido"`) tratado
+  igual a "sem e-mail" — bounce pra LP. Erro de config real (env ausente) não é
+  capturado pelo mesmo catch — propaga, mantendo fail-fast (achado da revisão
+  G.12, não estava no plano original do slice).
 
 ## Decisões tomadas
 

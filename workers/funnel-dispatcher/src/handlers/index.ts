@@ -80,6 +80,8 @@ interface CatalogEventConfig {
     listIds?: Array<string | number>;
     doiTemplateId?: string;
     doiRedirectUrl?: string;
+    promoDoiTemplateId?: string;
+    promoSignupUrl?: string;
     cartAbandonmentTemplateId?: string;
   };
   product_api?: ProductApiConfig;
@@ -91,6 +93,8 @@ interface CatalogProductConfig {
   aliases?: string[];
   brevo?: {
     doiRedirectUrl?: string;
+    promoDoiTemplateId?: string;
+    promoSignupUrl?: string;
     lists?: {
       precheckout?: {
         id?: string;
@@ -1110,7 +1114,66 @@ function resolveCatalogEvent(event: FunnelEvent, env: DispatcherEnv): CatalogEve
   return resolveCatalogEventFromCatalog(getCatalog(env), event, event.event_type) as CatalogEventConfig | null;
 }
 
-function resolveDoiRedirectionUrl(event: FunnelEvent, env: DispatcherEnv): string {
+// Fatia G: e-mail de DOI da isca gratuita não usa redirectionUrl fixo do
+// catálogo — a gente monta essa URL por evento, com um rid opaco que indexa
+// {email, nome, promo_code} no IDENTITY_KV. Isso deixa o clique passar pelo
+// DOI 100% nativo do Brevo (opt-in marcado corretamente) e ainda assim
+// recupera o dado que falta pra completar o resgate, sem webhook/automação.
+const PROMO_CONFIRMATION_KEY_PREFIX = "promo_confirmation:";
+const PROMO_CONFIRMATION_TTL_SECONDS = 60 * 60 * 48; // 48h
+
+function resolvePromoCode(event: FunnelEvent): string {
+  return asString((event.payload || {})["promo_code"]);
+}
+
+function resolvePromoDoiTemplateId(event: FunnelEvent, env: DispatcherEnv): string {
+  const fromEventConfig = asString(resolveCatalogEvent(event, env)?.brevoConfig?.promoDoiTemplateId);
+  if (fromEventConfig) return fromEventConfig;
+  const product = getCatalogProduct(getCatalog(env), event);
+  return asString(product?.brevo?.promoDoiTemplateId);
+}
+
+function resolvePromoSignupUrl(event: FunnelEvent, env: DispatcherEnv): string {
+  const fromEventConfig = asAbsoluteHttpUrl(resolveCatalogEvent(event, env)?.brevoConfig?.promoSignupUrl);
+  if (fromEventConfig) return fromEventConfig;
+  const product = getCatalogProduct(getCatalog(env), event);
+  return asAbsoluteHttpUrl(product?.brevo?.promoSignupUrl);
+}
+
+async function resolveDoiRedirectionUrl(event: FunnelEvent, env: DispatcherEnv): Promise<string> {
+  const promoCode = resolvePromoCode(event);
+  if (promoCode && env.IDENTITY_KV) {
+    const promoSignupUrl = resolvePromoSignupUrl(event, env);
+    const email = asString(event.lead?.email);
+    if (!promoSignupUrl) {
+      // Drift de config: promoDoiTemplateId setado sem promoSignupUrl (ou
+      // vice-versa) faz o lead receber a copy de isca mas cair no destino de
+      // confirmação do fluxo pago — nunca chega no resgate. Loga pra não
+      // ficar silencioso; não bloqueia o envio (cai no fallback pago abaixo).
+      console.log(
+        JSON.stringify({
+          stage: "handler_warn",
+          handler: "brevo_doi",
+          reason: "promo_signup_url_missing_with_promo_code",
+          event_id: event.event_id,
+          product_code: event.product_code,
+        })
+      );
+    }
+    if (promoSignupUrl && email) {
+      const rid = crypto.randomUUID();
+      const record = {
+        email,
+        nome: nestedString(event.payload || {}, ["FIRSTNAME", "name", "nome"]),
+        promo_code: promoCode,
+      };
+      await env.IDENTITY_KV.put(`${PROMO_CONFIRMATION_KEY_PREFIX}${rid}`, JSON.stringify(record), {
+        expirationTtl: PROMO_CONFIRMATION_TTL_SECONDS,
+      });
+      return `${promoSignupUrl}?rid=${encodeURIComponent(rid)}`;
+    }
+  }
+
   const catalog = getCatalog(env);
   const product = getCatalogProduct(catalog, event);
   const fromEventConfig = asAbsoluteHttpUrl(resolveCatalogEvent(event, env)?.brevoConfig?.doiRedirectUrl);
@@ -1135,6 +1198,12 @@ function resolveDoiListIds(event: FunnelEvent, env: DispatcherEnv): number[] {
 }
 
 function resolveDoiTemplateId(event: FunnelEvent, env: DispatcherEnv): string {
+  const promoCode = resolvePromoCode(event);
+  if (promoCode) {
+    const promoTemplateId = resolvePromoDoiTemplateId(event, env);
+    if (promoTemplateId) return promoTemplateId;
+  }
+
   const fromEventConfig = asString(resolveCatalogEvent(event, env)?.brevoConfig?.doiTemplateId);
   if (fromEventConfig) return fromEventConfig;
 
@@ -1810,7 +1879,7 @@ async function createBrevoDoiContact(event: FunnelEvent, env: DispatcherEnv): Pr
   const email = asString(event.lead?.email);
   const templateId = asPositiveInteger(resolveDoiTemplateId(event, env));
   const includeListIds = resolveDoiListIds(event, env);
-  const redirectionUrl = resolveDoiRedirectionUrl(event, env);
+  const redirectionUrl = await resolveDoiRedirectionUrl(event, env);
 
   if (!apiKey || !email || !templateId || !includeListIds.length || !redirectionUrl) {
     console.log(

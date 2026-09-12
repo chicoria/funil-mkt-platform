@@ -1,6 +1,6 @@
 {
   "schemaVersion": 5,
-  "updatedAt": "2026-09-11",
+  "updatedAt": "2026-09-12",
   "description": "Catálogo central multi-tenant — tenants.{id}.products.{code} declara cada produto. Fonte única para tracking, integrações, links e dashboard por tenant/produto.",
   "global": {
     "hotmart": {
@@ -1458,6 +1458,8 @@
                   "listId": "8",
                   "doiTemplateId": "10",
                   "doiRedirectUrl": "https://links.decolesuacarreiraesg.com.br/plano-de-voo/signup",
+                  "promoDoiTemplateId": "23",
+                  "promoSignupUrl": "https://links.decolesuacarreiraesg.com.br/planodevoo/promo-signup",
                   "funnelPrefix": "DECOLE_PLANOVOO"
                 },
                 "trackingConfigRef": "products.DECOLE_PLANOVOO.tracking"
