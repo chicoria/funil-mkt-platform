@@ -204,6 +204,31 @@ Revisão G.12 rodada duas vezes: a primeira (sobre o fix #1 isolado) devolveu
 **BLOCK** com esse achado CRITICAL — o guard rail funcionou como devia,
 impedindo que uma correção incompleta fosse a produção.
 
+3. **[fechamento real do CRITICAL]** A 2ª rodada do G.12 achou que mesmo com
+   #1 e #2 corrigidos, o domínio final (`plano.decolesuacarreiraesg.com.br`,
+   `decole-plano-de-voo-app`) sempre aceitou `email` cru na query string de
+   `/promo/{code}` — público, sem gate próprio nenhum. Fechado com um token
+   assinado (HMAC-SHA256, segredo compartilhado `PROMO_SIGNUP_SECRET`) que
+   `links-redirect` emite só após ler o KV confirmado por DOI, e que o app
+   passa a exigir e verificar (`lib/promo/promo-token.ts`) antes de chamar
+   `redeem()` — tanto na página pública quanto na API pública
+   (`app/api/promo/[code]/route.ts`, mesmo vetor, mesma correção). Verificado
+   em produção após deploy: `/promo/{code}?email=forjado` no domínio do app
+   agora bounca pra LP (307) em vez de resgatar; `links-redirect` remove
+   `email`/`EMAIL` da query antes do redirect; `/funnel/precheckout` com
+   `promo_code` não retorna mais `redirect_url`.
+
+**Incidente durante o deploy**: `setup-infra.yml` (modo `full-restart`,
+necessário pra levar o novo `PROMO_SIGNUP_SECRET` ao `.env` do VPS) rodou em
+paralelo com o `deploy-app.yml` disparado automaticamente pelo push — os dois
+tentaram recriar o container `nextjs` ao mesmo tempo, e a stack inteira ficou
+em estado `Created` (nunca chegou a `Running`), causando indisponibilidade
+total (plano/n8n/links fora do ar por ~9 minutos). Corrigido re-executando
+`setup-infra.yml` sozinho (sem `deploy-app.yml` concorrente); confirmado via
+smoke test do próprio workflow e `curl` externo (200/200/200). Lição: não
+disparar `setup-infra.yml` (full-restart) e um push pro `main` que aciona
+`deploy-app.yml` ao mesmo tempo — esperar um terminar antes do outro.
+
 ## Decisões tomadas
 
 - DOI **nativo** do Brevo mantido (não self-hosted) — opt-in fica marcado
