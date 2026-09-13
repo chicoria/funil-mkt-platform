@@ -218,6 +218,27 @@ impedindo que uma correção incompleta fosse a produção.
    `email`/`EMAIL` da query antes do redirect; `/funnel/precheckout` com
    `promo_code` não retorna mais `redirect_url`.
 
+**Bug adicional achado em teste manual do usuário (2026-09-13)**: e-mail de DOI
+nunca chegava, mesmo com o gate funcionando (tela "Cadastro enviado! Confirme
+no e-mail..." aparecia normal). Causa: o template Brevo 23 (criado via API
+nesta sessão) nunca foi marcado com `doiTemplate: true` — flag própria da
+Brevo, exigida pelo endpoint `POST /contacts/doubleOptinConfirmation`
+(confirmado batendo direto na API: `400 "An active DOI template does not
+exist"`). O `funnel-dispatcher` engolia esse erro sem propagar (só a etapa de
+atualizar o funil do contato rodava, não a de enviar e-mail) — por isso nunca
+foi percebido antes: o bypass síncrono (já corrigido acima) sempre entregava
+o link sem precisar do e-mail, mascarando que o envio em si nunca funcionou.
+Corrigido via `PUT /smtp/templates/23 {doiTemplate: true, tag: "optin"}`
+(config da Brevo, não é código deste repo — nada pra commitar). Verificado:
+reenvio manual do DOI retornou `204` após o fix (era `400` antes).
+
+**Follow-up não resolvido**: o `funnel-dispatcher` deveria logar/alertar
+quando a Brevo rejeita `doubleOptinConfirmation` (hoje esse erro morre
+silencioso dentro do handler `send_brevo_doi`) — sem isso, o mesmo tipo de
+falha (template mal configurado, secret errado, etc.) pode se repetir sem
+ninguém perceber. Não implementado nesta sessão por custo; registrar como
+possível fatia futura de observabilidade.
+
 **Incidente durante o deploy**: `setup-infra.yml` (modo `full-restart`,
 necessário pra levar o novo `PROMO_SIGNUP_SECRET` ao `.env` do VPS) rodou em
 paralelo com o `deploy-app.yml` disparado automaticamente pelo push — os dois
