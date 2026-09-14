@@ -141,6 +141,11 @@ no caminho de resgate real.
   chamados)
 - CORS: `OPTIONS` responde com os headers certos pro domínio do site (se a
   decisão da seção 2 for CORS direto na rota)
+- Origin: request com `Origin` do domínio esperado → processa normal;
+  `Origin` de domínio diferente/desconhecido → 403, nunca chega a checar o
+  código; sem header `Origin` nenhum (script simples) → decidir na execução
+  se bloqueia ou deixa passar pro rate limit segurar (navegadores sempre
+  mandam `Origin` em cross-origin; scripts não mandam por padrão)
 - rate limit por IP: N+1 requisições rápidas do mesmo IP → alguma resposta
   de limite excedido (429), não deixa escanear códigos sem restrição
 
@@ -168,11 +173,24 @@ Pontos de atenção:
 - CORS restrito ao(s) domínio(s) reais do site, não `*` — mas **CORS não é
   proteção contra abuso direto**: é uma restrição só de navegador, não
   impede um script/curl de bater direto no endpoint ignorando CORS
-  inteiramente. A proteção real contra scanning/força-bruta de códigos é
-  **rate limiting por IP** no endpoint — precisa ser implementado junto,
-  não é opcional. Risco é baixo (códigos de campanha, cota pequena, não são
-  segredo de alto valor), mas rate limit é barato e fecha a classe de abuso
-  óbvia (alguém varrendo milhares de códigos por minuto)
+  inteiramente.
+- **Checagem de `Origin` no servidor** (camada adicional, além do CORS
+  header): a rota rejeita com 403 qualquer request cujo header `Origin` não
+  bata com o(s) domínio(s) esperados — isso é diferente de só configurar
+  CORS, é o próprio código da rota recusando o request antes de processar.
+  Barra scanners genéricos que nem tentam disfarçar a origem (maioria dos
+  casos reais). **Não é à prova de attacker deliberado**: `Origin` é
+  enviado automaticamente pelo navegador, mas um script pode forjar esse
+  header manualmente — não tem como o servidor ter certeza absoluta de que
+  o request veio do navegador de alguém no nosso site. Ainda assim, vale
+  implementar por ser barato e levantar a régua contra abuso casual.
+- **Rate limiting por IP** no endpoint — a proteção real contra
+  scanning/força-bruta de códigos (funciona mesmo se o `Origin` for
+  forjado). Precisa ser implementado junto com a checagem de `Origin`, não
+  é opcional nem alternativo a ela — são camadas complementares. Risco é
+  baixo (códigos de campanha, cota pequena, não são segredo de alto valor),
+  mas rate limit é barato e fecha a classe de abuso óbvia (alguém varrendo
+  milhares de códigos por minuto)
 - Código inválido/expirado/esgotado nunca deve vazar detalhe (mensagem de
   erro específica) pro usuário final — o comportamento correto é
   silenciosamente cair no form pago, igual não ter código nenhum
