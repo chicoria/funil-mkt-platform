@@ -9,10 +9,10 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Código implementado + G.12 aprovado (APPROVE, 0 CRITICAL/HIGH/MEDIUM, 2 LOW não-bloqueantes) — falta criar `PROMO_STATUS_SECRET`, propagar (Worker secret + VPS) e deploy |
+| Estado | DONE — deployado e verificado em produção. Rate limiting da Cloudflare fica pendente como BL-031 (backlog de segurança do produto), não bloqueante |
 | Started | 2026-09-14 |
-| Completed | — (pendente commit/push/deploy, aguardando confirmação do usuário) |
-| Commit final | — |
+| Completed | 2026-09-14 |
+| Commit final | `decole-plano-de-voo-app@124d582`, `funil-mkt-platform@43c0922`, `decolesuacarreiraesg@0475ece` |
 
 ## Contexto
 
@@ -268,8 +268,33 @@ Pontos de atenção:
   cobre `/funnel/promo-status/*` antes do deploy (a rota tem prefixo limpo
   pra isso, só não foi criada ainda).
 
-**Pendências antes de DONE**: gerar `PROMO_STATUS_SECRET`, criar o secret
-no Cloudflare Secrets Store (`promo_status_secret_decole`), propagar pro
-`.env` do app no VPS, configurar a regra de rate limiting da Cloudflare na
-zona, e então commit/push/deploy — tudo isso confirmado com o usuário antes
-de executar.
+**Deploy em produção (2026-09-14)**: todas as pendências acima executadas,
+uma por vez, com confirmação do usuário em cada passo:
+- `PROMO_STATUS_SECRET` gerado e criado no Cloudflare Secrets Store
+  (`promo_status_secret_decole`, escopo `workers`)
+- GitHub Actions secret `PROMO_STATUS_SECRET` criado em
+  `decole-plano-de-voo-app`; `docker-compose.yml` e `setup-infra.yml`
+  atualizados pra propagar o valor pro `.env` do VPS
+- `decole-plano-de-voo-app`: commit `124d582`, push → `deploy-app.yml`
+  automático (sucesso, 2m58s) → `setup-infra.yml` (`full-restart`,
+  manual, sucesso, 4m10s) — confirmado via smoke test
+  (`curl .../api/promo/X/status` sem header → `401`, não `500`)
+- `funil-mkt-platform`: commit `43c0922`, push → `deploy-all-workers.yml`
+  (manual, `dry_run=false`, sucesso, 1m14s)
+- `decolesuacarreiraesg`: commit `0475ece`, push → deploy automático via
+  integração Cloudflare Pages (sem GitHub Actions neste repo) — confirmado
+  propagado (`lp-preco-valor` ausente, `precheckout-promo-badge` presente)
+- **Smoke test end-to-end em produção**: `curl
+  https://api.decolesuacarreiraesg.com.br/funnel/promo-status/CODIGO-TESTE`
+  → `{"valid":false,"reason":"invalid"}`, HTTP 200 — pipeline completo
+  (worker → app → banco) confirmado funcionando
+
+**Pendência remanescente (não bloqueante)**: regra de Rate Limiting da
+Cloudflare pra `/funnel/promo-status/*` — tentativa de criar via API
+(Rulesets, fase `http_ratelimit`) falhou repetidamente com "request is not
+authorized" mesmo após conceder `Zone WAF:Edit` a dois tokens diferentes;
+suspeita não confirmada de limitação de plano da zona (API reporta
+`plan.name: "Free Website"`, usuário contesta). Registrado como **BL-031**
+no backlog de segurança do produto
+(`mkt-brain/knowledge-core/tenants/decole/products/plano-de-voo/artifacts/00-plano/backlog.md`)
+com os parâmetros sugeridos pra criação manual no dashboard.
