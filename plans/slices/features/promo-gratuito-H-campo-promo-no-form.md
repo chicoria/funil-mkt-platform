@@ -82,18 +82,30 @@ Regras (mesma lógica de `PromoService.redeem`, sem a parte de criar token):
 - `usos_atuais >= max_usos` → `{ valid: false, reason: 'exhausted' }`
 - Caso contrário → `{ valid: true }`
 
-**Decisão a tomar na execução**: esse endpoint precisa ser chamado
-cross-origin (site em `decolesuacarreiraesg.com.br`, API em
-`plano.decolesuacarreiraesg.com.br`) — precisa de CORS. Duas opções, decidir
-na execução:
-- CORS direto na rota do Next.js (`Access-Control-Allow-Origin` restrito ao
-  domínio do site, mesmo padrão que já existiria se outras rotas públicas do
-  app precisassem disso).
-- Proxy via `api-funnel-ingress` (`funil-mkt-platform`), que já tem CORS
-  configurado por tenant/origem — adicionaria uma chamada extra
-  worker→app, mais latência, mas mantém o app sem precisar lidar com CORS
-  ele mesmo. Consistente com o padrão de "tudo passa pelo ingress" já usado
-  pro form de precheckout.
+**Decisão fechada: proxy via `api-funnel-ingress`, não CORS direto na rota
+do app.** Arquitetura:
+
+- **LP (browser) → `api-funnel-ingress`**: novo endpoint público, ex.
+  `GET /funnel/promo-status/{code}` — mesmo worker que já recebe
+  `/funnel/precheckout`, mesmo CORS por tenant/origem já configurado ali
+  (`corsHeaders()`/`isOriginAllowed()`, já existentes em
+  `workers/api-funnel-ingress/src/index.ts`). Zero código de CORS novo.
+- **`api-funnel-ingress` → `decole-plano-de-voo-app`**: chamada
+  servidor-servidor, autenticada por um segredo novo compartilhado (mesmo
+  padrão de `PROMO_SIGNUP_SECRET`/`PLANOVOO_HOOK_SECRET` já usados nesta
+  sessão) — ex. `PROMO_STATUS_SECRET`, enviado num header
+  (`x-promo-status-secret` ou similar) que o endpoint do app exige pra
+  responder. Sem o segredo certo → 401, nunca chega a consultar o banco.
+
+Por que isso é melhor que CORS+Origin-check+rate-limit direto no app: um
+segredo não é adivinhável/forjável como um header `Origin` — fecha por
+completo o vetor "alguém bate direto no domínio do app" (o endpoint do app
+deixa de ser efetivamente público; só responde pra quem tem o segredo). O
+`api-funnel-ingress` continua precisando de proteção própria contra
+scanning (rate limiting — Cloudflare Workers tem mecanismos nativos pra
+isso, ou um contador simples via `IDENTITY_KV`), já que ELE é o endpoint
+público de fato. Mas a superfície de ataque encolhe pra um único lugar
+(o worker), em vez de dois (worker + app).
 
 ### 3. Campo de código no formulário + validação no clique do CTA
 
@@ -129,25 +141,30 @@ no caminho de resgate real.
 
 ## Testes (TDD Red primeiro)
 
-**Novo endpoint** (`decole-plano-de-voo-app`,
-`app/api/promo/[code]/status/route.test.ts`):
-- código válido (ativo, não expirado, com cota) → `200 { valid: true }`
-- código inexistente → `{ valid: false, reason: 'invalid' }`
-- código com `ativo = false` → `{ valid: false, reason: 'invalid' }`
-- código expirado → `{ valid: false, reason: 'expired' }`
-- código com `usos_atuais >= max_usos` → `{ valid: false, reason: 'exhausted' }`
+**App** (`decole-plano-de-voo-app`, `app/api/promo/[code]/status/route.test.ts`):
+- header do segredo (`x-promo-status-secret`) ausente ou errado → `401`,
+  nunca chega a consultar `getPromoCode`
+- header do segredo correto + código válido (ativo, não expirado, com cota)
+  → `200 { valid: true }`
+- header correto + código inexistente → `{ valid: false, reason: 'invalid' }`
+- header correto + código com `ativo = false` → `{ valid: false, reason: 'invalid' }`
+- header correto + código expirado → `{ valid: false, reason: 'expired' }`
+- header correto + código com `usos_atuais >= max_usos` → `{ valid: false, reason: 'exhausted' }`
 - nunca chama `createTokenForPromo` nem qualquer método de escrita — só
   `getPromoCode` (verificar via mock que os métodos de escrita não são
   chamados)
-- CORS: `OPTIONS` responde com os headers certos pro domínio do site (se a
-  decisão da seção 2 for CORS direto na rota)
-- Origin: request com `Origin` do domínio esperado → processa normal;
-  `Origin` de domínio diferente/desconhecido → 403, nunca chega a checar o
-  código; sem header `Origin` nenhum (script simples) → decidir na execução
-  se bloqueia ou deixa passar pro rate limit segurar (navegadores sempre
-  mandam `Origin` em cross-origin; scripts não mandam por padrão)
+- sem `PROMO_STATUS_SECRET` configurado no ambiente → falha fechada (500 de
+  config, nunca vira 200 aceitando qualquer coisa) — mesmo padrão de
+  `promoSignupSecret()` já usado nesta sessão
+
+**Worker** (`funil-mkt-platform`, `workers/api-funnel-ingress/test/unit/promo-status.test.ts`):
+- CORS: reaproveita `corsHeaders()`/`isOriginAllowed()` já existentes —
+  `OPTIONS` e origem não permitida seguem o mesmo comportamento das outras
+  rotas deste worker, sem lógica nova
+- chamada ao app inclui o header do segredo (mock do `fetch` pro app,
+  verificar que o header foi enviado)
 - rate limit por IP: N+1 requisições rápidas do mesmo IP → alguma resposta
-  de limite excedido (429), não deixa escanear códigos sem restrição
+  de limite excedido (429), antes mesmo de chamar o app
 
 **Frontend** (`decolesuacarreiraesg`, `site/test/unit/precheckout.test.ts` —
 nota: suíte deste repo está quebrada por incompatibilidade Node 26/vitest/jsdom,
@@ -170,27 +187,16 @@ browser como já feito nas fatias anteriores desta sessão):
 Pontos de atenção:
 - Endpoint de validação é **só leitura** — confirmar que nenhum caminho gera
   side-effect (token, e-mail, incremento de `usos_atuais`)
-- CORS restrito ao(s) domínio(s) reais do site, não `*` — mas **CORS não é
-  proteção contra abuso direto**: é uma restrição só de navegador, não
-  impede um script/curl de bater direto no endpoint ignorando CORS
-  inteiramente.
-- **Checagem de `Origin` no servidor** (camada adicional, além do CORS
-  header): a rota rejeita com 403 qualquer request cujo header `Origin` não
-  bata com o(s) domínio(s) esperados — isso é diferente de só configurar
-  CORS, é o próprio código da rota recusando o request antes de processar.
-  Barra scanners genéricos que nem tentam disfarçar a origem (maioria dos
-  casos reais). **Não é à prova de attacker deliberado**: `Origin` é
-  enviado automaticamente pelo navegador, mas um script pode forjar esse
-  header manualmente — não tem como o servidor ter certeza absoluta de que
-  o request veio do navegador de alguém no nosso site. Ainda assim, vale
-  implementar por ser barato e levantar a régua contra abuso casual.
-- **Rate limiting por IP** no endpoint — a proteção real contra
-  scanning/força-bruta de códigos (funciona mesmo se o `Origin` for
-  forjado). Precisa ser implementado junto com a checagem de `Origin`, não
-  é opcional nem alternativo a ela — são camadas complementares. Risco é
-  baixo (códigos de campanha, cota pequena, não são segredo de alto valor),
-  mas rate limit é barato e fecha a classe de abuso óbvia (alguém varrendo
-  milhares de códigos por minuto)
+- **O endpoint do app não é público de fato**: exige `PROMO_STATUS_SECRET`
+  num header, verificado antes de qualquer consulta ao banco — quem não
+  tem o segredo não consegue nem descobrir se um código existe. Isso é mais
+  forte que CORS ou checagem de `Origin` (que dependem de header que dá pra
+  forjar): sem o segredo certo, não tem request válido possível, ponto.
+- O único endpoint público de fato é o novo do `api-funnel-ingress` — esse
+  sim precisa de CORS (reaproveitado, já existe no worker) e de rate
+  limiting por IP, já que é o que fica exposto na internet. Confirmar que o
+  worker nunca repassa o `PROMO_STATUS_SECRET` de volta pro browser (nem em
+  erro, nem em log acessível)
 - Código inválido/expirado/esgotado nunca deve vazar detalhe (mensagem de
   erro específica) pro usuário final — o comportamento correto é
   silenciosamente cair no form pago, igual não ter código nenhum
@@ -209,5 +215,9 @@ Pontos de atenção:
   nunca vai clicar, e evita mostrar "gratuito" antes de confirmar que é real
 - Código inválido nunca gera mensagem de erro visível — cai silenciosamente
   no fluxo pago
+- Validação vai via proxy no `api-funnel-ingress` (não CORS direto no app) —
+  o endpoint do app fica protegido por segredo compartilhado
+  (`PROMO_STATUS_SECRET`), nunca diretamente exposto; o worker é o único
+  ponto público de fato, e reaproveita CORS já existente ali
 - CORS (rota direta vs. proxy via ingress) — deixado como decisão de
   execução, não fechado aqui
