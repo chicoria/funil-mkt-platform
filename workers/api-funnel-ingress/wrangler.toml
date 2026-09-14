@@ -19,6 +19,23 @@ binding = "PLANOVOO_HOOK_SECRET_DECOLE"
 store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
 secret_name = "planovoo_hook_secret_decole"
 
+# Fatia H (promo gratuito) — reaproveita o secret já existente no store
+# (criado para funnel-dispatcher/call_product_api), só adiciona o binding
+# neste worker também.
+[[secrets_store_secrets]]
+binding = "PLANOVOO_API_BASE_URL_DECOLE"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "planovoo_api_base_url_decole"
+
+# Fatia H — segredo NOVO (x-promo-status-secret), ainda não criado no store.
+# Precisa de `wrangler secrets-store secret create` + propagação pro .env do
+# app no VPS (PROMO_STATUS_SECRET) antes do deploy — confirmar com o usuário
+# antes de qualquer ação em produção.
+[[secrets_store_secrets]]
+binding = "PROMO_STATUS_SECRET_DECOLE"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "promo_status_secret_decole"
+
 [observability]
 enabled = true
 head_sampling_rate = 1

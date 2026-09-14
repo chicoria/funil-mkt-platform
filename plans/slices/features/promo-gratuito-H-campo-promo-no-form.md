@@ -9,9 +9,9 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | TODO (planejado, não escopado pra implementação ainda) |
-| Started | — |
-| Completed | — |
+| Estado | Código implementado + G.12 aprovado (APPROVE, 0 CRITICAL/HIGH/MEDIUM, 2 LOW não-bloqueantes) — falta criar `PROMO_STATUS_SECRET`, propagar (Worker secret + VPS) e deploy |
+| Started | 2026-09-14 |
+| Completed | — (pendente commit/push/deploy, aguardando confirmação do usuário) |
 | Commit final | — |
 
 ## Contexto
@@ -221,3 +221,55 @@ Pontos de atenção:
   ponto público de fato, e reaproveita CORS já existente ali
 - CORS (rota direta vs. proxy via ingress) — deixado como decisão de
   execução, não fechado aqui
+
+## Execução (append-only)
+
+**2026-09-14** — implementadas as 3 partes, TDD Red→Green em cada uma:
+
+1. **App** (`decole-plano-de-voo-app`): `promoStatusSecret()` em
+   `lib/promo/promo-token.ts` + `GET /api/promo/[code]/status`
+   (`app/api/promo/[code]/status/route.ts` + `route.test.ts`, 9 testes).
+   Suíte completa: 149/149.
+2. **Worker** (`funil-mkt-platform`, `api-funnel-ingress`): novo campo
+   `statusSecretEnv` em `CatalogV5Integration` + catálogo
+   (`integrations.planovoo.statusSecretEnv = "PROMO_STATUS_SECRET_DECOLE"`);
+   `findPromoStatusIntegration()` (genérico, não hardcoda nome de
+   integração); rota `GET /funnel/promo-status/{code}` inserida antes do
+   gate POST-only; `wrangler.toml` ganhou bindings pro Secrets Store —
+   `PLANOVOO_API_BASE_URL_DECOLE` (reaproveita secret já existente, criado
+   pro funnel-dispatcher) e `PROMO_STATUS_SECRET_DECOLE` (**novo, ainda não
+   criado no store**). `promo-status.test.ts`, 7 testes. Suíte completa do
+   repo: 539/539. `check-config`: limpo.
+   - Rate limiting por IP: decisão do usuário foi usar regra nativa de Rate
+     Limiting da Cloudflare na zona (fora do código do worker), não KV — não
+     implementado em código, fica como configuração de infra a confirmar
+     antes do deploy.
+3. **Site** (`decolesuacarreiraesg`): revertido `applyPromoPricing()` +
+   classes `lp-preco-valor`/`lp-preco-garantia` (12 pontos); campo
+   `#PROMO_CODE` (dentro de `#precheckout-promo-code-field`, com label
+   "Código promocional") + badge `#precheckout-promo-badge`, ambos
+   escondidos por padrão, só revelados após `GET /funnel/promo-status/{code}`
+   responder `{valid:true}`; URL derivada de
+   `window.EngagementConfig.ingressUrl` (evita hardcodar um terceiro
+   literal do domínio). `npm test` do site confirmado quebrado por causa
+   pré-existente (Node 26/vitest/jsdom), documentada — validação manual via
+   Chrome DevTools (servidor estático local + mock de `fetch`) cobrindo:
+   sem `promo_code` (zero fetch, form normal), código válido (badge +
+   campo revelados), falha de rede (fallback silencioso), `valid:false`
+   (fallback silencioso). `npm run typecheck` e `build:precheckout` limpos.
+
+**G.12** — revisão por agente separado (`ecc:code-reviewer`): **APPROVE**,
+0 CRITICAL/HIGH/MEDIUM. 2 LOW não-bloqueantes:
+- `access-control-allow-methods` do worker não anuncia GET pra
+  `/funnel/promo-status/*` (hoje inofensivo — a chamada da LP não dispara
+  preflight; só importa se um header não-safelisted for adicionado no
+  futuro).
+- Confirmar que a regra de rate limiting da Cloudflare na zona realmente
+  cobre `/funnel/promo-status/*` antes do deploy (a rota tem prefixo limpo
+  pra isso, só não foi criada ainda).
+
+**Pendências antes de DONE**: gerar `PROMO_STATUS_SECRET`, criar o secret
+no Cloudflare Secrets Store (`promo_status_secret_decole`), propagar pro
+`.env` do app no VPS, configurar a regra de rate limiting da Cloudflare na
+zona, e então commit/push/deploy — tudo isso confirmado com o usuário antes
+de executar.

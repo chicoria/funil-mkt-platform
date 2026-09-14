@@ -140,6 +140,18 @@ function productCodeFromBody(payload: Record<string, unknown>, fallback: string)
   return (candidates[0] || fallback).toUpperCase().replace(/[^A-Z0-9_]+/g, "_");
 }
 
+// Fatia H (promo gratuito): acha a integração do tenant que serve o proxy de
+// status (GET /funnel/promo-status/{code} → {baseUrlEnv}/api/promo/{code}/status).
+// Genérico como findAppWebhook — não hardcoda o nome da integração ("planovoo"),
+// só exige que ela tenha baseUrlEnv + statusSecretEnv configurados.
+function findPromoStatusIntegration(catalog: CatalogV5, tenantId: string): CatalogV5Integration | undefined {
+  const tenant = catalog.tenants?.[tenantId];
+  if (!tenant?.integrations) return undefined;
+  return Object.values(tenant.integrations).find(
+    (integration) => integration.baseUrlEnv && integration.statusSecretEnv
+  );
+}
+
 function findAppWebhook(catalog: CatalogV5, tenantId: string, pathname: string): ResolvedAppWebhook | undefined {
   const tenant = catalog.tenants?.[tenantId];
   if (!tenant?.integrations) return undefined;
@@ -274,6 +286,74 @@ export default {
 
     if (pathname === "/health") {
       return jsonResponse({ ok: true, worker: "api-funnel-ingress" }, 200);
+    }
+
+    // Fatia H (promo gratuito): único endpoint GET deste worker — checagem
+    // leve de "esse código ainda tem vaga?" pro clique do CTA na LP. Tratado
+    // antes do gate POST-only abaixo (que bloquearia qualquer GET). Proxy
+    // autenticado por segredo compartilhado pro app — nunca CORS direto na
+    // rota do app, nunca repassa o segredo de volta pro browser.
+    if (request.method === "GET" && pathname.startsWith("/funnel/promo-status/")) {
+      const tenantId = resolveTenantId(request, catalog);
+      if (!tenantId) {
+        logIngress({ stage: "blocked", pathname, error: "unknown_tenant", status: 400 });
+        return withCors(jsonResponse({ ok: false, error: "unknown_tenant" }, 400), request, catalog);
+      }
+      if (!isOriginAllowed(request, catalog, tenantId)) {
+        logIngress({ stage: "blocked", pathname, tenant_id: tenantId, error: "origin_not_allowed", status: 403 });
+        return withCors(jsonResponse({ ok: false, error: "origin_not_allowed" }, 403), request, catalog, tenantId);
+      }
+
+      const code = decodeURIComponent(pathname.slice("/funnel/promo-status/".length));
+      if (!code) {
+        logIngress({ stage: "blocked", pathname, tenant_id: tenantId, error: "missing_code", status: 400 });
+        return withCors(jsonResponse({ ok: false, error: "missing_code" }, 400), request, catalog, tenantId);
+      }
+
+      const integration = findPromoStatusIntegration(catalog, tenantId);
+      if (!integration?.baseUrlEnv || !integration.statusSecretEnv) {
+        logIngress({ stage: "error", pathname, tenant_id: tenantId, error: "promo_status_not_configured", status: 500 });
+        return withCors(jsonResponse({ ok: false, error: "promo_status_not_configured" }, 500), request, catalog, tenantId);
+      }
+
+      let baseUrl: string;
+      let secret: string;
+      try {
+        baseUrl = (await resolveSecret(env[integration.baseUrlEnv] as SecretValue, integration.baseUrlEnv)).replace(/\/$/, "");
+        secret = await resolveSecret(env[integration.statusSecretEnv] as SecretValue, integration.statusSecretEnv);
+      } catch {
+        logIngress({ stage: "error", pathname, tenant_id: tenantId, error: "secret_misconfigured", status: 500 });
+        return withCors(jsonResponse({ ok: false, error: "secret_misconfigured" }, 500), request, catalog, tenantId);
+      }
+
+      let appRes: Response;
+      try {
+        appRes = await fetch(`${baseUrl}/api/promo/${encodeURIComponent(code)}/status`, {
+          headers: { "x-promo-status-secret": secret },
+        });
+      } catch {
+        logIngress({ stage: "error", pathname, tenant_id: tenantId, error: "upstream_unreachable", status: 502 });
+        return withCors(jsonResponse({ valid: false, reason: "invalid" }, 200), request, catalog, tenantId);
+      }
+
+      let body: unknown;
+      try {
+        body = await appRes.json();
+      } catch {
+        body = null;
+      }
+
+      // appRes não-2xx (ex.: app com segredo desalinhado) nunca vira um
+      // detalhe visível pro browser — cai no mesmo silêncio de "código
+      // inválido", igual ao resto do fluxo (nunca vazar diferença
+      // observável entre code forjado/expirado/esgotado e erro de infra).
+      if (!appRes.ok || !body || typeof body !== "object") {
+        logIngress({ stage: "error", pathname, tenant_id: tenantId, error: "upstream_error", upstream_status: appRes.status, status: 200 });
+        return withCors(jsonResponse({ valid: false, reason: "invalid" }, 200), request, catalog, tenantId);
+      }
+
+      logIngress({ stage: "ok", pathname, tenant_id: tenantId, status: 200 });
+      return withCors(jsonResponse(body, 200), request, catalog, tenantId);
     }
 
     if (request.method !== "POST") {

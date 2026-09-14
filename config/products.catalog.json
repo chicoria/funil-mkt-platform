@@ -112,6 +112,7 @@
           "_note": "Integração exclusiva do tenant DECOLE — ver PLANO-MASTER seção 10.7",
           "baseUrlEnv": "PLANOVOO_API_BASE_URL_DECOLE",
           "hookSecretEnv": "PLANOVOO_HOOK_SECRET_DECOLE",
+          "statusSecretEnv": "PROMO_STATUS_SECRET_DECOLE",
           "scope": [
             "DECOLE_PLANOVOO"
           ],

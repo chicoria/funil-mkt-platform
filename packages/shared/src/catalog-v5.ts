@@ -29,6 +29,12 @@ export interface CatalogV5Integration {
   disableForwardEnv?: string;
   baseUrlEnv?: string;
   hookSecretEnv?: string;
+  // Fatia H (promo gratuito): nome do env var/Secrets Store binding com o
+  // segredo compartilhado (x-promo-status-secret) exigido pela rota
+  // GET {baseUrlEnv}/api/promo/{code}/status no app. Uma integração só é
+  // elegível como alvo do proxy /funnel/promo-status/{code} quando tem
+  // baseUrlEnv E statusSecretEnv configurados.
+  statusSecretEnv?: string;
   scope?: string[];
   appWebhooks?: CatalogV5AppWebhook[];
   // Note: no index signature — all expected fields are declared above.
