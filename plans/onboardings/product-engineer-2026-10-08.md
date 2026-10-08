@@ -368,14 +368,36 @@ Deletar os secrets criados via API (`DELETE .../secrets/{id}`).
 
 - [ ] Fatia 4 DONE (secrets precisam existir antes do binding)
 
+### Status
+
+| Campo | Valor |
+|---|---|
+| Estado | IN_PROGRESS |
+| Started | 2026-10-08 por Claude (sessão adilson-hub) |
+
+### Descoberta que corrige o plano original
+
+`api-funnel-ingress` **não usa nenhum dos secrets** `_DECOLE` no código
+(confirmado via `grep BREVO\|GA4\|SGTM workers/api-funnel-ingress/src/index.ts`
+→ 0 matches) — ele só publica na queue, é o `funnel-dispatcher` quem
+consome e chama Brevo/GA4. **Não há binding a adicionar nesse worker.**
+
+Além disso: como a captura de lead do Product Engineer vai direto pra uma
+Cloudflare Pages Function → Brevo (decisão em "Fora de escopo" deste
+plano), **nada publica na queue `decole-q-funnel-events` marcado como
+`product-engineer` ainda**. Os bindings do `funnel-dispatcher` abaixo
+ficam prontos mas dormentes — só passam a importar se/quando um fluxo
+futuro decidir rotear eventos pelo `funil-mkt-platform` em vez da
+Function direta.
+
 ### Mudança
 
 #### Arquivos a criar/modificar
 
 | Arquivo | Ação | Descrição curta |
 |---|---|---|
-| `workers/funnel-dispatcher/wrangler.toml` | EDIT | Bindings `_PRODUCT_ENGINEER` |
-| `workers/api-funnel-ingress/wrangler.toml` | EDIT | Bindings + nenhuma rota nova necessária (CORS por catálogo) |
+| `workers/funnel-dispatcher/wrangler.toml` | EDIT ✅ feito, commit `2229877` | 4 bindings `_PRODUCT_ENGINEER` (Brevo, sGTM, GA4 measurement id, GA4 api secret) |
+| ~~`workers/api-funnel-ingress/wrangler.toml`~~ | **Não aplicável** | Worker não usa esses secrets — ver descoberta acima |
 | `workers/dashboard-sync/wrangler.toml` | EDIT | Só se Fatia 6 ativada |
 
 Sem `api-hotmart-ingress` (sem Hotmart) nem `links-redirect` (sem links
@@ -397,21 +419,21 @@ secret_name = "brevo_api_key_product_engineer"
 
 ### Validação executável
 
+Commit já feito (`2229877`). Falta só o deploy — **bloqueado pelo
+classificador do harness** (categoria "Production Deploy"), roda você
+mesmo:
+
 ```bash
 cd /Users/chicoria/git/funil-mkt-platform
-git add workers/funnel-dispatcher/wrangler.toml workers/api-funnel-ingress/wrangler.toml
-git commit -m "feat(workers): secrets store bindings para tenant product-engineer"
-
-export CLOUDFLARE_API_TOKEN="$(grep CLOUDFLARE_API_TOKEN .env.local | cut -d= -f2)"
 npx wrangler deploy --config workers/funnel-dispatcher/wrangler.toml
-npx wrangler deploy --config workers/api-funnel-ingress/wrangler.toml
 
 npx wrangler deployments list --name decole-funnel-dispatcher | head -5
 # Esperado: nova versão com timestamp recente
 ```
 
-⚠️ **Redeploy toca produção compartilhada com a DECOLE — confirmação
-explícita do Adilson obrigatória antes de executar.**
+⚠️ Toca produção compartilhada com a DECOLE — é por isso que está
+bloqueado automaticamente; o Adilson já deu o OK geral ("avançar com
+todas as etapas"), mas a execução em si precisa ser manual.
 
 ### Rollback
 
