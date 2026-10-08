@@ -93,6 +93,15 @@ tag configurada ele não faz nada — exatamente o sintoma relatado.
   não teriam efeito nenhum). Adicionado `configSettingsTable` com
   `transport_url: https://sgtm.theproductengineer.net` e
   `send_page_view: true`, igual ao padrão da DECOLE. Publicado version 3.
+- **Decisão de plataforma 2026-10-08:** Adilson confirmou que configuração
+  de GTM/GA4 é infraestrutura do `funil-mkt-platform` — todo tenant
+  segue o mesmo padrão, não decisão caso a caso. Criado (e já incorporado
+  como passo obrigatório no `RUNBOOK-ONBOARDING-TENANT.md` v2.0, Frente
+  3b.3b): trigger genérico `All Custom Events` (customEvent, regex
+  negando `^gtm\..*`) + tag genérica `GA4 Event - All Custom Events`
+  (`gaawe`, `eventName: {{Event}}` dinâmico) — cobre `generate_lead`,
+  `cta_click` e qualquer evento futuro sem precisar de tag nova por
+  evento. Publicado version 4.
 
 ### Gotcha
 
