@@ -242,6 +242,19 @@ no seletor de criação de token customizado da Cloudflare hoje. Criar
 widget novo = painel (Security → Turnstile → Add widget), não API, até
 isso mudar.
 
+## A tag GA4 Config precisa do `transport_url` — sem ele, o sGTM é ignorado inteiro
+
+Criar a tag "Google tag" (`googtag`) no container Web **não basta** —
+sem `configSettingsTable` com `transport_url` apontando pro domínio sGTM
+do tenant, os hits vão **direto pro Google**, nunca passam pelo server
+container. Toda a infra de sGTM (lookup tables, domain mapping no Cloud
+Run) fica sem efeito nenhum se esse parâmetro faltar. Confirmado
+comparando com a tag de produção real da DECOLE
+(`FB_CONVERSIONS_API-...-GA4_Config`): tem
+`transport_url: https://sgtm.{tenant_domain}` + `send_page_view: true`
+no `configSettingsTable`. (Fonte: onboarding `product-engineer`, Fatia
+10, correção pedida pelo Adilson comparando com o padrão da DECOLE.)
+
 ## Container Web e container server-side são entidades separadas — nenhum passo configura o outro
 
 Instalar o snippet do GTM Web no site e configurar as lookup tables do

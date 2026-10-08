@@ -84,6 +84,15 @@ tag configurada ele não faz nada — exatamente o sintoma relatado.
   Pages", sempre disponível em qualquer container sem precisar ser criado
   explicitamente.
 - Publicado: version 2 no container `266435700`.
+- **Correção 2026-10-08 (mesmo dia):** Adilson perguntou se estava
+  seguindo o mesmo padrão das tags da DECOLE. Comparei com a tag real de
+  produção da DECOLE (`FB_CONVERSIONS_API-...-GA4_Config`, tag 39 — a
+  outra, "Tag do Google Analytics" tag 15, está `paused: true`, é
+  legado) e achava **faltando o `transport_url`** — sem isso, os hits
+  iam direto pro Google, **ignorando todo o sGTM** (Fatias 3 e 7 inteiras
+  não teriam efeito nenhum). Adicionado `configSettingsTable` com
+  `transport_url: https://sgtm.theproductengineer.net` e
+  `send_page_view: true`, igual ao padrão da DECOLE. Publicado version 3.
 
 ### Gotcha
 
