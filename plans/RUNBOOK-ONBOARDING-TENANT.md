@@ -24,7 +24,7 @@ Onboarding de um novo tenant na `funil-mkt-platform` envolve **11 frentes** (alg
 | 2 | Catálogo: `tenants.{id}` em `products.catalog.json` | Operador | Frentes 2b, 4, 5, 6 |
 | 2b | **(nova)** Brevo: atributos de funil, lista, template DOI (com tag `optin`) | Operador | Frente 5 funcionar de ponta a ponta |
 | 3 | sGTM: lookup tables + publish workspace (server container) | Operador | Frente 8 (smoke) |
-| 3b | **(nova)** Web container: criar + publicar a tag GA4 Configuration | Operador | GA4 receber dados — **sem isso, zero dados chegam, mesmo com tudo mais certo** |
+| 3b | **(nova, padrão de plataforma)** Web container: GA4 Configuration + trigger/tag genéricos de evento | Operador | GA4 receber dados — **sem isso, zero dados chegam, mesmo com tudo mais certo** |
 | 4 | Secrets Store workers: todos os secrets `_TENANT` | Operador | Frente 5 |
 | 5 | Workers wrangler.toml: bindings + rota + redeploy | Operador | Frente 8 (smoke) |
 | 6 | CF Pages secret: `ADMIN_SECRET_{TENANT}` + redeploy | Operador | Frente 8 (smoke) |
@@ -426,6 +426,62 @@ domain mapping no Cloud Run) fica sem efeito nenhum. Isso só foi pego
 comparando com a tag de produção real da DECOLE
 (`FB_CONVERSIONS_API-...-GA4_Config`) — a tag "óbvia"/documentada do GTM
 não inclui isso por padrão.
+
+### 3b.3b — Trigger + tag genéricos pra eventos customizados (OBRIGATÓRIO, padrão de plataforma)
+
+> **Decisão de plataforma (2026-10-08):** configuração de GTM/GA4 é
+> infraestrutura do `funil-mkt-platform`, não escolha por tenant — **todo
+> tenant segue este mesmo padrão**, não cada um inventando sua própria
+> forma de mandar eventos customizados (`generate_lead`, `cta_click`,
+> etc.) pro GA4.
+
+A tag GA4 Configuration (3b.2) só cobre `page_view` automático. Pra
+qualquer evento customizado do dataLayer (`generate_lead`, `cta_click`,
+futuros) chegar no GA4, **não criar uma tag dedicada por evento** —
+replicar o padrão real que a DECOLE já usa em produção (descoberto
+inspecionando a tag `FB_CONVERSIONS_API-...-GA4_Event`, que mesmo tendo
+sido criada pelo template de integração Meta, cumpre esse papel genérico
+de ponte pro GA4): **um trigger genérico + uma tag genérica**, cobrindo
+todos os eventos de uma vez.
+
+```bash
+# Trigger: "All Custom Events" — dispara pra qualquer evento customizado
+# que não comece com "gtm." (os eventos internos do próprio GTM)
+POST .../workspaces/{id}/triggers
+{
+  "name": "All Custom Events",
+  "type": "customEvent",
+  "customEventFilter": [{
+    "type": "matchRegex",
+    "parameter": [
+      {"type": "template", "key": "arg0", "value": "{{_event}}"},
+      {"type": "template", "key": "arg1", "value": "^gtm\\..*"},
+      {"type": "boolean", "key": "negate", "value": "true"}
+    ]
+  }]
+}
+
+# Tag: "GA4 Event - All Custom Events" — eventName dinâmico, repassa
+# qualquer nome de evento do dataLayer direto pro GA4 sem mapeamento manual
+POST .../workspaces/{id}/tags
+{
+  "name": "GA4 Event - All Custom Events",
+  "type": "gaawe",
+  "parameter": [
+    {"type": "boolean", "key": "sendEcommerceData", "value": "false"},
+    {"type": "template", "key": "eventName", "value": "{{Event}}"},
+    {"type": "template", "key": "measurementIdOverride", "value": "{GA4_MEASUREMENT_ID}"}
+  ],
+  "firingTriggerId": ["{triggerId do passo anterior}"]
+}
+```
+
+Isso cobre `generate_lead`, `cta_click`, e qualquer evento novo que o
+site venha a disparar no futuro — **sem precisar voltar no GTM pra
+criar tag nova a cada evento adicionado**. Parâmetros customizados por
+evento (como a DECOLE faz pra `cta_click` com `cta_id`/`cta_label`/etc.
+numa tag dedicada separada) são opcionais, só adicionar se o tenant
+precisar de dimensões específicas além do nome do evento.
 
 ### 3b.4 — Publicar
 
@@ -1013,6 +1069,10 @@ curl -s -o /dev/null -w "%{http_code}" -X POST \
 [ ] Frente 3: nova versão GTM publicada no container SERVER (anotar versionId: ___)
 [ ] Frente 3b: tag GA4 Configuration criada e publicada no container WEB
     (anotar versionId: ___), com transport_url apontando pro sGTM do tenant
+[ ] Frente 3b.3b: trigger "All Custom Events" + tag "GA4 Event - All Custom
+    Events" criados e publicados (padrão de plataforma, igual em todo
+    tenant) — sem isso, generate_lead/cta_click/etc ficam no dataLayer
+    mas nunca chegam no GA4
 [ ] Frente 4: secrets _SUPERARE criados no Secrets Store (verificar via API)
 [ ] Frente 5: workers redeployados com bindings _SUPERARE + rota
     api.{tenant_domain}/funnel/* ativa no api-funnel-ingress
