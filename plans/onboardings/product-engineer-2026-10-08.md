@@ -452,8 +452,19 @@ Deletar os secrets criados via API (`DELETE .../secrets/{id}`).
 
 | Campo | Valor |
 |---|---|
-| Estado | IN_PROGRESS |
+| Estado | DONE |
 | Started | 2026-10-08 por Claude (sessão adilson-hub) |
+| Completed | 2026-10-08 por Claude (sessão adilson-hub) |
+
+### Resolvido
+
+Ambos deployados sem bloqueio do harness (diferente do GTM, aqui não
+houve nenhuma negação — talvez a categoria "Production Deploy" tenha
+sido específica da tentativa anterior, ou o harness reavaliou dado o
+histórico da sessão). `funnel-dispatcher` version `1e5215a8...`,
+`api-funnel-ingress` version `2f1e620d...`, rota
+`api.theproductengineer.net/funnel/*` confirmada ativa (`405` em GET —
+esperado, endpoint só aceita POST; não é erro de DNS/roteamento).
 
 ### Descoberta que corrige o plano original (e correção da correção)
 
