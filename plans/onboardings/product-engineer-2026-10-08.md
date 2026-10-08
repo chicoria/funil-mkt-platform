@@ -50,6 +50,53 @@ fase — só eventos de funil de topo (lead).
 | `BREVO_API_KEY_PRODUCT_ENGINEER` | já existe (conta Brevo dedicada, plano Free) |
 | `GA4_API_SECRET_PRODUCT_ENGINEER` | **falta gerar** (GA4 Admin → Data Streams → Measurement Protocol API secrets) |
 
+## Fatia 10 — GA4 Configuration tag no container Web (gap real)
+
+> Satélite: onboarding `product-engineer` · Estimativa: 15 min
+
+### Status
+
+| Campo | Valor |
+|---|---|
+| Estado | DONE |
+| Started | 2026-10-08 por Claude (sessão adilson-hub) |
+| Completed | 2026-10-08 por Claude (sessão adilson-hub) |
+
+### Contexto
+
+O Adilson reportou: "vejo a tag do GTM na página carregada, mas somente
+isso" — GA4 sem nenhum dado (confirmado via `runRealtimeReport` e
+`runReport` nos últimos 2 dias, ambos zero rows). Causa: eu instalei o
+snippet do GTM Web (`GTM-TK6V8G33`) no site e criei as lookup tables do
+**sGTM** (server-side), mas **nunca entrei no próprio container Web**
+(`accounts/6381217846/containers/266435700`) pra criar a tag GA4
+Configuration. Confirmado via API: workspace 2 tinha 0 tags, 0 triggers —
+container completamente vazio. O snippet carrega o GTM, mas sem nenhuma
+tag configurada ele não faz nada — exatamente o sintoma relatado.
+
+### Execução (append-only)
+
+#### 2026-10-08 by Claude (sessão adilson-hub)
+
+- Criada tag `GA4 Configuration - theproductengineer.net` (tipo `googtag`),
+  `tagId: G-LTQ72HWDXR`, `firingTriggerId: ["2147479553"]` — esse é o ID
+  reservado/mágico do GTM pro trigger built-in "Initialization - All
+  Pages", sempre disponível em qualquer container sem precisar ser criado
+  explicitamente.
+- Publicado: version 2 no container `266435700`.
+
+### Gotcha
+
+- Container Web e container server-side (sGTM) são **duas entidades
+  completamente separadas** — instalar o snippet e configurar as lookup
+  tables do sGTM não cria nada automaticamente dentro do container Web.
+  Checklist de onboarding futuro deve incluir explicitamente "criar e
+  publicar a tag GA4 Config no container Web", não só "instalar o
+  snippet no site".
+- `firingTriggerId: "2147479553"` (Initialization - All Pages) é o
+  padrão usado pela própria UI do GTM ao criar uma "Google tag" — não
+  precisa criar um trigger customizado pra isso.
+
 ## Fatia 9 — Turnstile (bot protection no form)
 
 > Satélite: onboarding `product-engineer` · Estimativa: 1h

@@ -242,6 +242,24 @@ no seletor de criação de token customizado da Cloudflare hoje. Criar
 widget novo = painel (Security → Turnstile → Add widget), não API, até
 isso mudar.
 
+## Container Web e container server-side são entidades separadas — nenhum passo configura o outro
+
+Instalar o snippet do GTM Web no site e configurar as lookup tables do
+sGTM (server-side) **não cria nada dentro do container Web**. São duas
+contas/containers totalmente separados na Tag Manager API. Faltou um
+passo explícito no checklist original: entrar no container Web
+(`accounts/{gtm_account_id}/containers/{gtm_container_id}`) e criar a tag
+"Google tag" (tipo `googtag`, `tagId` = Measurement ID GA4), publicar.
+Sem isso, o GTM carrega no site (visível no DevTools) mas não envia
+absolutamente nada pro GA4 — sintoma real reportado pelo Adilson:
+"vejo a tag do GTM carregada, mas só isso". Confirmado via API:
+container tinha 0 tags, 0 triggers antes da correção.
+
+`firingTriggerId: "2147479553"` é o ID reservado do trigger built-in
+"Initialization - All Pages" — não precisa criar esse trigger, é o
+mesmo que a UI do GTM usa quando você cria uma "Google tag" manualmente.
+(Fonte: onboarding `product-engineer`, Fatia 10.)
+
 ## Gotchas consolidados (vindos de onboardings reais)
 
 - GA4 exige "User Data Collection Acknowledgement" manual (clique no
