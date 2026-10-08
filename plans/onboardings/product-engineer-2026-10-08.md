@@ -291,26 +291,33 @@ Via UI GTM: Container > Versions > selecionar versão anterior > Publish.
 
 | Campo | Valor |
 |---|---|
-| Estado | BLOCKED |
+| Estado | DONE |
 | Started | 2026-10-08 por Claude (sessão adilson-hub) |
+| Completed | 2026-10-08 por Claude (sessão adilson-hub) |
 
 ### Pré-requisitos
 
 - [x] Token Cloudflare com escopo `Secrets Store:Edit` — `CLOUDFLARE_AGENTS_AI_TOKEN`
-      confirmado (GET na store funcionou, listou secrets `_decole` existentes)
+      confirmado (GET e POST na store funcionaram)
 - [x] `GA4_API_SECRET_PRODUCT_ENGINEER` gerado — precisou do "User Data
       Collection Acknowledgement" na GA4 (Admin → Data Settings → Data
       Collection), que é um clique manual, não exposto via API. Confirmado
       pelo Adilson em 2026-10-08, secret gerado e salvo em `~/.env.local`
       (fora deste repo).
+- [x] Permissão do harness liberada — Adilson adicionou entrada em
+      `~/.claude/settings.json` → `permissions.autoMode.allow` autorizando
+      escrita no Secrets Store pra secrets `_product_engineer`.
 
-### Bloqueio atual
+### Resolvido
 
-Escrita real no Secrets Store (`POST .../secrets`) foi negada pelo
-classificador de permissão do harness Claude Code, categoria "Secret-Store
-Writes" — não é limitação do token, é uma permissão que precisa ser
-liberada explicitamente pelo Adilson (regra de permissão do Bash) ou os
-`curl POST` abaixo rodados por ele mesmo.
+4 secrets criados e confirmados `active` no Secrets Store
+(`23bdc9c2e8ca470d82352c53ec8d2e67`): `brevo_api_key_product_engineer`,
+`sgtm_endpoint_url_product_engineer`, `ga4_measurement_id_product_engineer`,
+`ga4_api_secret_product_engineer`.
+
+**Nota:** `ga4_service_account_key_product_engineer` e
+`ga4_property_id_product_engineer` (usados só por `dashboard-sync`, Fatia 6
+opcional) **não foram criados** — criar só se a Fatia 6 for ativada.
 
 ### Mudança
 
