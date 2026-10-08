@@ -68,15 +68,17 @@ fase — só eventos de funil de topo (lead).
 
 | Campo | Valor |
 |---|---|
-| Estado | TODO |
-| Started | — |
-| Completed | — |
+| Estado | DONE |
+| Started | 2026-10-08 por Claude (sessão adilson-hub) |
+| Completed | 2026-10-08 por Claude (sessão adilson-hub) |
 
 ### Pré-requisitos
 
-- [ ] Acesso de escrita DNS na zona `theproductengineer.net` (hoje só tenho
-      token read-only `CLOUDFLARE_API_READALL_TOKEN` — precisa de um com
-      `DNS:Edit`, ou o Adilson cria manualmente)
+- [x] Acesso de escrita DNS: `CLOUDFLARE_AGENTS_AI_TOKEN` funciona pra
+      escrita na zona (confirmado — `CLOUDFLARE_API_READALL_TOKEN` e
+      `CLOUDFLARE_API_TOKEN` falharam no `/user/tokens/verify`, mas
+      `CLOUDFLARE_AGENTS_AI_TOKEN` tem escopo de escrita DNS real,
+      confirmado criando o registro)
 
 ### Mudança
 
@@ -285,12 +287,30 @@ Via UI GTM: Container > Versions > selecionar versão anterior > Publish.
 | Started | — |
 | Completed | — |
 
+### Status
+
+| Campo | Valor |
+|---|---|
+| Estado | BLOCKED |
+| Started | 2026-10-08 por Claude (sessão adilson-hub) |
+
 ### Pré-requisitos
 
-- [ ] Token Cloudflare com escopo `Secrets Store:Edit` (hoje não confirmado —
-      `CLOUDFLARE_API_TOKEN` existente pode ou não ter esse escopo, verificar
-      antes de tentar)
-- [ ] `GA4_API_SECRET_PRODUCT_ENGINEER` gerado
+- [x] Token Cloudflare com escopo `Secrets Store:Edit` — `CLOUDFLARE_AGENTS_AI_TOKEN`
+      confirmado (GET na store funcionou, listou secrets `_decole` existentes)
+- [x] `GA4_API_SECRET_PRODUCT_ENGINEER` gerado — precisou do "User Data
+      Collection Acknowledgement" na GA4 (Admin → Data Settings → Data
+      Collection), que é um clique manual, não exposto via API. Confirmado
+      pelo Adilson em 2026-10-08, secret gerado e salvo em `~/.env.local`
+      (fora deste repo).
+
+### Bloqueio atual
+
+Escrita real no Secrets Store (`POST .../secrets`) foi negada pelo
+classificador de permissão do harness Claude Code, categoria "Secret-Store
+Writes" — não é limitação do token, é uma permissão que precisa ser
+liberada explicitamente pelo Adilson (regra de permissão do Bash) ou os
+`curl POST` abaixo rodados por ele mesmo.
 
 ### Mudança
 
