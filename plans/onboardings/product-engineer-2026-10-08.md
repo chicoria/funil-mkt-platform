@@ -297,16 +297,29 @@ git revert f4f49a6
 
 | Campo | Valor |
 |---|---|
-| Estado | TODO |
-| Started | — |
-| Completed | — |
+| Estado | DONE |
+| Started | 2026-10-08 por Claude (sessão adilson-hub) |
+| Completed | 2026-10-08 por Claude (sessão adilson-hub) |
 
 ### Pré-requisitos
 
-- [ ] Acesso confirmado: service account `acesso-api@gtm-k6q4h6br-ndq3n.iam.gserviceaccount.com`
+- [x] Acesso confirmado: service account `acesso-api@gtm-k6q4h6br-ndq3n.iam.gserviceaccount.com`
       já é Editor na conta GTM `6381217846` (Web container do Product Engineer —
       **diferente** da conta server-side `6266094107`, que é a compartilhada
       com a DECOLE e já tem acesso confirmado)
+
+### Resolvido
+
+Versão `24` criada e publicada no container `GTM-K6Q4H6BR`
+(`accounts/6266094107/containers/241313282/versions/24`). As 2 lookup
+tables confirmadas com a entrada de `product-engineer`.
+
+**Gotcha de escopo OAuth:** `create_version` (CreateContainerVersion)
+exige o escopo `tagmanager.edit.containerversions` — **não**
+`tagmanager.edit.containers` (que serve pra editar tags/triggers/variáveis
+dentro de um workspace, mas não pra criar uma versão). As duas primeiras
+tentativas falharam com `403 ACCESS_TOKEN_SCOPE_INSUFFICIENT` até eu
+descobrir isso. `:publish` usa `tagmanager.publish` normalmente.
 
 ### Mudança
 
@@ -689,7 +702,7 @@ grep -rE "product-engineer|product_engineer" workers/*/src/ packages/*/src/
 ```
 [ ] Fatia 1: dig +short sgtm.theproductengineer.net CNAME → ghs.googlehosted.com.
 [ ] Fatia 2: tenant "product-engineer" em products.catalog.json, JSON válido
-[ ] Fatia 3: nova versão GTM publicada (anotar versionId: ___)
+[x] Fatia 3: nova versão GTM publicada (versionId: 24)
 [ ] Fatia 4: secrets _PRODUCT_ENGINEER criados no Secrets Store
 [ ] Fatia 5: workers redeployados com bindings _PRODUCT_ENGINEER
 [ ] Fatia 6: (opcional) ADMIN_SECRET_PRODUCT_ENGINEER + mkt-dashboard redeployado

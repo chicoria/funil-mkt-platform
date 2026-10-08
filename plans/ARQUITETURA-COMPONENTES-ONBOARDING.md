@@ -209,6 +209,16 @@ placeholder (`A → 192.0.2.1`, proxied/orange-cloud) só pra satisfazer essa
 exigência — o Worker intercepta no edge antes de qualquer tentativa de
 resolver a origem. (Fonte: onboarding `product-engineer`, Fatia 5.)
 
+## Escopos OAuth da Tag Manager API — não são intuitivos
+
+`create_version` (CreateContainerVersion) exige o escopo
+`tagmanager.edit.containerversions` — **não** `tagmanager.edit.containers`
+(esse serve pra editar tags/triggers/variáveis dentro de um workspace, uma
+operação diferente). `:publish` usa `tagmanager.publish`. Testar cada
+escopo contra a operação real antes de assumir que um escopo "parecido"
+serve — os nomes sugerem hierarquia que não existe de fato. (Fonte:
+onboarding `product-engineer`, Fatia 3.)
+
 ## Gotchas consolidados (vindos de onboardings reais)
 
 - GA4 exige "User Data Collection Acknowledgement" manual (clique no
