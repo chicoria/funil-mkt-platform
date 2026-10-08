@@ -163,6 +163,52 @@ onboarding individual.
   fato de `precheckout.js` não ser de fato compartilhável sem cópia
   manual — ambos descobertos no onboarding do Product Engineer).
 
+## Correção de rumo: a captura de lead usa o pipeline completo, não uma Function isolada
+
+Durante o onboarding do `product-engineer` o plano inicial assumiu que a
+captura de lead passaria por uma **Cloudflare Pages Function isolada**
+chamando a Brevo direto (o desenho do "Caminho A", leve, sem tocar o
+`funil-mkt-platform`). O Adilson corrigiu: num onboarding **completo**, o
+fluxo é o mesmo da DECOLE — form do site → `api.{domínio}/funnel/*`
+(`api-funnel-ingress`) → queue → `funnel-dispatcher` → Brevo DOI. Isso
+muda o diagrama geral: o nó "Pages Function própria" descrito antes como
+alternativa ao Worker compartilhado só se aplica ao Caminho A (leve); no
+Caminho B (este documento), a captura de lead **sempre** passa pelo
+pipeline compartilhado, exigindo a rota `/funnel/*` + DNS placeholder
+descritos na tabela de artefatos.
+
+## Brevo — peças que faltavam na primeira passada do runbook
+
+O `RUNBOOK-ONBOARDING-TENANT.md` original não menciona isso explicitamente
+(a DECOLE já tinha tudo criado antes do runbook existir). Pra um tenant
+novo de verdade, antes do `funnel-dispatcher` conseguir rodar a chain de
+`GENERATE_LEAD`, precisa existir na conta Brevo do tenant:
+
+| Peça | Como criar | Formato real confirmado |
+|---|---|---|
+| Atributos de contato de funil | `POST /v3/contacts/attributes/{categoria}/{nome}` — **atenção:** o segmento da URL é a *categoria* (`normal`, etc.), não o *tipo* (`text`/`date`) | `{PREFIX}_FUNIL_STEPS` (text), `{PREFIX}_FUNIL_LAST_STEP` (text), `{PREFIX}_FUNIL_LAST_STEP_TIMESTAMP` (date) |
+| `LEAD_ID` | mesmo endpoint, `category=normal`, `type=text` | Não existe por padrão numa conta Brevo nova — precisa criar |
+| Lista de precheckout | `POST /v3/contacts/lists` | Retorna só `{"id": N}` |
+| Template DOI | `POST /v3/smtp/templates` (template transacional normal — a Brevo **não** tem um "tipo DOI" especial; qualquer template serve, o endpoint `/contacts/doubleOptinConfirmation` é que o trata como DOI) | Exige um `sender.email` que já seja um **sender verificado** na conta (`GET /v3/senders` pra confirmar antes de tentar) |
+
+**Limite de caracteres no nome do atributo:** o `funnelPrefix` do
+catálogo (`{TENANT}_{PRODUTO}`) pode facilmente exceder o limite da Brevo
+quando concatenado com `_FUNIL_LAST_STEP_TIMESTAMP`. Testar o nome
+completo antes de assumir que vai funcionar — a DECOLE usa prefixos
+curtos (`DECOLE_ESG`, `DECOLE_PLANOVOO`) que nunca bateram nesse limite;
+um tenant com nome de produto mais longo (`PRODUCT_ENGINEER_NEWSLETTER`)
+bate. (Fonte: onboarding `product-engineer`, Fatia 2b.)
+
+## Workers Routes exigem o hostname existir na zona
+
+Adicionar `"api.{tenant_domain}/funnel/*"` ao `routes` do
+`api-funnel-ingress` **não basta** — Cloudflare recusa a rota (ou o
+tráfego nunca chega no Worker) se o hostname não tiver nenhum registro
+DNS na zona, mesmo sem origem real por trás. Fix: criar um registro
+placeholder (`A → 192.0.2.1`, proxied/orange-cloud) só pra satisfazer essa
+exigência — o Worker intercepta no edge antes de qualquer tentativa de
+resolver a origem. (Fonte: onboarding `product-engineer`, Fatia 5.)
+
 ## Gotchas consolidados (vindos de onboardings reais)
 
 - GA4 exige "User Data Collection Acknowledgement" manual (clique no

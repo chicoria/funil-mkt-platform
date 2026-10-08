@@ -24,12 +24,12 @@ fase — só eventos de funil de topo (lead).
   (`LT - Meta Pixel ID by Tenant/Product`, `LT - Meta CAPI Token by Tenant`) —
   a tag Meta CAPI do sGTM compartilhado simplesmente não dispara pra esse
   tenant, sem precisar de trigger de bloqueio dedicado.
-- **Captura de lead é form próprio + Cloudflare Pages Function**, fora do
-  escopo deste runbook (Function guarda `BREVO_API_KEY_PRODUCT_ENGINEER`,
-  Turnstile, rate-limit via KV) — documentado em
-  `~/git/adilson-hub/media-hub/` (brief do lead magnet), não neste repo.
-  Essa Function chama a Brevo direto; **não** passa pelo
-  `api-funnel-ingress` nesta fase — ver "Fora de escopo" abaixo.
+- **CORRIGIDO 2026-10-08:** a captura de lead **não** é mais uma Pages
+  Function isolada (essa era a solução do Caminho A/leve). Como este é o
+  onboarding completo, o fluxo é igual ao da DECOLE: form próprio no site
+  → `https://api.theproductengineer.net/funnel/precheckout` (mesma rota
+  `/funnel/*` do `api-funnel-ingress`) → queue → `funnel-dispatcher` →
+  Brevo DOI nativo. Ver Fatia 2 (catálogo completo) e Fatia 5 (rota).
 - **Single opt-in na Brevo** (sem DOI) — decisão de produto do Adilson, não
   do runbook.
 - **Dashboard (`mkt-dashboard`) fora de escopo nesta fase** — Fatia 6 fica
@@ -52,11 +52,74 @@ fase — só eventos de funil de topo (lead).
 
 ## Fora de escopo deste onboarding
 
-- Qualquer coisa do fluxo de lead magnet em si (formulário, Function, Turnstile,
-  Brevo automação) — vive em `media-hub`, consome só o
-  `BREVO_API_KEY_PRODUCT_ENGINEER`, não depende de nenhuma fatia abaixo.
 - Meta Pixel/Business Manager — decisão pendente, revisitar depois.
 - `api-hotmart-ingress` — não aplicável, sem produto pago.
+- Automação de nutrição pós-DOI na Brevo (sequência de e-mails) — Brevo
+  não expõe isso via API (confirmado), precisa ser montada manualmente no
+  painel quando chegar a hora.
+- JS do form no site (`precheckout.js` equivalente) e a página
+  `/field-notes/confirmed/` — trabalho de front-end do site, não deste
+  repo. Ver `~/git/adilson-hub/media-hub/` pro brief do lead magnet.
+
+## Fatia 2b — Brevo: lista, atributos de funil, template DOI
+
+> Satélite: onboarding `product-engineer` · Estimativa: 45 min
+
+### Status
+
+| Campo | Valor |
+|---|---|
+| Estado | DONE |
+| Started | 2026-10-08 por Claude (sessão adilson-hub) |
+| Completed | 2026-10-08 por Claude (sessão adilson-hub) |
+
+### Contexto
+
+Faltava no plano original: a DECOLE tem atributos de contato customizados
+(`{PREFIX}_FUNIL_STEPS`, `{PREFIX}_FUNIL_LAST_STEP`,
+`{PREFIX}_FUNIL_LAST_STEP_TIMESTAMP`, todos usados pelo
+`funnel-dispatcher` pra rastrear estágio do funil por contato) e uma
+lista + template DOI — nada disso existia ainda pro Product Engineer.
+Sem isso, o `send_brevo_doi`/`update_brevo_funnel` do `funnel-dispatcher`
+não teria onde escrever.
+
+### Execução (append-only)
+
+#### 2026-10-08 by Claude (sessão adilson-hub)
+
+- Tentei criar atributos com o prefixo completo `PRODUCT_ENGINEER_NEWSLETTER_*`
+  → erro real da API Brevo: `"Attribute name exceeds char limit"`. Troquei
+  pro prefixo `PE_NEWSLETTER` (mais curto, mesma função).
+- Criados via API (`POST /v3/contacts/attributes/normal/{nome}`, **a URL é
+  `/{categoria}/{nome}`, não `/{tipo}/{nome}`** — erro inicial "Invalid
+  attribute category" até eu corrigir isso):
+  - `PE_NEWSLETTER_FUNIL_STEPS` (text)
+  - `PE_NEWSLETTER_FUNIL_LAST_STEP` (text)
+  - `PE_NEWSLETTER_FUNIL_LAST_STEP_TIMESTAMP` (date)
+  - `LEAD_ID` (text) — não existia ainda nessa conta Brevo separada
+- Lista criada: `POST /v3/contacts/lists` → id `3`, nome
+  "Leads Precheckout - Field Notes".
+- Template DOI criado: adaptei `config/email-templates/decole-esg/doi-v1.html`
+  pra `config/email-templates/product-engineer/doi-v1.html` (paleta real
+  do site: `--ink #171918`, `--paper #f3f0e7`, accent `#d4ed98`; cópia em
+  inglês, já que a marca é inglês; sem logo em imagem — o site usa logo em
+  texto). Upload via `POST /v3/smtp/templates` → **primeira tentativa
+  falhou** ("Sender is invalid / inactive") porque usei um e-mail
+  (`contato@theproductengineer.net`) que não é sender verificado nessa
+  conta Brevo — corrigido usando o sender já ativo
+  (`hello@theproductengineer.net`, id 2). Template criado com id `1`.
+- Todos os IDs salvos em `~/.env.local`: `BREVO_LIST_ID_PRODUCT_ENGINEER=3`,
+  `BREVO_DOI_TEMPLATE_ID_PRODUCT_ENGINEER=1`,
+  `BREVO_SENDER_EMAIL_PRODUCT_ENGINEER=hello@theproductengineer.net`.
+- `products.catalog.json` atualizado com a config completa de `brevo` +
+  `funnelEventArchitecture` pro produto `PRODUCT_ENGINEER_NEWSLETTER`,
+  espelhando a estrutura da DECOLE_ESG_MENTORIA.
+
+### Pendente
+
+- `doiRedirectUrl` apontando pra `https://theproductengineer.net/field-notes/confirmed/`
+  — **essa página não existe ainda** no site. Precisa existir antes do
+  form real entrar no ar, senão o DOI confirma mas o usuário cai num 404.
 
 ---
 
@@ -375,20 +438,26 @@ Deletar os secrets criados via API (`DELETE .../secrets/{id}`).
 | Estado | IN_PROGRESS |
 | Started | 2026-10-08 por Claude (sessão adilson-hub) |
 
-### Descoberta que corrige o plano original
+### Descoberta que corrige o plano original (e correção da correção)
 
 `api-funnel-ingress` **não usa nenhum dos secrets** `_DECOLE` no código
 (confirmado via `grep BREVO\|GA4\|SGTM workers/api-funnel-ingress/src/index.ts`
 → 0 matches) — ele só publica na queue, é o `funnel-dispatcher` quem
-consome e chama Brevo/GA4. **Não há binding a adicionar nesse worker.**
+consome e chama Brevo/GA4. **Continua sem binding a adicionar nesse
+worker.**
 
-Além disso: como a captura de lead do Product Engineer vai direto pra uma
-Cloudflare Pages Function → Brevo (decisão em "Fora de escopo" deste
-plano), **nada publica na queue `decole-q-funnel-events` marcado como
-`product-engineer` ainda**. Os bindings do `funnel-dispatcher` abaixo
-ficam prontos mas dormentes — só passam a importar se/quando um fluxo
-futuro decidir rotear eventos pelo `funil-mkt-platform` em vez da
-Function direta.
+**Mas precisa de uma rota nova.** Esta seção originalmente assumia que a
+captura de lead ia direto pra uma Pages Function, sem passar por
+`api-funnel-ingress` — Adilson corrigiu: o onboarding completo usa o
+mesmo pipeline da DECOLE (form → `/funnel/precheckout` → queue →
+dispatcher → Brevo), não uma Function isolada. Então:
+- Rota `api.theproductengineer.net/funnel/*` adicionada ao
+  `wrangler.toml` do `api-funnel-ingress` (commit `07d059d`).
+- Precisa de um registro DNS pra `api.theproductengineer.net` existir na
+  zona (Workers Routes exigem isso mesmo sem origem real) — criado
+  placeholder `A api → 192.0.2.1`, proxied, em 2026-10-08.
+- Os bindings do `funnel-dispatcher` (Fatia 4/5) agora são usados de
+  verdade quando o form real entrar no ar — não ficam mais dormentes.
 
 ### Mudança
 
@@ -396,8 +465,9 @@ Function direta.
 
 | Arquivo | Ação | Descrição curta |
 |---|---|---|
-| `workers/funnel-dispatcher/wrangler.toml` | EDIT ✅ feito, commit `2229877` | 4 bindings `_PRODUCT_ENGINEER` (Brevo, sGTM, GA4 measurement id, GA4 api secret) |
-| ~~`workers/api-funnel-ingress/wrangler.toml`~~ | **Não aplicável** | Worker não usa esses secrets — ver descoberta acima |
+| `workers/funnel-dispatcher/wrangler.toml` | EDIT ✅ feito, commit `2229877` | 4 bindings `_PRODUCT_ENGINEER` (Brevo, sGTM, GA4 measurement id, GA4 api secret) — sem edit novo, não usa secrets, mas **precisa redeploy** pela rota nova |
+| `workers/api-funnel-ingress/wrangler.toml` | EDIT ✅ feito, commit `07d059d` | Rota `api.theproductengineer.net/funnel/*` adicionada |
+| DNS `api.theproductengineer.net` | CREATE ✅ feito | Placeholder `A → 192.0.2.1`, proxied (Workers Routes exigem hostname existir na zona) |
 | `workers/dashboard-sync/wrangler.toml` | EDIT | Só se Fatia 6 ativada |
 
 Sem `api-hotmart-ingress` (sem Hotmart) nem `links-redirect` (sem links
@@ -426,9 +496,17 @@ mesmo:
 ```bash
 cd /Users/chicoria/git/funil-mkt-platform
 npx wrangler deploy --config workers/funnel-dispatcher/wrangler.toml
+npx wrangler deploy --config workers/api-funnel-ingress/wrangler.toml
 
 npx wrangler deployments list --name decole-funnel-dispatcher | head -5
-# Esperado: nova versão com timestamp recente
+npx wrangler deployments list --name decole-api-funnel-ingress | head -5
+# Esperado: nova versão em ambos, com timestamp recente
+
+# Smoke rápido da rota nova (sem HMAC/payload ainda — só confirma que a
+# rota existe e o worker responde, não que o fluxo completo funciona):
+curl -s -o /dev/null -w "%{http_code}" https://api.theproductengineer.net/funnel/precheckout
+# Esperado: algo diferente de erro de DNS/525 — provavelmente 400/404
+# dependendo da validação interna do worker, não é motivo de alarme aqui
 ```
 
 ⚠️ Toca produção compartilhada com a DECOLE — é por isso que está
