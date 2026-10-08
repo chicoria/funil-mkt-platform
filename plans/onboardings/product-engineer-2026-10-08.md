@@ -181,6 +181,13 @@ não teria onde escrever.
 
 ### Pendente
 
+- ~~Template DOI sem a tag `optin`~~ **Resolvido 2026-10-08**: confirmado
+  via API que o template da DECOLE (id 1, conta DECOLE) tem `"tag":
+  "optin"` — é metadata do template na Brevo (organização/filtro no
+  painel, não afeta a lógica DOI em si, que usa só o `templateId` no
+  endpoint `/contacts/doubleOptinConfirmation`). O template do Product
+  Engineer (id 1, conta separada) não tinha — corrigido via `PUT
+  /v3/smtp/templates/1` com `{"tag": "optin"}`.
 - ~~`doiRedirectUrl` apontando pra `https://theproductengineer.net/field-notes/confirmed/`
   — essa página não existia no site~~ **Resolvido 2026-10-08**: página
   criada (`sites/theproductengineer.net/field-notes/confirmed/index.html`,
