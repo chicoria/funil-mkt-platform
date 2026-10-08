@@ -183,11 +183,24 @@ não teria onde escrever.
 
 - ~~Template DOI sem a tag `optin`~~ **Resolvido 2026-10-08**: confirmado
   via API que o template da DECOLE (id 1, conta DECOLE) tem `"tag":
-  "optin"` — é metadata do template na Brevo (organização/filtro no
-  painel, não afeta a lógica DOI em si, que usa só o `templateId` no
-  endpoint `/contacts/doubleOptinConfirmation`). O template do Product
-  Engineer (id 1, conta separada) não tinha — corrigido via `PUT
+  "optin"`. O template do Product Engineer não tinha — corrigido via `PUT
   /v3/smtp/templates/1` com `{"tag": "optin"}`.
+  **Correção à nota anterior:** eu tinha afirmado que essa tag era "só
+  metadata/organização, não afeta a lógica DOI" — isso foi dito sem
+  verificar o comportamento real da API da Brevo, só lendo o código do
+  `funnel-dispatcher` (que de fato não checa a tag). Teste real do
+  Adilson: submit #1 (sem a tag) → contato criado na Brevo mas
+  `listIds: []`, nenhum e-mail enviado (`send_brevo_doi` não teve efeito
+  visível). Depois de adicionar a tag, submit #2 → e-mail enviado,
+  entregue, aberto e confirmado (`listIds: [3]`,
+  `DOUBLE_OPT-IN: "1"`). **Causalidade não comprovada por log** — os 2
+  `wrangler tail` desta sessão falharam silenciosamente (`timeout`: command
+  not found, macOS sem coreutils; eu disse "pronto" sem validar que o
+  processo realmente rodou) — mas a correlação é forte e a hipótese do
+  Adilson (API da Brevo pode exigir a tag pro endpoint
+  `doubleOptinConfirmation` aceitar o template) é mais confiável que minha
+  leitura só do código cliente. Tratar como requisito até prova em
+  contrário: **todo template usado em `doiFlows` precisa da tag `optin`**.
 - ~~`doiRedirectUrl` apontando pra `https://theproductengineer.net/field-notes/confirmed/`
   — essa página não existia no site~~ **Resolvido 2026-10-08**: página
   criada (`sites/theproductengineer.net/field-notes/confirmed/index.html`,

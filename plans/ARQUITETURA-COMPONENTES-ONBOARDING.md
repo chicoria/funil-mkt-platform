@@ -189,7 +189,7 @@ novo de verdade, antes do `funnel-dispatcher` conseguir rodar a chain de
 | Atributos de contato de funil | `POST /v3/contacts/attributes/{categoria}/{nome}` — **atenção:** o segmento da URL é a *categoria* (`normal`, etc.), não o *tipo* (`text`/`date`) | `{PREFIX}_FUNIL_STEPS` (text), `{PREFIX}_FUNIL_LAST_STEP` (text), `{PREFIX}_FUNIL_LAST_STEP_TIMESTAMP` (date) |
 | `LEAD_ID` | mesmo endpoint, `category=normal`, `type=text` | Não existe por padrão numa conta Brevo nova — precisa criar |
 | Lista de precheckout | `POST /v3/contacts/lists` | Retorna só `{"id": N}` |
-| Template DOI | `POST /v3/smtp/templates` (template transacional normal — a Brevo **não** tem um "tipo DOI" especial; qualquer template serve, o endpoint `/contacts/doubleOptinConfirmation` é que o trata como DOI) | Exige um `sender.email` que já seja um **sender verificado** na conta (`GET /v3/senders` pra confirmar antes de tentar) |
+| Template DOI | `POST /v3/smtp/templates` | Exige um `sender.email` que já seja um **sender verificado** na conta (`GET /v3/senders` pra confirmar antes de tentar). **Precisa de `"tag": "optin"`** (`PUT /v3/smtp/templates/{id}` com `{"tag": "optin"}`) — teste real mostrou o envio falhar silenciosamente sem isso; ver nota abaixo, causalidade correlacionada mas não confirmada por log |
 
 **Limite de caracteres no nome do atributo:** o `funnelPrefix` do
 catálogo (`{TENANT}_{PRODUTO}`) pode facilmente exceder o limite da Brevo
