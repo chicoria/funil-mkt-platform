@@ -117,8 +117,12 @@ não teria onde escrever.
 
 ### Pendente
 
-- `doiRedirectUrl` apontando pra `https://theproductengineer.net/field-notes/confirmed/`
-  — **essa página não existe ainda** no site. Precisa existir antes do
+- ~~`doiRedirectUrl` apontando pra `https://theproductengineer.net/field-notes/confirmed/`
+  — essa página não existia no site~~ **Resolvido 2026-10-08**: página
+  criada (`sites/theproductengineer.net/field-notes/confirmed/index.html`,
+  commit local `8fb4d82` no submodule, reaproveitando header/hero/footer
+  da home — zero CSS novo). Ainda não deployada (push pendente de OK do
+  Adilson). Precisa existir antes do
   form real entrar no ar, senão o DOI confirma mas o usuário cai num 404.
 
 ---
