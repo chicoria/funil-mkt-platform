@@ -41,6 +41,15 @@ binding = "PROMO_STATUS_SECRET_DECOLE"
 store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
 secret_name = "promo_status_secret_decole"
 
+# Turnstile (onboarding product-engineer, 2026-10-08) — primeiro tenant
+# com validação server-side de Turnstile neste worker. Nenhum tenant
+# (nem DECOLE) validava o token antes disso; ver TURNSTILE_SECRET_KEY_*
+# por tenant conforme mais widgets forem adicionados.
+[[secrets_store_secrets]]
+binding = "TURNSTILE_SECRET_KEY_PRODUCT_ENGINEER"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "turnstile_secret_key_product_engineer"
+
 [observability]
 enabled = true
 head_sampling_rate = 1

@@ -204,6 +204,33 @@ function pickString(payload: Record<string, unknown>, keys: string[]): string {
   return "";
 }
 
+// Turnstile server-side validation (onboarding product-engineer,
+// 2026-10-08) — primeiro tenant a validar o token contra a API real da
+// Cloudflare. Opt-in por tenant: só roda se existir um binding
+// TURNSTILE_SECRET_KEY_{TENANT} no env; tenants sem esse binding (ex:
+// decole, ainda sem Turnstile server-side) seguem sem validação, sem
+// quebrar nada.
+async function verifyTurnstile(token: string, secret: string, remoteIp: string): Promise<boolean> {
+  const body = new URLSearchParams({ secret, response: token });
+  if (remoteIp) body.set("remoteip", remoteIp);
+  try {
+    const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body,
+    });
+    if (!res.ok) return false;
+    const data = (await res.json()) as { success?: boolean };
+    return data.success === true;
+  } catch {
+    return false;
+  }
+}
+
+function turnstileSecretEnvVar(tenantId: string): string {
+  return `TURNSTILE_SECRET_KEY_${tenantId.toUpperCase().replace(/[^A-Z0-9]+/g, "_")}`;
+}
+
 // Nomes reais dos campos do form de precheckout (site/planodevoo/index.html)
 // nao batem com CHECKOUT_FORWARD_PARAMS (EMAIL/FIRSTNAME/LASTNAME/SMS__COUNTRY_CODE/SMS
 // em vez de email/name/phoneac/phonenumber) — mapeia explicitamente pra nao perder
@@ -374,6 +401,22 @@ export default {
       }
       const clientIp = request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "";
       if (clientIp) payload.client_ip = clientIp;
+
+      const turnstileSecretBinding = env[turnstileSecretEnvVar(tenantId)] as SecretValue | undefined;
+      if (turnstileSecretBinding) {
+        const turnstileToken = pickString(payload, ["cf-turnstile-response", "cf_turnstile_response"]);
+        if (!turnstileToken) {
+          logIngress({ stage: "blocked", pathname, tenant_id: tenantId, error: "turnstile_missing", status: 400 });
+          return withCors(jsonResponse({ ok: false, error: "turnstile_missing" }, 400), request, catalog, tenantId);
+        }
+        const turnstileSecret = await resolveSecret(turnstileSecretBinding, turnstileSecretEnvVar(tenantId));
+        const turnstileOk = await verifyTurnstile(turnstileToken, turnstileSecret, clientIp);
+        if (!turnstileOk) {
+          logIngress({ stage: "blocked", pathname, tenant_id: tenantId, error: "turnstile_failed", status: 403 });
+          return withCors(jsonResponse({ ok: false, error: "turnstile_failed" }, 403), request, catalog, tenantId);
+        }
+      }
+
       const queue = env.FUNNEL_EVENTS;
       if (!queue) {
         logIngress({ stage: "error", pathname, tenant_id: tenantId, error: "queue_not_configured", status: 500 });
