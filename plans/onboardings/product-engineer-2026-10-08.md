@@ -50,6 +50,70 @@ fase — só eventos de funil de topo (lead).
 | `BREVO_API_KEY_PRODUCT_ENGINEER` | já existe (conta Brevo dedicada, plano Free) |
 | `GA4_API_SECRET_PRODUCT_ENGINEER` | **falta gerar** (GA4 Admin → Data Streams → Measurement Protocol API secrets) |
 
+## Fatia 9 — Turnstile (bot protection no form)
+
+> Satélite: onboarding `product-engineer` · Estimativa: 1h
+
+### Status
+
+| Campo | Valor |
+|---|---|
+| Estado | DONE |
+| Started | 2026-10-08 por Claude (sessão adilson-hub) |
+| Completed | 2026-10-08 por Claude (sessão adilson-hub) |
+
+### Contexto
+
+Nenhum tenant (nem DECOLE) validava o token Turnstile server-side — o
+`api-funnel-ingress` só checava origem/CORS, nunca chamava a API
+`siteverify` da Cloudflare. O token era coletado no browser e enviado,
+mas nunca verificado de fato.
+
+### Execução (append-only)
+
+#### 2026-10-08 by Claude (sessão adilson-hub)
+
+- Widget Turnstile pro domínio `theproductengineer.net` **já existia** na
+  conta Cloudflare — "theproductengineer.net (Spin)", sitekey
+  `0x4AAAAAAFRin2A8ZDfwKrB5`, modo Managed, hostnames `127.0.0.1`,
+  `localhost`, `theproductengineer.net`. Criado por outro processo via
+  "Set up with Spin" (fluxo de onboarding assistido da própria
+  Cloudflare), não por mim nem pelo Adilson nesta sessão.
+- Tentei criar um widget novo via API (`POST
+  .../accounts/{id}/challenges/widgets`) com 2 tokens diferentes
+  (`CLOUDFLARE_AGENTS_AI_TOKEN`, `CLOUDFLARE_API_TOKEN`) — os dois deram
+  `403 Authentication error`. **Não é bloqueio do harness** (confirmado:
+  sem a mensagem do classificador) — é falta real de escopo
+  `Turnstile:Edit` nos 2 tokens, e o Adilson confirmou que esse grupo de
+  permissão nem aparece no seletor de criação de token customizado hoje
+  (produto não totalmente exposto em custom tokens ainda).
+- Adilson pegou sitekey + secret key direto no dashboard (via browser,
+  sessão de usuário, sem token de API).
+- **Implementei validação server-side de verdade** (não existia antes, em
+  nenhum tenant): `verifyTurnstile()` em `api-funnel-ingress/src/index.ts`
+  chama `https://challenges.cloudflare.com/turnstile/v0/siteverify`.
+  Opt-in por tenant via binding `TURNSTILE_SECRET_KEY_{TENANT}` — tenants
+  sem esse binding (DECOLE, Superare) seguem exatamente como antes, zero
+  regressão. 41/41 testes existentes passaram sem alteração.
+- Secret criado no Secrets Store (`turnstile_secret_key_product_engineer`),
+  binding adicionado ao `wrangler.toml`, worker redeployado
+  (`7eafdb53...`).
+- Widget integrado no form da homepage: script
+  `challenges.cloudflare.com/turnstile/v0/api.js` (auto-render) + `<div
+  class="cf-turnstile" data-sitekey="...">` dentro do form — mais simples
+  que o padrão `render: explicit` + callback manual da DECOLE, já que o
+  modo aqui é Managed (não precisa de controle fino sobre quando
+  renderizar).
+
+### Gotcha
+
+- `/user/tokens/verify` e tentativas de escrita em recursos não cobertos
+  pelo escopo de um token dão o mesmo tipo de erro genérico (`403
+  Authentication error` / `Invalid API Token`) — não dá pra saber pela
+  mensagem de erro *qual* permissão falta. Só descobre tentando a
+  operação real ou checando manualmente no dashboard quais grupos de
+  permissão existem pra aquele recurso.
+
 ## Fora de escopo deste onboarding
 
 - Meta Pixel/Business Manager — decisão pendente, revisitar depois.

@@ -219,6 +219,29 @@ escopo contra a operação real antes de assumir que um escopo "parecido"
 serve — os nomes sugerem hierarquia que não existe de fato. (Fonte:
 onboarding `product-engineer`, Fatia 3.)
 
+## Turnstile — nenhum tenant validava server-side até este onboarding
+
+Confirmado via `grep -rn "turnstile\|siteverify" workers/ packages/shared/`
+→ 0 matches antes desta mudança: **nenhum worker do `funil-mkt-platform`
+chamava a API `siteverify` da Cloudflare**, nem pra DECOLE. O token era
+coletado no browser (`cf-turnstile-response`) e repassado ao backend, mas
+nunca verificado — proteção zero na prática, só fricção de UI.
+
+Implementado pro `product-engineer` (primeiro tenant): `verifyTurnstile()`
+em `api-funnel-ingress/src/index.ts`, opt-in via binding
+`TURNSTILE_SECRET_KEY_{TENANT}`. Tenant sem esse binding = sem validação,
+comportamento idêntico a antes — nenhuma mudança de código quebra DECOLE.
+Pra ativar em outro tenant: criar o widget Turnstile, criar o secret
+`turnstile_secret_key_{tenant}` no Secrets Store, bindar no
+`wrangler.toml`, redeploy. Nenhuma mudança de código adicional necessária.
+
+**Criar widgets Turnstile via API falhou com os tokens existentes** —
+`403 Authentication error`, não é bloqueio do harness, é escopo
+`Turnstile:Edit` ausente nos tokens, e esse grupo de permissão nem aparece
+no seletor de criação de token customizado da Cloudflare hoje. Criar
+widget novo = painel (Security → Turnstile → Add widget), não API, até
+isso mudar.
+
 ## Gotchas consolidados (vindos de onboardings reais)
 
 - GA4 exige "User Data Collection Acknowledgement" manual (clique no
