@@ -180,6 +180,14 @@ onboarding individual.
   nenhum código lê esse campo. Não é obrigatório atualizar pra um tenant
   novo funcionar, só por completude. (Fonte: onboarding `product-engineer`,
   Fatia 2.)
+- Domain mapping no Cloud Run exige o domínio **verificado no Google
+  Search Console** antes (`gcloud domains verify {domínio raiz}`) — passo
+  interativo via browser, atrelado à conta Google do dono do domínio, não
+  documentado no runbook original (a DECOLE provavelmente já tinha o
+  domínio verificado de alguma integração anterior, por isso nunca
+  apareceu como passo explícito). Verificar o domínio raiz, não o
+  subdomínio `sgtm.*` — a verificação cobre todos os subdomínios de uma
+  vez. (Fonte: onboarding `product-engineer`, Fatia 7.)
 - Brevo não expõe criação/edição de automações via API (só contacts,
   lists, templates, campaigns, e o endpoint `/v3/events` pra *disparar*
   uma automação já montada manualmente). Confirmado com teste real contra
