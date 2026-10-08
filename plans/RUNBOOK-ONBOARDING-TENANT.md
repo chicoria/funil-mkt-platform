@@ -1,28 +1,39 @@
 # RUNBOOK — Onboarding de Novo Tenant
 
-> **Versão:** 1.0 — criado em slice 2.11B.5 (2026-05-19)
+> **Versão:** 2.0 — v1.0 criada em slice 2.11B.5 (2026-05-19); v2.0
+> revisada em 2026-10-08 após o **primeiro onboarding real de tenant**
+> (`product-engineer`, theproductengineer.net) — v1.0 só tinha sido
+> validada contra um tenant fake (`superare-test`). V2.0 adiciona 3
+> frentes que faltavam inteiramente (Web container, Brevo, Turnstile) e
+> corrige gotchas descobertos na execução real. Ver
+> `plans/onboardings/product-engineer-2026-10-08.md` pra execução
+> completa com os erros reais encontrados.
 > **Audiência:** operador da plataforma `funil-mkt-platform`
 > **Pré-requisito:** plataforma multi-tenant completamente deployada (Fase 3 concluída)
-> **Tempo estimado:** 2–4 horas (excluindo propagação DNS e aprovação GTM)
+> **Tempo estimado:** 3–5 horas (excluindo propagação DNS e aprovação GTM) — revisado pra cima vs. v1.0 (2-4h), as 3 frentes novas + os gotchas levam tempo real.
 
 ---
 
 ## Visão geral
 
-Onboarding de um novo tenant na `funil-mkt-platform` envolve **8 frentes** independentes (algumas paralelas):
+Onboarding de um novo tenant na `funil-mkt-platform` envolve **11 frentes** (algumas paralelas, 3 novas na v2.0):
 
 | # | Frente | Quem faz | Bloqueante para? |
 |---|---|---|---|
-| 1 | DNS: `sgtm.{tenant_domain}` CNAME | Tenant / operador | Frente 3 (sGTM smoke) |
-| 2 | Catálogo: `tenants.{id}` em `products.catalog.json` | Operador | Frentes 4, 5, 6 |
-| 3 | sGTM: lookup tables + publish workspace | Operador | Frente 8 (smoke) |
+| 1 | DNS: `sgtm.{tenant_domain}` CNAME + placeholder pra API subdomain | Tenant / operador | Frente 3b (sGTM smoke), Frente 5 |
+| 2 | Catálogo: `tenants.{id}` em `products.catalog.json` | Operador | Frentes 2b, 4, 5, 6 |
+| 2b | **(nova)** Brevo: atributos de funil, lista, template DOI (com tag `optin`) | Operador | Frente 5 funcionar de ponta a ponta |
+| 3 | sGTM: lookup tables + publish workspace (server container) | Operador | Frente 8 (smoke) |
+| 3b | **(nova)** Web container: criar + publicar a tag GA4 Configuration | Operador | GA4 receber dados — **sem isso, zero dados chegam, mesmo com tudo mais certo** |
 | 4 | Secrets Store workers: todos os secrets `_TENANT` | Operador | Frente 5 |
-| 5 | Workers wrangler.toml: bindings + redeploy | Operador | Frente 8 (smoke) |
+| 5 | Workers wrangler.toml: bindings + rota + redeploy | Operador | Frente 8 (smoke) |
 | 6 | CF Pages secret: `ADMIN_SECRET_{TENANT}` + redeploy | Operador | Frente 8 (smoke) |
-| 7 | Cloud Run domain mapping: `sgtm.{tenant_domain}` | Operador | Frente 3 |
+| 7 | Cloud Run domain mapping: `sgtm.{tenant_domain}` | Operador | Frente 3, Frente 3b (transport_url) |
 | 8 | Smoke checklist executável | Operador | — |
+| 9 | **(nova, opcional)** Turnstile: widget + validação server-side | Operador | — (proteção contra bot, não bloqueia o fluxo básico) |
 
-**Exemplo usado neste runbook:** tenant `superare` com domínio `superare.com.br`.
+**Exemplo usado neste runbook (v1.0):** tenant `superare` (fake, nunca onboardado de verdade) com domínio `superare.com.br`.
+**Exemplo real (v2.0):** tenant `product-engineer` com domínio `theproductengineer.net`, 2026-10-08 — primeiro onboarding de produção completo, ver link acima.
 
 ---
 
@@ -182,6 +193,105 @@ git commit -m "feat(catalog): adicionar tenant superare (schema v5)"
 
 ---
 
+## Frente 2b — Brevo: atributos de funil, lista, template DOI
+
+> **Nova na v2.0** — v1.0 não mencionava isso; descoberto que é
+> pré-requisito real porque o tenant `superare-test` (fake) nunca testou
+> o fluxo de ponta a ponta com um e-mail de verdade.
+
+**Objetivo:** a conta Brevo do tenant tem tudo que o `funnel-dispatcher`
+precisa pra rodar a chain de `GENERATE_LEAD` (atributos de contato,
+lista de destino, template de e-mail DOI).
+
+### 2b.1 — Atributos de contato de funil
+
+```bash
+# category é "normal", NÃO o tipo (text/date) — erro comum, dá
+# "Invalid attribute category" se trocar a ordem
+curl -s -X POST "https://api.brevo.com/v3/contacts/attributes/normal/{PREFIX}_FUNIL_STEPS" \
+  -H "api-key: ${BREVO_API_KEY_SUPERARE}" -H "Content-Type: application/json" \
+  -d '{"type": "text"}'
+
+curl -s -X POST "https://api.brevo.com/v3/contacts/attributes/normal/{PREFIX}_FUNIL_LAST_STEP" \
+  -H "api-key: ${BREVO_API_KEY_SUPERARE}" -H "Content-Type: application/json" \
+  -d '{"type": "text"}'
+
+curl -s -X POST "https://api.brevo.com/v3/contacts/attributes/normal/{PREFIX}_FUNIL_LAST_STEP_TIMESTAMP" \
+  -H "api-key: ${BREVO_API_KEY_SUPERARE}" -H "Content-Type: application/json" \
+  -d '{"type": "date"}'
+
+# LEAD_ID não existe por padrão numa conta Brevo nova — criar também
+curl -s -X POST "https://api.brevo.com/v3/contacts/attributes/normal/LEAD_ID" \
+  -H "api-key: ${BREVO_API_KEY_SUPERARE}" -H "Content-Type: application/json" \
+  -d '{"type": "text"}'
+```
+
+⚠️ **Limite de caracteres no nome do atributo:** `{PREFIX}_FUNIL_LAST_STEP_TIMESTAMP`
+pode passar do limite se `{PREFIX}` (= `funnelPrefix` do catálogo) for
+longo. A DECOLE usa prefixos curtos (`DECOLE_ESG`, `DECOLE_PLANOVOO`) que
+nunca bateram no limite — um produto com nome mais longo
+(`PRODUCT_ENGINEER_NEWSLETTER`, 27 chars) bateu, erro real
+`"Attribute name exceeds char limit"`. Encurtar o `funnelPrefix` do
+catálogo se necessário (ex: `PE_NEWSLETTER` em vez do nome completo do
+produto) — **não precisa bater com o `productCode`**, são campos
+diferentes.
+
+### 2b.2 — Lista de precheckout
+
+```bash
+curl -s -X POST "https://api.brevo.com/v3/contacts/lists" \
+  -H "api-key: ${BREVO_API_KEY_SUPERARE}" -H "Content-Type: application/json" \
+  -d '{"name": "Leads Precheckout - Superare", "folderId": 1}'
+# Retorna {"id": N} — esse N vai no catálogo em products.{code}.brevo.lists.precheckout.id
+```
+
+### 2b.3 — Template DOI
+
+```bash
+curl -s -X POST "https://api.brevo.com/v3/smtp/templates" \
+  -H "api-key: ${BREVO_API_KEY_SUPERARE}" -H "Content-Type: application/json" \
+  -d '{
+    "templateName": "Superare - DOI v1",
+    "subject": "Confirm your subscription",
+    "sender": {"name": "Superare", "email": "hello@superare.com.br"},
+    "htmlContent": "<html>...</html>",
+    "isActive": true
+  }'
+```
+
+⚠️ **`sender.email` precisa ser um sender já verificado nessa conta
+Brevo** — checar antes com `GET /v3/senders`, senão dá `"Sender is
+invalid / inactive"`.
+
+⚠️ **O template precisa da tag `"optin"`** — confirmado empiricamente
+(teste real: sem a tag, `send_brevo_doi` roda sem erro visível mas o
+e-mail nunca sai e o contato fica com `listIds: []`; com a tag, o e-mail
+sai, é entregue, e o contato recebe `listIds: [N]` +
+`DOUBLE_OPT-IN: "1"` após confirmação). A Brevo não documenta isso de
+forma clara publicamente — foi descoberto comparando com o template real
+da DECOLE (`"tag": "optin"`) depois de um teste real falhar
+silenciosamente. Setar a tag após criar o template:
+
+```bash
+curl -s -X PUT "https://api.brevo.com/v3/smtp/templates/{templateId}" \
+  -H "api-key: ${BREVO_API_KEY_SUPERARE}" -H "Content-Type: application/json" \
+  -d '{"tag": "optin"}'
+```
+
+### Critério de aceite 2b
+
+```bash
+curl -s "https://api.brevo.com/v3/smtp/templates/{templateId}" \
+  -H "api-key: ${BREVO_API_KEY_SUPERARE}" | python3 -c "
+import json,sys
+d = json.load(sys.stdin)
+assert d.get('tag') == 'optin', 'FALTA a tag optin!'
+print('OK:', d.get('name'), '- tag:', d.get('tag'))
+"
+```
+
+---
+
 ## Frente 3 — sGTM: lookup tables + publish workspace
 
 **Objetivo:** container sGTM roteia eventos do tenant para a propriedade GA4 e pixel Meta corretos.
@@ -242,6 +352,107 @@ node scripts/gtm-publish-workspace-24.mjs
 ### 3.5 Rollback do workspace GTM
 
 Se necessário reverter, via UI GTM: Container > Versions > selecionar versão anterior > Publish.
+
+---
+
+## Frente 3b — Web container: tag GA4 Configuration
+
+> **Nova na v2.0 — a mais crítica das 3 frentes novas.** v1.0 não
+> mencionava o container Web **em nenhum momento**. Resultado real: o
+> tenant teve o snippet do GTM instalado no site, as lookup tables do
+> sGTM configuradas, tudo "certo" — e **zero dados no GA4**, porque o
+> container Web em si estava vazio (0 tags, 0 triggers). Confirmado via
+> API antes da correção. Sem esta frente, nenhum dado chega no GA4,
+> mesmo com as Frentes 1, 3 e 7 perfeitas.
+
+**Objetivo:** o container Web do tenant (diferente do container
+server-side da Frente 3 — são contas/containers totalmente separados)
+tem uma tag que efetivamente dispara o evento GA4.
+
+### 3b.1 — Identificar o container Web do tenant
+
+O tenant precisa ter sua própria conta + container GTM Web (diferente da
+conta server-side `6266094107` compartilhada). Confirmar
+`GTM_ACCOUNT_ID_{TENANT}` / `GTM_CONTAINER_ID_{TENANT}` /
+`GTM_WORKSPACE_ID_{TENANT}` antes de prosseguir — e que a service account
+(`acesso-api@gtm-k6q4h6br-ndq3n.iam.gserviceaccount.com`) foi convidada
+como Editor **nessa conta específica** (não herda da conta server-side).
+
+### 3b.2 — Criar a tag GA4 Configuration
+
+```bash
+# POST accounts/{GTM_ACCOUNT_ID}/containers/{GTM_CONTAINER_ID}/workspaces/{WORKSPACE_ID}/tags
+{
+  "name": "GA4 Configuration - {tenant_domain}",
+  "type": "googtag",
+  "parameter": [
+    {"type": "template", "key": "tagId", "value": "{GA4_MEASUREMENT_ID}"}
+  ],
+  "firingTriggerId": ["2147479553"]
+}
+```
+
+`firingTriggerId: "2147479553"` é o ID reservado do trigger built-in
+"Initialization - All Pages" — sempre disponível em qualquer container,
+não precisa ser criado.
+
+### 3b.3 — Adicionar `transport_url` (essencial — sem isso o sGTM é ignorado)
+
+**Depois** de criar a tag (precisa do `tagId` retornado), fazer um PUT
+adicionando um segundo parâmetro `configSettingsTable`:
+
+```bash
+# PUT no mesmo endpoint da tag (.../tags/{tagId}), corpo = tag completa
+# + este parâmetro adicional na lista "parameter":
+{
+  "type": "list",
+  "key": "configSettingsTable",
+  "list": [
+    {"type": "map", "map": [
+      {"type": "template", "key": "parameter", "value": "transport_url"},
+      {"type": "template", "key": "parameterValue", "value": "https://sgtm.{tenant_domain}"}
+    ]},
+    {"type": "map", "map": [
+      {"type": "template", "key": "parameter", "value": "send_page_view"},
+      {"type": "template", "key": "parameterValue", "value": "true"}
+    ]}
+  ]
+}
+```
+
+⚠️ **Sem `transport_url`, os hits vão direto pro Google** — nunca
+passam pelo sGTM, e toda a infra das Frentes 3 e 7 (lookup tables,
+domain mapping no Cloud Run) fica sem efeito nenhum. Isso só foi pego
+comparando com a tag de produção real da DECOLE
+(`FB_CONVERSIONS_API-...-GA4_Config`) — a tag "óbvia"/documentada do GTM
+não inclui isso por padrão.
+
+### 3b.4 — Publicar
+
+```bash
+# create_version + :publish, igual à Frente 3 (3.3/3.4), mas no
+# container Web, não no server-side.
+```
+
+⚠️ **O workspace é recriado automaticamente após cada publish** (mesmo
+comportamento da Frente 3) — se for fazer uma segunda mudança (ex:
+adicionar o `transport_url` depois de já ter publicado a tag), listar os
+workspaces de novo pra pegar o ID novo; tentar editar o workspace antigo
+dá `"Workspace is already submitted"`.
+
+### Critério de aceite 3b
+
+```bash
+# Via API, confirmar a tag existe com os 2 parâmetros
+# GET .../workspaces/{id}/tags/{tagId} e conferir tagId + transport_url
+
+# Ou via GA4 Realtime API (minutos após uma visita de teste no site):
+curl -s -X POST "https://analyticsdata.googleapis.com/v1beta/properties/{GA4_PROPERTY_ID}:runRealtimeReport" \
+  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "Content-Type: application/json" \
+  -d '{"dimensions":[{"name":"eventName"}],"metrics":[{"name":"eventCount"}]}'
+# Esperado: pelo menos 1 row depois de uma visita real ao site
+```
 
 ---
 
@@ -499,22 +710,70 @@ npx wrangler pages deploy .vercel/output/static --project-name mkt-dashboard
 
 **Objetivo:** Cloud Run aceita requests no domínio `sgtm.superare.com.br` e emite SSL gerenciado.
 
+### 7.0 Pré-requisito descoberto na v2.0: `gcloud` CLI + domínio verificado
+
+Se `gcloud` não estiver instalado nesta máquina:
+
+```bash
+# Homebrew cask pode falhar com erro de cache interno (não relacionado ao
+# gcloud) — nesse caso, instalar via tarball oficial direto:
+# checar arquitetura primeiro — existe build -arm e -x86_64 separados
+uname -m
+curl -sO "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-darwin-{arm|x86_64}.tar.gz"
+tar -xzf google-cloud-cli-darwin-*.tar.gz -C ~/
+~/google-cloud-sdk/install.sh --quiet --usage-reporting=false --path-update=false --command-completion=false
+export CLOUDSDK_PYTHON=$(which python3)  # usa o Python do sistema, pula o instalador bundlado que pede sudo
+```
+
+Antes do `domain-mappings create`, o domínio **raiz** do tenant precisa
+estar verificado no Google Search Console:
+
+```bash
+gcloud domains verify {tenant_domain}   # domínio raiz, NÃO sgtm.{tenant_domain}
+# Abre o browser — fluxo interativo, precisa ser feito pela conta Google
+# do dono do domínio, não em modo não-interativo
+```
+
+⚠️ **Gotcha de identidade — o mais fácil de errar aqui:** a verificação
+de domínio é associada à **conta Google usada no browser** durante
+`gcloud domains verify`, não à identidade ativa do `gcloud` CLI. Se o
+CLI estiver autenticado como a **service account** (uso normal pro
+resto deste runbook — GTM, GA4, Secrets Store), ela **não vê** domínios
+verificados pela conta pessoal do humano, mesmo que a verificação tenha
+sido feita com sucesso. Sintoma: `gcloud run domain-mappings create`
+continua dizendo `"You currently have no verified domains"` mesmo depois
+de verificar. Fix:
+
+```bash
+# Login interativo com a conta pessoal (abre browser) — rodar você mesmo,
+# não em modo não-interativo/headless, precisa confirmar no browser
+gcloud auth login
+
+# Com essa conta ativa, roda o domain-mappings create (frente 7.1)
+
+# Depois, volta pra service account pro resto do runbook:
+gcloud config set account acesso-api@gtm-k6q4h6br-ndq3n.iam.gserviceaccount.com
+```
+
 ### 7.1 Adicionar domain mapping via gcloud
 
 ```bash
-# Autenticar
-export GOOGLE_APPLICATION_CREDENTIALS=~/secrets/decole/gtm-k6q4h6br-ndq3n-7525dc924517.json
-gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
-gcloud config set project gtm-k6q4h6br-ndq3n
+export CLOUDSDK_PYTHON=$(which python3)
 
-# Adicionar domain mapping
-gcloud run domain-mappings create \
+# Adicionar domain mapping — NOTA: "gcloud run domain-mappings" (sem beta)
+# é só pra "Cloud Run for Anthos" (GKE). Pra Cloud Run fully managed
+# (nosso caso), o comando certo é "gcloud beta run domain-mappings".
+# "gcloud run domain-mappings list/create" sem beta dá erro de argumento
+# não reconhecido ou lista vazia silenciosa, não um erro óbvio.
+gcloud components install beta --quiet  # se ainda não tiver o grupo beta
+
+gcloud beta run domain-mappings create \
   --service server-side-tagging \
   --domain sgtm.superare.com.br \
-  --region us-central1
+  --region us-central1 --quiet
 
 # Verificar status (Ready + CertificateProvisioned podem levar 15-30min)
-gcloud run domain-mappings describe \
+gcloud beta run domain-mappings describe \
   --domain sgtm.superare.com.br \
   --region us-central1
 # Esperado (após propagação):
@@ -524,6 +783,13 @@ gcloud run domain-mappings describe \
 ```
 
 ### 7.2 Alternativa via Cloud Run Admin API
+
+Testado nesta sessão e **negado pelo classificador de permissão do
+harness do Claude Code** (categoria "Auto-Mode Bypass") em dois agentes
+diferentes de chamada (REST direto e via `gcloud`) — não é limitação da
+API em si, é o harness tratando escrita em infra de produção como ação
+de risco. Se um agente tentar isso e for negado, o caminho que funcionou
+foi o humano rodar o `gcloud` (Frente 7.1) diretamente no terminal dele.
 
 ```bash
 # Para automatização futura (ver seção 10 do satélite 2.11B)
@@ -660,16 +926,102 @@ grep -rE "superare" workers/*/src/ packages/*/src/
 
 ---
 
+## Frente 9 — Turnstile (bot protection no form, opcional)
+
+> **Nova na v2.0.** Não bloqueia o fluxo básico de captura de lead, mas
+> sem ela o endpoint fica sem proteção nenhuma contra bot — confirmado
+> que **nenhum tenant tinha isso antes** (nem a DECOLE: o form dela já
+> coletava o token Turnstile há tempos, mas o backend nunca chamava
+> `siteverify` pra validar de verdade).
+
+### 9.1 — Criar o widget Turnstile
+
+Via dashboard (**Security → Turnstile → Add widget**), não API — os
+tokens de API disponíveis hoje (`CLOUDFLARE_AGENTS_AI_TOKEN`,
+`CLOUDFLARE_API_TOKEN`) não têm o escopo `Turnstile:Edit`, e esse grupo
+de permissão nem aparece no seletor de token customizado da Cloudflare
+ainda. `POST /accounts/{id}/challenges/widgets` dá `403 Authentication
+error` com qualquer token sem esse escopo — não adianta trocar de token,
+é falta real de permissão, não bloqueio de harness/classificador.
+
+Domínio do widget = domínio do tenant. Modo recomendado: **Managed**
+(deixa a Cloudflare decidir o nível de verificação por risco).
+
+### 9.2 — Secret no Secrets Store
+
+```bash
+curl -s -X POST ".../secrets_store/stores/{store_id}/secrets" \
+  -H "Authorization: Bearer $CF_TOKEN" -H "Content-Type: application/json" \
+  -d '[{"name": "turnstile_secret_key_{tenant}", "value": "<secret>", "scopes": ["workers"]}]'
+```
+
+Binding no `wrangler.toml` do `api-funnel-ingress`:
+```toml
+[[secrets_store_secrets]]
+binding = "TURNSTILE_SECRET_KEY_{TENANT}"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "turnstile_secret_key_{tenant}"
+```
+
+### 9.3 — Validação server-side (já implementada de forma genérica)
+
+`api-funnel-ingress/src/index.ts` já tem `verifyTurnstile()` — chama
+`https://challenges.cloudflare.com/turnstile/v0/siteverify`. **Opt-in
+por tenant**: só valida se existir o binding
+`TURNSTILE_SECRET_KEY_{TENANT_UPPERCASE}` no `env`. Tenant sem esse
+binding segue sem validação — zero código novo necessário além da Frente
+9.2 (criar o secret + binding). Não precisa mexer no worker de novo pra
+cada tenant.
+
+### 9.4 — Client-side
+
+No form do site, dentro do `<head>`/antes do `</body>`:
+```html
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+```
+E dentro do `<form>`:
+```html
+<div class="cf-turnstile" data-sitekey="{SITEKEY}"></div>
+```
+Auto-render (modo Managed) cria sozinho um `input[name="cf-turnstile-response"]`
+dentro do container — o JS de submit só precisa ler esse input antes do
+POST, não precisa de callback manual.
+
+### Critério de aceite 9
+
+```bash
+# Submit real do form sem token (ou com token inválido) deve retornar 400/403:
+curl -s -o /dev/null -w "%{http_code}" -X POST \
+  -H "Origin: https://{tenant_domain}" \
+  "https://api.{tenant_domain}/funnel/precheckout" \
+  -d "EMAIL=teste@example.com&FIRSTNAME=Teste"
+# Esperado: 400 turnstile_missing (sem token)
+```
+
+---
+
 ## Checklist de conclusão
 
 ```
 [ ] Frente 1: dig +short sgtm.superare.com.br CNAME → ghs.googlehosted.com.
-[ ] Frente 2: tenant "superare" em products.catalog.json, JSON válido
-[ ] Frente 3: nova versão GTM publicada (anotar versionId: ___)
+[ ] Frente 1: registro DNS placeholder pra api.{tenant_domain} (A → 192.0.2.1,
+    proxied) — Workers Routes exigem o hostname existir na zona
+[ ] Frente 2: tenant "superare" em products.catalog.json, JSON válido,
+    incluindo bloco brevo + funnelEventArchitecture completos (não só tracking)
+[ ] Frente 2b: atributos de funil + LEAD_ID criados na Brevo; lista criada;
+    template DOI criado COM a tag "optin" (verificar via API, não assumir)
+[ ] Frente 3: nova versão GTM publicada no container SERVER (anotar versionId: ___)
+[ ] Frente 3b: tag GA4 Configuration criada e publicada no container WEB
+    (anotar versionId: ___), com transport_url apontando pro sGTM do tenant
 [ ] Frente 4: secrets _SUPERARE criados no Secrets Store (verificar via API)
-[ ] Frente 5: workers redeployados com bindings _SUPERARE
+[ ] Frente 5: workers redeployados com bindings _SUPERARE + rota
+    api.{tenant_domain}/funnel/* ativa no api-funnel-ingress
 [ ] Frente 6: ADMIN_SECRET_SUPERARE criado em CF Pages + mkt-dashboard redeployado
-[ ] Frente 7: Cloud Run domain mapping sgtm.superare.com.br Ready=True
+[ ] Frente 7: Cloud Run domain mapping sgtm.superare.com.br Ready=True —
+    requer domínio verificado no Search Console PRIMEIRO
+    (gcloud domains verify {domínio raiz}), com a MESMA identidade gcloud
+    que vai rodar o domain-mappings create (não a service account, se a
+    verificação foi feita pela conta pessoal)
 [ ] Frente 8.1: sgtm smoke → HTTP 400 ✅
 [ ] Frente 8.2: catálogo smoke → tenant encontrado ✅
 [ ] Frente 8.3: links smoke → health 200 ✅
@@ -678,6 +1030,16 @@ grep -rE "superare" workers/*/src/ packages/*/src/
 [ ] Frente 8.6: dashboard-sync smoke → 200 superare, 400 inválido ✅
 [ ] Frente 8.7: dashboard login smoke → 200/302 com cookie ✅
 [ ] Frente 8.8: isolamento → 0 matches grep src/ ✅
+[ ] Frente 8.9 (nova): GA4 Realtime API mostra pelo menos 1 evento após
+    visita de teste real ao site — único jeito de confirmar que a Frente
+    3b está certa de ponta a ponta, não só "a tag existe"
+[ ] Frente 9 (opcional): Turnstile widget criado, secret no Secrets
+    Store, form rejeitando submit sem token (400 turnstile_missing)
+[ ] Teste de ponta a ponta real: submit do form → e-mail DOI chega →
+    clicar confirma → contato na lista certa com DOUBLE_OPT-IN=1 —
+    **nenhuma combinação de smokes individuais substitui isso**, foi o
+    único jeito que revelou o gotcha da tag `optin` (Frente 2b) neste
+    onboarding
 ```
 
 ---
