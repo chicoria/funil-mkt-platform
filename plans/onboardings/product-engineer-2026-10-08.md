@@ -467,9 +467,23 @@ npx wrangler pages deploy .vercel/output/static --project-name mkt-dashboard
 
 | Campo | Valor |
 |---|---|
-| Estado | TODO |
-| Started | — |
-| Completed | — |
+| Estado | BLOCKED |
+| Started | 2026-10-08 por Claude (sessão adilson-hub) |
+
+### Bloqueio atual
+
+Tentativa via REST (`run.googleapis.com/apis/serving.knative.dev/v1/.../domainmappings`,
+mesma service account já usada no GTM/GA4) foi negada pelo classificador
+de permissão do harness, sem explicação específica — categoria diferente
+da do Secrets Store (lá tinha um motivo nomeado, aqui não). Faz sentido:
+é escrita em infra de produção (Cloud Run), nível de risco mais alto.
+
+Precisa de uma entrada em `~/.claude/settings.json` →
+`permissions.autoMode.allow` cobrindo chamadas ao Cloud Run Admin API com
+essa service account, ou o Adilson roda o `gcloud run domain-mappings
+create` (ou o `curl` equivalente) manualmente — `gcloud` CLI não está
+instalado nesta máquina, então seria via API REST mesmo ou instalar o CLI
+primeiro.
 
 ### Pré-requisitos
 
