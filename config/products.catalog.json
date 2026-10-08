@@ -2174,6 +2174,105 @@
               "produto": "PRODUCT_ENGINEER_NEWSLETTER",
               "product_code": "PRODUCT_ENGINEER_NEWSLETTER"
             }
+          },
+          "brevo": {
+            "_note_prefix": "PE_NEWSLETTER, não PRODUCT_ENGINEER_NEWSLETTER — nome completo excede o limite de caracteres de atributo de contato da Brevo (confirmado via erro real da API em 2026-10-08).",
+            "opsModel": {
+              "managedVia": "manual_dashboard",
+              "apiManaged": false,
+              "owner": "adilson",
+              "lastReviewedAt": "2026-10-08"
+            },
+            "funnelPrefix": "PE_NEWSLETTER",
+            "funnelFields": {
+              "steps": "PE_NEWSLETTER_FUNIL_STEPS",
+              "lastStep": "PE_NEWSLETTER_FUNIL_LAST_STEP",
+              "lastStepTimestamp": "PE_NEWSLETTER_FUNIL_LAST_STEP_TIMESTAMP"
+            },
+            "lists": {
+              "precheckout": {
+                "id": "3",
+                "name": "Leads Precheckout - Field Notes"
+              }
+            },
+            "templates": {
+              "doi": {
+                "id": "1",
+                "description": "Double Opt-In confirmation via Brevo native DOI - Product Engineer Field Notes",
+                "localFile": "config/email-templates/product-engineer/doi-v1.html",
+                "version": "v1"
+              }
+            },
+            "doiFlows": [
+              {
+                "key": "precheckoutDoi",
+                "templateId": "1",
+                "triggerEvent": "GENERATE_LEAD",
+                "endpoint": "/contacts/doubleOptinConfirmation",
+                "includeListId": "3",
+                "redirectionUrl": "https://theproductengineer.net/field-notes/confirmed/",
+                "templatePlaceholder": "{{ params.DOIurl }}",
+                "description": "Confirmação Double Opt-In nativa da Brevo para lead de newsletter (Field Notes).",
+                "managedVia": "api",
+                "localTemplateFile": "config/email-templates/product-engineer/doi-v1.html",
+                "_pending": "Página /field-notes/confirmed/ ainda não existe no site — criar antes de ativar o form real."
+              }
+            ]
+          },
+          "funnelEventArchitecture": {
+            "managedBy": "catalog",
+            "systems": {
+              "ingresses": ["api-funnel-ingress"],
+              "dispatcher": "funnel-dispatcher",
+              "queue": {
+                "name": "decole-q-funnel-events",
+                "dlq": "decole-q-funnel-events-dlq"
+              }
+            },
+            "events": [
+              {
+                "funnelStage": "AWARENESS",
+                "eventType": "PAGE_VIEW",
+                "delivery": "gtm_web_only",
+                "source": "site",
+                "destinations": ["GA4"],
+                "trackingConfigRef": "products.PRODUCT_ENGINEER_NEWSLETTER.tracking"
+              },
+              {
+                "funnelStage": "CONSIDERATION",
+                "eventType": "CTA_CLICK",
+                "delivery": "gtm_web_only",
+                "source": "site",
+                "destinations": ["GA4"],
+                "trackingConfigRef": "products.PRODUCT_ENGINEER_NEWSLETTER.tracking"
+              },
+              {
+                "funnelStage": "CONSIDERATION",
+                "eventType": "GENERATE_LEAD",
+                "delivery": "both",
+                "trackingDelivery": "gtm_web_to_sgtm",
+                "serverTracking": false,
+                "deliveryNotes": "Mesmo padrão da DECOLE: dataLayer/GTM Web -> sGTM -> GA4. A chain server_queue abaixo não re-emite tracking, só cuida da Brevo/DOI.",
+                "source": "site",
+                "ingress": "api-funnel-ingress",
+                "queue": "decole-q-funnel-events",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "send_brevo_doi",
+                  "update_brevo_funnel",
+                  "sync_brevo_segments"
+                ],
+                "destinations": ["Brevo", "Event Store"],
+                "brevoConfig": {
+                  "listId": "3",
+                  "doiTemplateId": "1",
+                  "doiRedirectUrl": "https://theproductengineer.net/field-notes/confirmed/",
+                  "funnelPrefix": "PE_NEWSLETTER"
+                },
+                "trackingConfigRef": "products.PRODUCT_ENGINEER_NEWSLETTER.tracking"
+              }
+            ]
           }
         }
       }

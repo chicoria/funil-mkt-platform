@@ -1,0 +1,129 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<head>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <meta name="format-detection" content="telephone=no"/>
+  <meta name="color-scheme" content="light only"/>
+  <meta name="supported-color-schemes" content="light only"/>
+  <title>The Product Engineer - Confirm your subscription</title>
+  <style type="text/css">
+    *{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
+    :root{color-scheme:light only;}
+    body{margin:0;padding:0;background:#f3f0e7;font-family:Arial,Helvetica,sans-serif;}
+    table{border-collapse:collapse;margin:0 auto;}
+    img{display:block;border:0;outline:none;text-decoration:none;}
+    a{text-decoration:none;}
+  </style>
+</head>
+<body>
+<table width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#f3f0e7">
+  <tbody>
+  <tr>
+    <td align="center" style="padding:32px 12px;">
+      <table width="600" cellspacing="0" cellpadding="0" border="0" bgcolor="#ffffff" style="border-radius:12px;overflow:hidden;border:1px solid #171918;">
+        <tbody>
+
+        <!-- Header -->
+        <tr>
+          <td align="center" style="padding:26px 24px;background:#171918;">
+            <div style="font-size:18px;font-weight:700;color:#f3f0e7;letter-spacing:.5px;">
+              The Product Engineer<span style="color:#d4ed98;">&#10035;</span>
+            </div>
+            <div style="font-size:12px;color:#a9a9a4;margin-top:8px;letter-spacing:1px;text-transform:uppercase;">
+              Field Notes
+            </div>
+          </td>
+        </tr>
+
+        <!-- Title -->
+        <tr>
+          <td align="center" style="padding:26px 28px 10px 28px;">
+            <div style="font-size:22px;font-weight:700;color:#171918;line-height:28px;">
+              Confirm your subscription
+            </div>
+          </td>
+        </tr>
+
+        <!-- Greeting -->
+        <tr>
+          <td align="center" style="padding:0 28px 18px 28px;">
+            <div style="font-size:15px;color:#545850;line-height:24px;text-align:center;">
+              Hi {{ contact.FIRSTNAME }},
+            </div>
+          </td>
+        </tr>
+
+        <!-- Message 1 -->
+        <tr>
+          <td align="center" style="padding:0 28px 12px 28px;">
+            <div style="font-size:15px;color:#545850;line-height:24px;text-align:center;">
+              I'm <strong>Adilson Chicoria</strong>, and I'm glad you want to follow
+              Field Notes — the research and writing behind
+              <strong>The Product Engineer</strong>.
+            </div>
+          </td>
+        </tr>
+
+        <!-- Message 2 -->
+        <tr>
+          <td align="center" style="padding:0 28px 18px 28px;">
+            <div style="font-size:15px;color:#545850;line-height:24px;text-align:center;">
+              Confirm your subscription to receive new Field Notes articles,
+              research, and occasional notes on how AI is changing what
+              software engineers build and own end to end.
+            </div>
+          </td>
+        </tr>
+
+        <!-- CTA -->
+        <tr>
+          <td align="center" style="padding:8px 28px 24px 28px;">
+            <table cellspacing="0" cellpadding="0" border="0">
+              <tbody>
+              <tr>
+                <td align="center" bgcolor="#d4ed98" height="48" style="border-radius:8px;padding:0 26px;border:1px solid #171918;">
+                  <a href="{{ params.DOIurl }}?utm_source=brevo&utm_campaign=product_engineer_doi&utm_medium=email" target="_blank"
+                     style="color:#171918;font-size:15px;font-weight:700;display:inline-block;line-height:48px;text-transform:uppercase;">
+                    Confirm subscription
+                  </a>
+                </td>
+              </tr>
+              </tbody>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Disclaimer -->
+        <tr>
+          <td align="center" style="padding:0 28px 18px 28px;">
+            <div style="font-size:13px;color:#8a8a84;line-height:20px;text-align:center;">
+              If you didn't request this, feel free to ignore this email.
+            </div>
+            <div style="font-size:12px;color:#9a9a94;line-height:18px;text-align:center;margin-top:10px;">
+              This email was sent to <strong>{{ contact.EMAIL }}</strong> after signing up at
+              <a href="https://theproductengineer.net?utm_source=brevo&utm_campaign=product_engineer_doi&utm_medium=email" target="_blank" style="color:#9a9a94;text-decoration:underline;">theproductengineer.net</a>.
+            </div>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td align="center" style="padding:22px 28px;background:#f3f0e7;">
+            <div style="font-size:13px;color:#8a8a84;line-height:20px;text-align:center;">
+              Talk soon,<br/>
+              <strong>Adilson Chicoria</strong><br/>
+              The Product Engineer
+            </div>
+          </td>
+        </tr>
+
+        </tbody>
+      </table>
+    </td>
+  </tr>
+  </tbody>
+</table>
+</body>
+</html>
