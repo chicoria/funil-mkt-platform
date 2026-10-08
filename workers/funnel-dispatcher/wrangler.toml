@@ -66,6 +66,28 @@ binding = "PLANOVOO_HOOK_SECRET_DECOLE"
 store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
 secret_name = "planovoo_hook_secret_decole"
 
+# ── PRODUCT_ENGINEER secrets (onboarding 2026-10-08) ───────────────────────
+# Sem HOTMART_WEBHOOK_TOKEN nem META_* — tenant sem checkout/Meta nesta fase.
+[[secrets_store_secrets]]
+binding = "BREVO_API_KEY_PRODUCT_ENGINEER"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "brevo_api_key_product_engineer"
+
+[[secrets_store_secrets]]
+binding = "SGTM_ENDPOINT_URL_PRODUCT_ENGINEER"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "sgtm_endpoint_url_product_engineer"
+
+[[secrets_store_secrets]]
+binding = "GA4_MEASUREMENT_ID_PRODUCT_ENGINEER"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "ga4_measurement_id_product_engineer"
+
+[[secrets_store_secrets]]
+binding = "GA4_API_SECRET_PRODUCT_ENGINEER"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "ga4_api_secret_product_engineer"
+
 # N8N_WEBHOOK_URL removido: forward_n8n não está em nenhuma chain do catálogo
 # (código morto). Cleanup completo programado no slice 2.11A.9 (Fase 4).
 
