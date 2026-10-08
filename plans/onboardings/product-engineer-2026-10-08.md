@@ -113,14 +113,17 @@ Remover o registro CNAME na zona.
 
 | Campo | Valor |
 |---|---|
-| Estado | TODO |
-| Started | — |
-| Completed | — |
+| Estado | DONE |
+| Started | 2026-10-08 por Claude (sessão adilson-hub) |
+| Completed | 2026-10-08 por Claude (sessão adilson-hub) |
+| Commit final | `f4f49a6` |
 
 ### Pré-requisitos
 
-- [ ] Fatia 1 não é bloqueante para esta (paralelo)
-- [ ] `GA4_API_SECRET_PRODUCT_ENGINEER` gerado (ver tabela de IDs acima)
+- [x] Fatia 1 não é bloqueante para esta (paralelo)
+- [ ] `GA4_API_SECRET_PRODUCT_ENGINEER` gerado — **ainda não gerado**; o
+      catálogo referencia o nome da env var, não o valor, então não
+      bloqueou esta fatia. Precisa existir antes da Fatia 4.
 
 ### Mudança
 
@@ -193,10 +196,27 @@ node -e "require('./config/products.catalog.json')" && echo "JSON válido"
 ### Rollback
 
 ```bash
-git revert <commit_hash>
+git revert f4f49a6
 ```
 
 ### Execução (append-only)
+
+#### 2026-10-08 by Claude (sessão adilson-hub)
+
+- O que foi tentado: adicionar bloco `tenants.product-engineer` ao catálogo,
+  espelhando a estrutura de `tenants.decole` (mesmos campos, sem
+  `hotmart_token_env`/`metaCapi`/`metaAds` — decisão desta fase).
+- O que funcionou: `node -e "require(...)"` → JSON válido;
+  `Object.keys(c.tenants)` → `["decole", "product-engineer"]`. Commit `f4f49a6`.
+- O que falhou: nada.
+- Gotcha: `workerViews.funnel-dispatcher.secrets` (linha ~2158) lista
+  secrets `_DECOLE` hardcoded como documentação — confirmei via grep que
+  nenhum código lê `workerViews` (é só metadata descritiva), então não
+  precisa de atualização pra esta fatia funcionar. Vale atualizar por
+  completude numa fatia futura, mas não é bloqueante.
+- Próximo passo planejado: Fatia 1 (DNS) ou Fatia 4 (Secrets Store) —
+  ambas não dependem da Fatia 3 (sGTM). Fatia 4 precisa do
+  `GA4_API_SECRET_PRODUCT_ENGINEER` gerado primeiro.
 
 ---
 
