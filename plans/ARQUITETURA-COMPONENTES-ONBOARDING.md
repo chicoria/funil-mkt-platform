@@ -187,7 +187,25 @@ onboarding individual.
   domínio verificado de alguma integração anterior, por isso nunca
   apareceu como passo explícito). Verificar o domínio raiz, não o
   subdomínio `sgtm.*` — a verificação cobre todos os subdomínios de uma
-  vez. (Fonte: onboarding `product-engineer`, Fatia 7.)
+  vez. **Mais importante:** a verificação é por *identidade* — fica
+  associada à conta Google usada no browser durante `gcloud domains
+  verify`. Se o `gcloud` CLI estiver autenticado como a service account
+  (uso normal pra GTM/GA4/Secrets Store), ela não "vê" domínios
+  verificados pela conta pessoal do humano. Fix: `gcloud auth login` com
+  a conta pessoal só pra rodar `domain-mappings create`, depois `gcloud
+  config set account {service-account}` de volta. (Fonte: onboarding
+  `product-engineer`, Fatia 7.)
+- `gcloud` CLI não vinha instalado nesta máquina. Homebrew cask
+  (`google-cloud-sdk`) falhou por erro de cache interno do Homebrew (não
+  relacionado ao gcloud); instalado via tarball oficial
+  (`google-cloud-cli-darwin-{arch}.tar.gz` de
+  `dl.google.com/dl/cloudsdk/channels/rapid/downloads/`) + `install.sh
+  --quiet --path-update=false`. Checar `uname -m` antes de baixar —
+  existe build `-arm` e `-x86_64` separados. O comando `domain-mappings`
+  pra Cloud Run *fully managed* vive em `gcloud beta run
+  domain-mappings`, não no grupo padrão `gcloud run domain-mappings`
+  (esse é só pra "Cloud Run for Anthos"/GKE). (Fonte: onboarding
+  `product-engineer`, Fatia 7.)
 - Brevo não expõe criação/edição de automações via API (só contacts,
   lists, templates, campaigns, e o endpoint `/v3/events` pra *disparar*
   uma automação já montada manualmente). Confirmado com teste real contra
