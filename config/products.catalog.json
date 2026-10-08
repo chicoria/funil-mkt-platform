@@ -2132,6 +2132,51 @@
           }
         }
       }
+    },
+    "product-engineer": {
+      "name": "The Product Engineer",
+      "domains": [
+        "api.theproductengineer.net",
+        "theproductengineer.net"
+      ],
+      "allowedOrigins": [
+        "https://theproductengineer.net"
+      ],
+      "credentials": {
+        "brevo_api_key_env": "BREVO_API_KEY_PRODUCT_ENGINEER",
+        "replyToEmail": "contato@theproductengineer.net"
+      },
+      "tracking": {
+        "gtm": {
+          "containerPublicId": "GTM-TK6V8G33"
+        },
+        "sgtm": {
+          "endpointEnvVar": "SGTM_ENDPOINT_URL_PRODUCT_ENGINEER"
+        },
+        "ga4": {
+          "measurementId": "G-LTQ72HWDXR",
+          "measurementIdEnvVar": "GA4_MEASUREMENT_ID_PRODUCT_ENGINEER",
+          "apiSecretEnvVar": "GA4_API_SECRET_PRODUCT_ENGINEER"
+        }
+      },
+      "dashboard": {
+        "ga4": {
+          "propertyIdEnv": "GA4_PROPERTY_ID_PRODUCT_ENGINEER",
+          "serviceAccountKeyEnv": "GA4_SERVICE_ACCOUNT_KEY_PRODUCT_ENGINEER"
+        }
+      },
+      "products": {
+        "PRODUCT_ENGINEER_NEWSLETTER": {
+          "name": "Product Engineer Field Notes",
+          "tracking": {
+            "productCode": "PRODUCT_ENGINEER_NEWSLETTER",
+            "differentiation": {
+              "produto": "PRODUCT_ENGINEER_NEWSLETTER",
+              "product_code": "PRODUCT_ENGINEER_NEWSLETTER"
+            }
+          }
+        }
+      }
     }
   },
   "workerViews": {
