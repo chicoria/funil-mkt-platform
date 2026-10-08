@@ -1,0 +1,187 @@
+# Arquitetura de Componentes — Onboarding de Tenant
+
+> Documento de referência (não é plano nem runbook): destila **todo
+> componente/artefato** necessário pra operar um tenant end-to-end no
+> `funil-mkt-platform`, **onde cada um vive**, e como se relacionam.
+> Companion a [`RUNBOOK-ONBOARDING-TENANT.md`](./RUNBOOK-ONBOARDING-TENANT.md)
+> (passo-a-passo) e `plans/onboardings/{tenant}-{date}.md` (execução real).
+> Atualizar sempre que um onboarding real revelar um componente não mapeado
+> aqui (ver "Gotchas" do onboarding correspondente).
+
+## Diagrama geral
+
+```text
+Browser (site do tenant, ex: theproductengineer.net)
+│
+├── GTM Web Container (Google Tag Manager — conta PRÓPRIA do tenant,
+│   ex: GTM-TK6V8G33 / account 6381217846)
+│   └── tag "Google tag" (GA4 Config)
+│       Server Container URL → sGTM compartilhado (ver abaixo)
+│
+└── Form de lead/precheckout
+    ├── JS genérico (reutilizável entre tenants):
+    │   UTM capture/persist, lead_id/session_id, leitura de token
+    │   Turnstile, loading state, mapeamento de erro amigável
+    ├── JS específico do tenant: validação de campos, Meta Advanced
+    │   Matching (se houver Meta Pixel), handler de submit inline
+    └── action = URL do backend que recebe o POST:
+        ├── Worker dedicado do funil-mkt-platform (api-precheckout /
+        │   api-funnel-ingress) — padrão DECOLE, tenant já no catálogo
+        └── OU Cloudflare Pages Function própria do site — padrão pra
+            tenant que não quer entrar no catálogo multi-tenant
+            compartilhado (ex: Product Engineer, Caminho A)
+
+                    ▼ (eventos de dataLayer/browser, independente do form)
+┌─────────────────────────────────────────────────────────────────────┐
+│ sGTM Server Container — Google Cloud Run, COMPARTILHADO entre        │
+│ tenants (GTM-K6Q4H6BR / account 6266094107 / container 241313282)    │
+│                                                                        │
+│  Lookup tables (por workspace, precisa publish pra ir pra produção): │
+│    LT - Tenant ID by Host          (host → tenant_id)                │
+│    LT - GA4 Measurement ID by Tenant                                  │
+│    LT - Meta Pixel ID by Tenant/Product   (opcional)                 │
+│    LT - Meta CAPI Token by Tenant          (opcional)                │
+│    LT - Meta Test Event Code by Tenant/Product (opcional)            │
+│                                                                        │
+│  Clients: GA4 (gaaw_client), GA4 MP (mpaw_client)                     │
+│  Tags: GA4 (sgtmgaaw) — sempre dispara;                               │
+│        Meta CAPI (custom template cvt_NCN6S) — só dispara se as      │
+│        lookup tables de Meta tiverem entrada pro tenant               │
+│                                                                        │
+│  Domain mapping no Cloud Run, UM POR TENANT:                          │
+│    sgtm.{tenant_domain} → ghs.googlehosted.com (CNAME DNS do tenant   │
+│    + gcloud run domain-mappings create) — exigido pra cookies        │
+│    first-party no domínio do tenant                                  │
+└─────────────────────────────────────────────────────────────────────┘
+                    │                           │
+                    ▼                           ▼
+              GA4 Measurement Protocol    Meta Conversions API
+              (property do tenant)        (pixel do tenant, se houver)
+
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ Cloudflare Workers (funil-mkt-platform, repo COMPARTILHADO)           │
+│                                                                        │
+│  api-hotmart-ingress   — webhooks Hotmart (só se tenant tem checkout) │
+│  api-funnel-ingress    — eventos de browser/app (lead, begin_checkout)│
+│  api-precheckout       — lead capture → DOI nativo Brevo              │
+│  funnel-dispatcher     — consome a queue, executa chain por evento    │
+│  links-redirect        — redirects de checkout, emite BEGIN_CHECKOUT  │
+│  dashboard-sync        — alimenta o mkt-dashboard (opcional)          │
+│                                                                        │
+│  Todos leem `config/products.catalog.json` pra resolver tenant por    │
+│  hostname (resolveTenantFromHostname — código genérico, funciona pra  │
+│  qualquer tenant presente no catálogo, sem mudança de código)         │
+│                                                                        │
+│  Credenciais: Cloudflare Secrets Store (store_id                      │
+│  23bdc9c2e8ca470d82352c53ec8d2e67), um secret por {nome}_{TENANT},    │
+│  bindado explicitamente no wrangler.toml de cada worker               │
+│                                                                        │
+│  Estado compartilhado entre TODOS os tenants: queue                   │
+│  decole-q-funnel-events, D1 (IDENTITY_DB, EVENT_STORE_DB), KV          │
+│  (IDENTITY_KV, DEDUPE_KV) — dados de tenants diferentes convivem no   │
+│  mesmo banco/queue, isolados só pela coluna/campo tenant_id            │
+└─────────────────────────────────────────────────────────────────────┘
+                    │
+                    ▼
+              Brevo (conta POR TENANT, separada)
+              Lista + templates DOI/transacional
+              "managedVia: manual_dashboard" — SEM API de automação
+              (confirmado: endpoints automation/automations/workflows
+              retornam 404; só contacts/lists/templates são API-managed)
+
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ Governança / Claude Code (fora do funil-mkt-platform)                 │
+│ ~/.claude/settings.json → permissions.autoMode.allow                  │
+│ Pré-autorizações em linguagem natural (não glob/regex), uma por       │
+│ cenário — ex: ler a service-account key pra consultar GTM read-only.  │
+│ Ações sensíveis sem entrada aqui (escrita no Secrets Store, leitura    │
+│ bruta de JSON de credencial) são bloqueadas por um classificador      │
+│ separado até o humano adicionar a entrada correspondente.             │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+## Tabela de artefatos — onde cada coisa vive
+
+| Artefato | Tipo | Onde vive | Gerenciado por | Compartilhado entre tenants? |
+|---|---|---|---|---|
+| GTM Web Container | Config Google | console GTM (conta própria do tenant) | Operador (API ou UI) | **Não** — 1 por tenant |
+| sGTM Server Container | Config Google + Cloud Run | `GTM-K6Q4H6BR`, account `6266094107` | Operador (API) | **Sim** — todos os tenants |
+| Cloud Run service `server-side-tagging` | Infra GCP | projeto `gtm-k6q4h6br-ndq3n`, região `us-central1` | Operador (gcloud) | **Sim** — 1 service, N domain mappings |
+| Domain mapping Cloud Run | Infra GCP | 1 por tenant (`sgtm.{domain}`) | Operador (gcloud) | **Não** — 1 por tenant |
+| DNS CNAME `sgtm.{domain}` | DNS | zona Cloudflare do tenant | Tenant/operador (API Cloudflare) | **Não** — 1 por tenant |
+| GA4 Account + Property | Config Google | console GA4 (conta própria do tenant) | Operador/tenant | **Não** — 1 por tenant |
+| `GA4_API_SECRET` (Measurement Protocol) | Secret | gerado via GA4 Admin API, após "User Data Collection Acknowledgement" manual | Operador (API, após clique manual do dono da property) | **Não** — 1 por tenant |
+| `products.catalog.json` | Config/código | `funil-mkt-platform/config/products.catalog.json` | Operador (commit) | **Sim** — 1 arquivo, N blocos `tenants.{id}` |
+| Workers (`api-funnel-ingress` etc.) | Código/infra | `funil-mkt-platform/workers/*/wrangler.toml` + Cloudflare | Operador (deploy) | **Sim** — mesmo código/deploy pra todos |
+| Secrets Store entries | Secret | Cloudflare Secrets Store `23bdc9c2e8ca470d82352c53ec8d2e67` | Operador (API) | **Não** — 1 secret por `{nome}_{tenant}` |
+| `ADMIN_SECRET_{TENANT}` | Secret | Cloudflare **Pages** secret (projeto `mkt-dashboard`) — loja diferente do Secrets Store de Workers | Operador | **Não** — 1 por tenant, opcional |
+| Conta Brevo | Config externa | painel Brevo (conta separada por tenant) | Tenant/operador (manual) | **Não** — 1 por tenant |
+| `precheckout.js` / `meta-am.js` | JS compartilhado | `decolesuacarreiraesg/site/assets/*.js` (repo da DECOLE — não está no funil-mkt-platform) | Time do site | Hoje só existe pro site da DECOLE — não é um pacote compartilhado de verdade |
+| Handler de submit do form | JS inline | dentro do `index.html` de cada site, não em arquivo compartilhado | Time do site | **Não** — duplicado por site |
+| Pages Function (captura de lead, Caminho A) | Código | repo do site do tenant (`sites/{tenant}/functions/`) | Operador | **Não** — 1 por tenant que optar por esse caminho |
+| Plano de onboarding (fatias) | Doc | `funil-mkt-platform/plans/onboardings/{tenant}-{data}.md` | Operador | **Não** — 1 por tenant |
+| Pré-autorizações de permissão | Config | `~/.claude/settings.json` → `permissions.autoMode.allow` | Humano (Adilson) | Global à máquina, não por tenant |
+
+## JS de formulário — o que é genérico vs. específico
+
+A DECOLE **não tem** um pacote JS compartilhado de verdade entre sites hoje
+— `precheckout.js` e `meta-am.js` vivem dentro do próprio repo do site da
+DECOLE (`decolesuacarreiraesg/site/assets/`), não em `funil-mkt-platform`
+nem em nenhum lugar reusável por outros tenants sem copiar o arquivo.
+
+| Pedaço | Genérico (reaproveitável) | Específico do tenant |
+|---|---|---|
+| Captura/persistência de UTM | ✅ | — |
+| `lead_id` / `session_id` (sessionStorage) | ✅ | — |
+| Leitura de token Turnstile | ✅ | — |
+| Loading state do botão | ✅ | — |
+| Mapeamento de erro amigável (resposta Brevo) | ✅ | — |
+| Validação de telefone BR | ❌ | Só serve pra tenants BR |
+| Meta Advanced Matching (`meta-am.js`) | ❌ (opcional) | Só se o tenant tiver Meta Pixel |
+| `dataLayer.push` dos eventos (`generate_lead`, `begin_checkout`) | Estrutura genérica, nomes de evento específicos do produto | Específico (nomes de produto no payload) |
+| `form.action` (URL do backend) | — | **Sempre específico**: Worker do catálogo (tenant já onboardado) ou Pages Function própria |
+
+**Não existe hoje** um pacote `@funil-mkt/form-utils` ou equivalente — se
+um segundo tenant (Product Engineer) quiser reusar esses utilitários, a
+opção mais simples nesta fase é **copiar e adaptar** o arquivo (cortando a
+parte BR-específica), não importar de um pacote compartilhado — criar esse
+pacote seria trabalho de engenharia novo, fora do escopo de qualquer
+onboarding individual.
+
+## Relação com os demais documentos
+
+- [`RUNBOOK-ONBOARDING-TENANT.md`](./RUNBOOK-ONBOARDING-TENANT.md) — o
+  passo-a-passo operacional, 8 frentes, com os comandos exatos.
+- `plans/onboardings/{tenant}-{date}.md` — a execução real de um
+  onboarding específico, com status/execução por fatia (ex:
+  `plans/onboardings/product-engineer-2026-10-08.md`).
+- Este arquivo — o mapa de **o que existe e onde vive**, atualizado quando
+  um onboarding real descobre algo que o runbook não previa (ex: a
+  exigência do "User Data Collection Acknowledgement" manual na GA4, ou o
+  fato de `precheckout.js` não ser de fato compartilhável sem cópia
+  manual — ambos descobertos no onboarding do Product Engineer).
+
+## Gotchas consolidados (vindos de onboardings reais)
+
+- GA4 exige "User Data Collection Acknowledgement" manual (clique no
+  painel) antes de criar Measurement Protocol secrets via API — não tem
+  como automatizar esse clique. (Fonte: onboarding `product-engineer`,
+  Fatia 4.)
+- `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_API_READALL_TOKEN` falham no
+  endpoint genérico `/user/tokens/verify` mesmo quando têm escopo válido
+  pra operações reais — não usar esse endpoint pra decidir se um token
+  funciona; testar contra uma chamada real e específica. `CLOUDFLARE_AGENTS_AI_TOKEN`
+  confirmado funcionando pra DNS write e Secrets Store read (write ainda
+  não confirmado — bloqueado por permissão do harness, não pelo token).
+  (Fonte: onboarding `product-engineer`, Fatias 1 e 4.)
+- `workerViews` em `products.catalog.json` é só documentação descritiva —
+  nenhum código lê esse campo. Não é obrigatório atualizar pra um tenant
+  novo funcionar, só por completude. (Fonte: onboarding `product-engineer`,
+  Fatia 2.)
+- Brevo não expõe criação/edição de automações via API (só contacts,
+  lists, templates, campaigns, e o endpoint `/v3/events` pra *disparar*
+  uma automação já montada manualmente). Confirmado com teste real contra
+  a API, não só pela documentação. (Fonte: sessão de planejamento do lead
+  magnet do Product Engineer.)
