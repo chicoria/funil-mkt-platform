@@ -256,8 +256,10 @@ describe("links-redirect worker", () => {
 
     expect(res.status).toBe(302);
     expect(sent).toHaveLength(1);
+    // Contrato alterado (RUNBOOK-ONBOARDING-LISTA, M1/S-g): o event_id não deriva mais do
+    // e-mail (sem lead_id no registro, usa o rid) e o recovery_id passa a ser preservado.
     expect(sent[0]).toMatchObject({
-      event_id: "sign_up:DECOLE_PLANOVOO:lead@exemplo.com",
+      event_id: "sign_up:DECOLE_PLANOVOO:doi-rec-1",
       event_type: "SIGN_UP",
       product_code: "DECOLE_PLANOVOO",
       source: "site",
@@ -274,8 +276,216 @@ describe("links-redirect worker", () => {
       },
       payload: {
         confirmation_path: "plano-de-voo/signup",
-        recovery_id: undefined,
+        recovery_id: "doi-rec-1",
       },
+    });
+  });
+
+  describe("tenant product-engineer: host e rota de confirmação (passa após a L3)", () => {
+    function peRequest(path: string): Request {
+      return new Request(`https://links.theproductengineer.net/${path}`);
+    }
+
+    function queueEnv(sent: unknown[]): Env {
+      return makeEnv({
+        FUNNEL_EVENTS: {
+          send: async (body: unknown) => {
+            sent.push(body);
+          },
+        },
+      });
+    }
+
+    it("/product-engineer/signup redireciona (302) para a página de confirmação", async () => {
+      const res = await worker.fetch(peRequest("product-engineer/signup"), queueEnv([]));
+      expect(res.status).toBe(302);
+      const url = new URL(res.headers.get("location") || "");
+      expect(`${url.origin}${url.pathname}`).toBe("https://theproductengineer.net/field-notes/confirmed/");
+    });
+
+    it("enfileira exatamente 1 SIGN_UP com o product_code do PE", async () => {
+      const sent: unknown[] = [];
+      await worker.fetch(peRequest("product-engineer/signup"), queueEnv(sent));
+      expect(sent).toHaveLength(1);
+      expect(sent[0]).toMatchObject({ event_type: "SIGN_UP", product_code: "PRODUCT_ENGINEER_NEWSLETTER" });
+    });
+
+    it("rota inexistente no host do PE não enfileira nada", async () => {
+      const sent: unknown[] = [];
+      const res = await worker.fetch(peRequest("rota-inexistente"), queueEnv(sent));
+      expect(res.status).toBe(404);
+      expect(sent).toHaveLength(0);
+    });
+
+    it("regressão: rota da DECOLE continua indo para a confirmação da DECOLE", async () => {
+      const res = await worker.fetch(makeRequest("decole-esg/signup"), queueEnv([]));
+      expect(res.status).toBe(302);
+      expect(new URL(res.headers.get("location") || "").pathname).toBe("/confirmacao.html");
+    });
+  });
+
+  describe("identidade do SIGN_UP na confirmação de DOI", () => {
+    const DOI_RECORD = {
+      params: {
+        email: "lead@exemplo.com",
+        name: "Lead",
+        lead_id: "lead-123",
+        anonymous_id: "1234567890.1700000000",
+      },
+      kind: "doi_confirmation",
+    };
+
+    function doiEnv(sent: unknown[], records: Record<string, unknown> = {}, kvError = false): Env {
+      return makeEnv({
+        IDENTITY_KV: {
+          get: async (key: string) => {
+            if (kvError) throw new Error("kv down");
+            return key in records ? JSON.stringify(records[key]) : null;
+          },
+        },
+        FUNNEL_EVENTS: {
+          send: async (body: unknown) => {
+            sent.push(body);
+          },
+        },
+      });
+    }
+
+    type SignUp = {
+      event_id: string;
+      lead: { email?: string; lead_id?: string };
+      identity: { anonymous_id?: string; lead_id?: string };
+      payload: Record<string, unknown>;
+    };
+
+    it("rid válido: SIGN_UP com identidade do KV e event_id derivado do lead_id", async () => {
+      const sent: unknown[] = [];
+      const res = await worker.fetch(
+        makeRequest("decole-esg/signup?rid=doi-ok"),
+        doiEnv(sent, { "decole:checkout_recovery:doi-ok": DOI_RECORD })
+      );
+      expect(res.status).toBe(302);
+      expect(sent).toHaveLength(1);
+      const ev = sent[0] as SignUp;
+      expect(ev.event_id).toBe("sign_up:DECOLE_ESG_MENTORIA:lead-123");
+      expect(ev.lead.email).toBe("lead@exemplo.com");
+      expect(ev.identity.anonymous_id).toBe("1234567890.1700000000");
+      expect(ev.identity.lead_id).toBe("lead-123");
+    });
+
+    it("MF1: nenhum e-mail ou valor do KV no event_id nem no payload", async () => {
+      const sent: unknown[] = [];
+      await worker.fetch(
+        makeRequest("decole-esg/signup?rid=doi-ok"),
+        doiEnv(sent, { "decole:checkout_recovery:doi-ok": DOI_RECORD })
+      );
+      const ev = sent[0] as SignUp;
+      expect(ev.event_id).not.toContain("@");
+      const payload = JSON.stringify(ev.payload);
+      expect(payload).not.toContain("@");
+      expect(payload).not.toContain("lead-123");
+      expect(payload).not.toContain("1234567890.1700000000");
+      expect(String(ev.payload.link_url)).not.toContain("email");
+    });
+
+    it("Location não carrega rid, e-mail nem valores do KV", async () => {
+      const sent: unknown[] = [];
+      const res = await worker.fetch(
+        makeRequest("decole-esg/signup?rid=doi-ok&email=forjado@exemplo.com"),
+        doiEnv(sent, { "decole:checkout_recovery:doi-ok": DOI_RECORD })
+      );
+      const location = res.headers.get("location") || "";
+      expect(location).not.toContain("rid=");
+      expect(location).not.toContain("@");
+      expect(location).not.toContain("%40");
+      expect(location).not.toContain("lead-123");
+      expect(new URL(location).pathname).toBe("/confirmacao.html");
+    });
+
+    it("rid desconhecido: falha aberta com event_id derivado do rid (idempotente)", async () => {
+      const sent: unknown[] = [];
+      const res = await worker.fetch(makeRequest("decole-esg/signup?rid=doi-expirado"), doiEnv(sent));
+      expect(res.status).toBe(302);
+      expect(sent).toHaveLength(1);
+      const ev = sent[0] as SignUp;
+      expect(ev.event_id).toBe("sign_up:DECOLE_ESG_MENTORIA:doi-expirado");
+      expect(ev.lead.email).toBeUndefined();
+    });
+
+    it("KV com erro: 302 e SIGN_UP sem identidade, sem 5xx", async () => {
+      const sent: unknown[] = [];
+      const res = await worker.fetch(
+        makeRequest("decole-esg/signup?rid=doi-ok"),
+        doiEnv(sent, { "decole:checkout_recovery:doi-ok": DOI_RECORD }, true)
+      );
+      expect(res.status).toBe(302);
+      const ev = sent[0] as SignUp;
+      expect(ev.lead.email).toBeUndefined();
+      expect(ev.event_id).toBe("sign_up:DECOLE_ESG_MENTORIA:doi-ok");
+    });
+
+    it("?email= em claro sem rid é ignorado", async () => {
+      const sent: unknown[] = [];
+      const res = await worker.fetch(makeRequest("decole-esg/signup?email=forjado@exemplo.com"), doiEnv(sent));
+      expect(res.status).toBe(302);
+      const ev = sent[0] as SignUp;
+      expect(ev.lead.email).toBeUndefined();
+      expect(ev.event_id).not.toContain("@");
+      expect(res.headers.get("location") || "").not.toContain("forjado");
+    });
+
+    it("S-b: identidade e event_id vindos da query não sobrescrevem o KV", async () => {
+      const sent: unknown[] = [];
+      await worker.fetch(
+        makeRequest("decole-esg/signup?rid=doi-ok&event_id=forjado&anonymous_id=999.999&lead_id=forjado"),
+        doiEnv(sent, { "decole:checkout_recovery:doi-ok": DOI_RECORD })
+      );
+      const ev = sent[0] as SignUp;
+      expect(ev.event_id).toBe("sign_up:DECOLE_ESG_MENTORIA:lead-123");
+      expect(ev.identity.anonymous_id).toBe("1234567890.1700000000");
+      expect(ev.identity.lead_id).toBe("lead-123");
+    });
+
+    it("telefone e nome na query não entram no evento nem no Location", async () => {
+      const sent: unknown[] = [];
+      const res = await worker.fetch(makeRequest("decole-esg/signup?phone=11999999999&name=Forjado"), doiEnv(sent));
+      const ev = sent[0] as SignUp & { lead: { phone?: string } };
+      expect(ev.lead.phone).toBeUndefined();
+      const location = res.headers.get("location") || "";
+      expect(location).not.toContain("11999999999");
+      expect(location).not.toContain("Forjado");
+    });
+
+    it("tenant product-engineer: host de links resolve o rid na chave do próprio tenant", async () => {
+      const sent: unknown[] = [];
+      const res = await worker.fetch(
+        new Request("https://links.theproductengineer.net/product-engineer/signup?rid=pe-rid"),
+        doiEnv(sent, { "product-engineer:checkout_recovery:pe-rid": DOI_RECORD })
+      );
+      expect(res.status).toBe(302);
+      const ev = sent[0] as SignUp & { product_code: string };
+      expect(ev.product_code).toBe("PRODUCT_ENGINEER_NEWSLETTER");
+      expect(ev.lead.email).toBe("lead@exemplo.com");
+      expect(ev.identity.anonymous_id).toBe("1234567890.1700000000");
+      expect(ev.event_id).toBe("sign_up:PRODUCT_ENGINEER_NEWSLETTER:lead-123");
+      expect(res.headers.get("location") || "").not.toContain("pe-rid");
+    });
+
+    it("rid de outro tenant não resolve", async () => {
+      const sent: unknown[] = [];
+      await worker.fetch(
+        makeRequest("decole-esg/signup?rid=doi-ok"),
+        doiEnv(sent, { "product-engineer:checkout_recovery:doi-ok": DOI_RECORD })
+      );
+      const ev = sent[0] as SignUp;
+      expect(ev.lead.email).toBeUndefined();
+    });
+
+    it("HEAD não enfileira SIGN_UP", async () => {
+      const sent: unknown[] = [];
+      const res = await worker.fetch(makeRequest("decole-esg/signup?rid=doi-ok", { method: "HEAD" }), doiEnv(sent));
+      expect(res.status).toBe(302);
+      expect(sent).toHaveLength(0);
     });
   });
 

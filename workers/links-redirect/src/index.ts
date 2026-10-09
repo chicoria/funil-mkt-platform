@@ -23,7 +23,24 @@ type HandlerResult = {
   productCode?: string;
   confirmationPath?: string;
   eventType?: "BEGIN_CHECKOUT" | "SIGN_UP";
+  // Confirmação de DOI: rid lido da URL original (withCheckoutRecoveryParams o apaga
+  // antes do evento ser montado) e URL original já sem identidade, usada em link_url.
+  recoveryId?: string;
+  linkUrl?: string;
 };
+
+// Na confirmação de DOI a identidade só pode vir do KV (rid). Valores de identidade na
+// query são descartados antes do enriquecimento: senão teriam precedência sobre o KV e
+// permitiriam forjar e-mail, anonymous_id, lead_id ou event_id do SIGN_UP.
+const DOI_UNTRUSTED_QUERY_KEYS = [
+  "email", "EMAIL",
+  "event_id", "eventId",
+  "anonymous_id", "anonymousId", "client_id", "clientId",
+  "lead_id", "leadId", "LEAD_ID",
+  "session_id", "sessionId",
+  "phone", "PHONE", "SMS", "phonenumber", "phoneNumber", "phoneac",
+  "name", "FIRSTNAME",
+];
 
 interface LinksProductConfig {
   checkoutPath: string;
@@ -347,7 +364,7 @@ function handleDoiConfirmationPath(url: URL, routePath: string, tenantId: string
   const redirectUrl = asTrimmedString(route.redirectUrl);
   if (!redirectUrl) return null;
   return {
-    location: appendQueryParams(redirectUrl, url.searchParams, ["rid", "recovery_id", "recoveryId"]),
+    location: appendQueryParams(redirectUrl, url.searchParams, ["rid", "recovery_id", "recoveryId", ...DOI_UNTRUSTED_QUERY_KEYS]),
     cacheControl: "no-store",
     productCode: route.productCode,
     confirmationPath: lowercasePath(normalizePath(route.path)),
@@ -479,16 +496,22 @@ function buildSignUpEvent(request: Request, url: URL, result: HandlerResult): Fu
   const productCode = asTrimmedString(result.productCode).toUpperCase();
   if (!productCode) return null;
 
-  const rid = firstSearchParam(url.searchParams, ["rid", "recovery_id", "recoveryId"]);
+  const rid = result.recoveryId ?? firstSearchParam(url.searchParams, ["rid", "recovery_id", "recoveryId"]);
   const email = firstSearchParam(url.searchParams, ["email", "EMAIL"]).toLowerCase();
   const phone = firstSearchParam(url.searchParams, ["phone", "PHONE", "SMS", "phonenumber", "phoneNumber"]);
   const leadId = firstSearchParam(url.searchParams, ["lead_id", "leadId", "LEAD_ID"]);
   const anonymousId = firstSearchParam(url.searchParams, ["anonymous_id", "anonymousId", "client_id", "clientId"]);
   const sessionId = firstSearchParam(url.searchParams, ["session_id", "sessionId"]);
 
-  const eventId =
-    firstSearchParam(url.searchParams, ["event_id", "eventId"]) ||
-    (rid ? `sign_up:${productCode}:${rid}` : email ? `sign_up:${productCode}:${email}` : `sign_up:${productCode}:${crypto.randomUUID()}`);
+  // Nada derivado do e-mail: o event_id vai para o GA4 (MP), DEDUPE_KV e D1, e um hash
+  // de e-mail sem segredo se reverte por dicionário. O lead_id (id aleatório do site,
+  // vindo do KV) deduplica DOIs repetidos do mesmo lead; o rid mantém idempotentes os
+  // cliques repetidos num link sem identidade.
+  const eventId = leadId
+    ? `sign_up:${productCode}:${leadId}`
+    : rid
+      ? `sign_up:${productCode}:${rid}`
+      : `sign_up:${productCode}:${crypto.randomUUID()}`;
 
   return {
     event_id: eventId,
@@ -520,7 +543,8 @@ function buildSignUpEvent(request: Request, url: URL, result: HandlerResult): Fu
     payload: {
       confirmation_path: result.confirmationPath,
       redirect_url: result.location,
-      link_url: url.toString(),
+      // URL original sem identidade, não a enriquecida pelo KV: payload vai para o D1.
+      link_url: result.linkUrl ?? url.toString(),
       recovery_id: rid || undefined,
     },
   };
@@ -670,8 +694,19 @@ const worker = {
         if (!confirmationResult.location) {
           return jsonResponse({ ok: false, error: "link_not_configured" }, 500);
         }
-        const requestUrl = await withCheckoutRecoveryParams(url, tenantId, env);
-        return redirectResponse(request, requestUrl, confirmationResult, env);
+        const recoveryId = firstSearchParam(url.searchParams, ["rid", "recovery_id", "recoveryId"]);
+        const trustedUrl = new URL(url);
+        DOI_UNTRUSTED_QUERY_KEYS.forEach((key) => trustedUrl.searchParams.delete(key));
+        const requestUrl = await withCheckoutRecoveryParams(trustedUrl, tenantId, env);
+        if (recoveryId && !firstSearchParam(requestUrl.searchParams, ["email", "EMAIL"])) {
+          console.log(JSON.stringify({ stage: "sign_up_identity_miss", product_code: confirmationResult.productCode }));
+        }
+        return redirectResponse(
+          request,
+          requestUrl,
+          { ...confirmationResult, recoveryId, linkUrl: trustedUrl.toString() },
+          env
+        );
       }
 
       // Channel referral handler — lookup dinâmico do catálogo
