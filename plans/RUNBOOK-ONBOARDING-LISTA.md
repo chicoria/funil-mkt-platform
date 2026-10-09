@@ -249,7 +249,69 @@ ainda vale como fundação — mas o retorno maior está em volume de leads e na
   falha conhecida), `tsc` limpo, site 7/7 + `test_subscribe.cjs` verde.
   Ressalva aceita: dedupe de 90 dias por `lead_id` pula o `SIGN_UP` de quem se descadastra e
   se reinscreve no mesmo navegador dentro de 90 dias.
-- Pendente: commits (L3B.1, L3B.2, catálogo A, catálogo B na plataforma; 1 no site), L4, L5, L6.
+- **Commits:** `main` = `70eb1f9` (dispatcher), `9d2410c` (catálogo A), `25721c0` (links-redirect),
+  `737cd83` (runbook), push em 2026-10-09 após `/ecc:code-review` (APROVADO com comentários; cada
+  commit verde isolado). Commit B `b2a2dbe` só na branch local `feat/pe-doi-switch-to-links`.
+  Site: `df6ffc7` publicado (Pages), `?v=3` e `getGaClientId` confirmados no ar.
+  CI do `main` vermelho por 2 falhas **pré-existentes** (agnostic audit: mesmas 3 violações
+  antes e depois; typecheck do `dashboard-sync`, não tocado).
+- **L4 já estava feita (08/10):** MP secret "funnel-dispatcher (onboarding 2026-10-08)" existe no
+  stream `16064512715` (G-LTQ72HWDXR) e `ga4_api_secret_product_engineer` está `active` no Secrets
+  Store `23bdc9c2…`. Correspondência dos valores só é provada pela L6 (`sign_up` no GA4 Realtime).
+- **L5:** deploy bloqueado para o agente pelo harness ("Production Deploy") — operador roda.
+  Versões ativas antes da L5 (rollback com `wrangler rollback <id> --name <worker>`):
+  `decole-links-redirect` = `7b7a38e9-9873-4169-abcc-195421edff31`;
+  `decole-funnel-dispatcher` = `1e5215a8-fc14-4ba5-93bd-2e8e707c3834`.
+- **L5 DONE (2026-10-09, modo manual com aprovação direta do operador):**
+  1. `links-redirect` → versão `3a01498a-b979-461c-8e39-a3231c3f4d11`, rotas das duas zonas ativas.
+  2. Validação por **HEAD** (não enfileira `SIGN_UP`, evita evento falso no Event Store/GA4): PE
+     `/product-engineer/signup?rid=…&email=…` → 302 `/field-notes/confirmed/?utm_source=l5` (sem
+     `rid`/e-mail); DECOLE ESG e Plano de Voo → 302 para as `confirmacao.html`; rota inexistente no
+     PE → 404; checkout DECOLE → 302 Hotmart. O caminho pela fila fica para a L6.
+  3. Commit B `b2a2dbe` fast-forward no `main` e push.
+  4. `funnel-dispatcher` → versão `65960109-8cf4-4a2e-9184-c5f8a4ddc529` (catálogo com o DOI do PE
+     apontando para `links.…/signup` + `doiIdentity`).
+- **L6 executada (2026-10-09 15:03 UTC, `chicoria+pe-l6@gmail.com`) — PARCIAL:**
+
+  | Camada | Resultado |
+  |---|---|
+  | Form → `precheckout` | ✅ 202 |
+  | Link do DOI | ✅ tracking Brevo → `sibcontacts.com/confirm` → `links.theproductengineer.net/product-engineer/signup?rid=<uuid>` |
+  | Página final | ✅ `/field-notes/confirmed/` **sem `rid` e sem e-mail** |
+  | Brevo | ✅ lista 3, `FIRSTNAME`, funil `GENERATE_LEAD\|SIGN_UP` |
+  | `SIGN_UP` no Event Store | ✅ e-mail resolvido via `rid`, `recovery_id` presente, `event_id` = `sign_up:…:{lead_id}`, **sem `@`** no `event_id` nem no `payload_json` |
+  | Mesmo usuário no GA4 (M2) | ❌ `anonymous_id` sintético nos dois eventos — causa abaixo |
+  | GA4 Realtime | ❌ sem `generate_lead` nem `sign_up` (só `page_view`, `scroll`) |
+
+  **Falha 1 — cache do form (corrigida):** as páginas carregavam `subscribe-form.js?v=1` com
+  `max-age=14400`; o navegador usou o form antigo, sem `anonymous_id`. O S3 da revisão subiu só a
+  versão do helper. Corrigido no site em `706a88a` (`?v=2` nas 10 páginas, publicado). **Re-testar
+  o M2** com um lead novo.
+
+  **Falha 2 — sGTM → GA4 (aberta, fora do escopo desta fatia):** todos os hits do Chrome para
+  `sgtm.theproductengineer.net/g/collect` voltaram **503** (até sem cookies), enquanto `curl` da
+  mesma máquina recebe **200** na mesma URL — e mesmo os hits com 200 (`l6_probe` via `curl`) não
+  aparecem no GA4 Realtime. O `sign_up` (MP do dispatcher via sGTM) também não apareceu. Logs do
+  Cloud Run vazios para a service account usada. Hipóteses: caminho de rede/protocolo do Chrome
+  até o Google Frontend; tag GA4 do container server-side não disparando para estes hits;
+  `maxScale=1`. Investigar numa fatia própria (GTM server preview + logs do Cloud Run com conta
+  que tenha `logging.viewer`). De manhã o `generate_lead` chegou ao GA4 apesar de 503 iniciais.
+- **L6 re-teste (2026-10-09 15:18 UTC, `chicoria+pe-l6c@gmail.com`) — PASSOU, L6 DONE:**
+  - Página carregou `subscribe-form.js?v=2` + `field-notes-signup.js?v=3`; `precheckout` 202.
+  - `GENERATE_LEAD` e `SIGN_UP` com o **mesmo `anonymous_id` = client id do `_ga`**
+    (`<n>.<n>`, repassado sem hash como `client_id` do MP) → M2 resolvido.
+  - `SIGN_UP`: e-mail via `rid`, `event_id = sign_up:…:{lead_id}`, sem `@` no payload.
+  - Brevo: lista 3, funil `GENERATE_LEAD|SIGN_UP`. GA4 Realtime: `generate_lead` e `sign_up` presentes.
+  - **Falha 2 da 1ª rodada era alarme falso:** o GA4 Realtime levou alguns minutos para refletir;
+    `generate_lead` e `sign_up` (este pelo MP do dispatcher → **secret do GA4 confirmado**)
+    apareceram. O "503" nos hits do Chrome é artefato do monitor de rede da extensão (marca 503 até
+    para `region1.analytics.google.com`); da origem do sGTM os mesmos POSTs dão 200, e
+    `curl` (HTTP/2, IPv4 e IPv6) dá 200.
+  - **Achado de UX (não bloqueante):** clicar em "Follow field notes" antes do Turnstile concluir
+    não envia nada e não mostra erro visível (o "Thanks!" fica oculto). Foi o que aconteceu com
+    `chicoria+pe-l6b`. Vale tratar no site (desabilitar o botão até a verificação ou mostrar aviso).
+- Pendente: limpar contatos de teste (`chicoria+pe-e2e`, `chicoria+pe-l6`, `chicoria+pe-l6c`) da
+  lista 3; achado de UX do botão antes do Turnstile.
 
 #### Ajustes da 2ª revisão (incorporados)
 
