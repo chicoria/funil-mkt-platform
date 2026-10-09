@@ -83,7 +83,9 @@ interface CatalogEventConfig {
     promoDoiTemplateId?: string;
     promoSignupUrl?: string;
     cartAbandonmentTemplateId?: string;
+    doiIdentity?: boolean;
   };
+  trackingRequiresIdentity?: boolean;
   product_api?: ProductApiConfig;
   template_email?: TemplateEmailConfig;
 }
@@ -1176,13 +1178,64 @@ async function resolveDoiRedirectionUrl(event: FunnelEvent, env: DispatcherEnv):
 
   const catalog = getCatalog(env);
   const product = getCatalogProduct(catalog, event);
-  const fromEventConfig = asAbsoluteHttpUrl(resolveCatalogEvent(event, env)?.brevoConfig?.doiRedirectUrl);
-  if (fromEventConfig) return fromEventConfig;
+  const fixedUrl =
+    asAbsoluteHttpUrl(resolveCatalogEvent(event, env)?.brevoConfig?.doiRedirectUrl) ||
+    asAbsoluteHttpUrl(product?.brevo?.doiRedirectUrl) ||
+    asAbsoluteHttpUrl(env.BREVO_DOI_REDIRECT_URL);
+  return withDoiIdentityRid(event, env, fixedUrl);
+}
 
-  const fromProductConfig = asAbsoluteHttpUrl(product?.brevo?.doiRedirectUrl);
-  if (fromProductConfig) return fromProductConfig;
+// RUNBOOK-ONBOARDING-LISTA L3B.1: o Brevo não devolve e-mail nem id no redirect pós-DOI,
+// mas preserva a query do redirectionUrl. Com brevoConfig.doiIdentity, gravamos a
+// identidade do lead sob um rid opaco, no mesmo formato que o links-redirect já resolve
+// ({tenant}:checkout_recovery:{rid} -> { params }), e anexamos ?rid= ao link do DOI.
+// Gravação dedicada, sem os índices de storeCheckoutRecoveryRecord: um e-mail de
+// carrinho abandonado posterior não pode invalidar o rid de um DOI ainda pendente.
+async function withDoiIdentityRid(event: FunnelEvent, env: DispatcherEnv, fixedUrl: string): Promise<string> {
+  if (!fixedUrl || resolveCatalogEvent(event, env)?.brevoConfig?.doiIdentity !== true) return fixedUrl;
+  const email = asString(event.lead?.email);
+  if (!email || !env.IDENTITY_KV) return fixedUrl;
 
-  return asAbsoluteHttpUrl(env.BREVO_DOI_REDIRECT_URL);
+  const payload = event.payload || {};
+  const params: Record<string, string> = { email };
+  const name = nestedString(payload, ["FIRSTNAME", "name", "nome"]);
+  if (name) params.name = name;
+  const leadId = asString(event.identity?.lead_id) || asString(event.lead?.lead_id);
+  if (leadId) params.lead_id = leadId;
+  // Só o client id do GA ("<n>.<n>") liga o sign_up ao mesmo usuário no GA4; ids
+  // sintéticos ou do site gerariam um client_id diferente do navegador.
+  const anonymousId = asString(event.identity?.anonymous_id);
+  if (/^\d+\.\d+$/.test(anonymousId)) params.anonymous_id = anonymousId;
+  const attribution = (event.attribution || {}) as Record<string, unknown>;
+  for (const key of ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"]) {
+    const value = asString(payload[key]) || asString(attribution[key]);
+    if (value) params[key] = value;
+  }
+
+  const rid = crypto.randomUUID();
+  try {
+    await env.IDENTITY_KV.put(
+      checkoutRecoveryTokenKey(tenantIdFor(event, env), rid),
+      JSON.stringify({ params, kind: "doi_confirmation" }),
+      { expirationTtl: CHECKOUT_RECOVERY_TTL_SECONDS }
+    );
+  } catch (error) {
+    console.log(
+      JSON.stringify({
+        stage: "handler_warn",
+        handler: "brevo_doi",
+        reason: "doi_identity_store_failed",
+        event_id: event.event_id,
+        product_code: event.product_code,
+        error: error instanceof Error ? error.message : "kv_put_failed",
+      })
+    );
+    return fixedUrl;
+  }
+
+  const url = new URL(fixedUrl);
+  url.searchParams.set("rid", rid);
+  return url.toString();
 }
 
 function resolveDoiListIds(event: FunnelEvent, env: DispatcherEnv): number[] {
@@ -2275,6 +2328,20 @@ export function createHandlers(): HandlerMap {
 
     async emit_tracking(event: FunnelEvent, env: DispatcherEnv): Promise<void> {
       console.log(JSON.stringify({ stage: "handler", handler: "emit_tracking", event_id: event.event_id }));
+      // Evento sem identidade (rid ausente/inválido, bot, link expirado) não infla a métrica
+      // no GA4 quando o produto exige identidade. Continua no Event Store para diagnóstico.
+      if (resolveCatalogEvent(event, env)?.trackingRequiresIdentity === true && !asString(event.lead?.email)) {
+        console.log(
+          JSON.stringify({
+            stage: "handler_skip",
+            handler: "emit_tracking",
+            reason: "tracking_skip_no_identity",
+            event_id: event.event_id,
+            product_code: event.product_code,
+          })
+        );
+        return;
+      }
       await emitTracking(event, env);
     },
 
