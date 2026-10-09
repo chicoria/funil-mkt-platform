@@ -2137,7 +2137,8 @@
       "name": "The Product Engineer",
       "domains": [
         "api.theproductengineer.net",
-        "theproductengineer.net"
+        "theproductengineer.net",
+        "links.theproductengineer.net"
       ],
       "allowedOrigins": [
         "https://theproductengineer.net"
@@ -2164,6 +2165,17 @@
           "propertyIdEnv": "GA4_PROPERTY_ID_PRODUCT_ENGINEER",
           "serviceAccountKeyEnv": "GA4_SERVICE_ACCOUNT_KEY_PRODUCT_ENGINEER"
         }
+      },
+      "links": {
+        "linksDomain": "links.theproductengineer.net",
+        "routes": [
+          {
+            "path": "/product-engineer/signup",
+            "type": "doi_confirmation",
+            "productCode": "PRODUCT_ENGINEER_NEWSLETTER",
+            "redirectUrl": "https://theproductengineer.net/field-notes/confirmed/"
+          }
+        ]
       },
       "products": {
         "PRODUCT_ENGINEER_NEWSLETTER": {
@@ -2214,8 +2226,7 @@
                 "templatePlaceholder": "{{ params.DOIurl }}",
                 "description": "Confirmação Double Opt-In nativa da Brevo para lead de newsletter (Field Notes).",
                 "managedVia": "api",
-                "localTemplateFile": "config/email-templates/product-engineer/doi-v1.html",
-                "_pending": "Página /field-notes/confirmed/ ainda não existe no site — criar antes de ativar o form real."
+                "localTemplateFile": "config/email-templates/product-engineer/doi-v1.html"
               }
             ]
           },
@@ -2270,6 +2281,25 @@
                   "doiRedirectUrl": "https://theproductengineer.net/field-notes/confirmed/",
                   "funnelPrefix": "PE_NEWSLETTER"
                 },
+                "trackingConfigRef": "products.PRODUCT_ENGINEER_NEWSLETTER.tracking"
+              },
+              {
+                "funnelStage": "CONVERSION",
+                "eventType": "SIGN_UP",
+                "delivery": "server_queue",
+                "deliveryNotes": "Confirmação do DOI. links-redirect resolve o rid (identidade do GENERATE_LEAD) e enfileira; sem identidade o evento fica no Event Store mas não vai ao GA4 (trackingRequiresIdentity).",
+                "source": "links-redirect",
+                "ingress": "decole-q-funnel-events",
+                "queue": "decole-q-funnel-events",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "enrich_attribution",
+                  "update_brevo_funnel",
+                  "emit_tracking"
+                ],
+                "destinations": ["Brevo", "Event Store", "sGTM"],
+                "trackingRequiresIdentity": true,
                 "trackingConfigRef": "products.PRODUCT_ENGINEER_NEWSLETTER.tracking"
               }
             ]
