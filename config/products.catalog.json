@@ -2222,9 +2222,9 @@
                 "triggerEvent": "GENERATE_LEAD",
                 "endpoint": "/contacts/doubleOptinConfirmation",
                 "includeListId": "3",
-                "redirectionUrl": "https://theproductengineer.net/field-notes/confirmed/",
+                "redirectionUrl": "https://links.theproductengineer.net/product-engineer/signup?rid={rid}",
                 "templatePlaceholder": "{{ params.DOIurl }}",
-                "description": "Confirmação Double Opt-In nativa da Brevo para lead de newsletter (Field Notes).",
+                "description": "Confirmação Double Opt-In nativa da Brevo para lead de newsletter (Field Notes). O dispatcher anexa ?rid= (brevoConfig.doiIdentity) e o links-redirect resolve a identidade do SIGN_UP antes de redirecionar para /field-notes/confirmed/.",
                 "managedVia": "api",
                 "localTemplateFile": "config/email-templates/product-engineer/doi-v1.html"
               }
@@ -2278,7 +2278,8 @@
                 "brevoConfig": {
                   "listId": "3",
                   "doiTemplateId": "1",
-                  "doiRedirectUrl": "https://theproductengineer.net/field-notes/confirmed/",
+                  "doiRedirectUrl": "https://links.theproductengineer.net/product-engineer/signup",
+                  "doiIdentity": true,
                   "funnelPrefix": "PE_NEWSLETTER"
                 },
                 "trackingConfigRef": "products.PRODUCT_ENGINEER_NEWSLETTER.tracking"
