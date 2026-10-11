@@ -307,11 +307,20 @@ ainda vale como fundação — mas o retorno maior está em volume de leads e na
     apareceram. O "503" nos hits do Chrome é artefato do monitor de rede da extensão (marca 503 até
     para `region1.analytics.google.com`); da origem do sGTM os mesmos POSTs dão 200, e
     `curl` (HTTP/2, IPv4 e IPv6) dá 200.
-  - **Achado de UX (não bloqueante):** clicar em "Follow field notes" antes do Turnstile concluir
-    não envia nada e não mostra erro visível (o "Thanks!" fica oculto). Foi o que aconteceu com
-    `chicoria+pe-l6b`. Vale tratar no site (desabilitar o botão até a verificação ou mostrar aviso).
-- Pendente: limpar contatos de teste (`chicoria+pe-e2e`, `chicoria+pe-l6`, `chicoria+pe-l6c`) da
-  lista 3; achado de UX do botão antes do Turnstile.
+  - **Correção (2026-10-11) do "achado de UX" registrado antes:** não era bug. O botão já fica
+    **desabilitado** até o Turnstile entregar o token; o `pe-l6b` "não enviou" porque o **clique
+    automatizado do agente** caiu no botão desabilitado. Melhoria entregue mesmo assim: o botão
+    mostra "Verifying…" enquanto o token não chegou (site `01131fb`, `subscribe-form.js?v=6`),
+    sobre o endurecimento de validação do token do commit `2212033`. Reavaliados e descartados:
+    envio pendente no clique antecipado (complexidade sem ganho real), Turnstile
+    `interaction-only` (decisão de design, exige mexer no espaço reservado) e `preconnect`
+    (ganho marginal frente ao tempo de execução do desafio).
+- **Limpeza total dos testes (2026-10-11):** `scripts/remove-contact.sh` (com `BREVO_API_KEY` da
+  conta PE, rodado fora do repo para não ler o `.env.local` da DECOLE) apagou os contatos
+  `pe-e2e`, `pe-spike`, `pe-l6`, `pe-l6c` no Brevo + 7 linhas de `identity_links` + 5 eventos de
+  `funnel_events`; 9 chaves de KV de teste apagadas com `wrangler kv bulk delete` (mantidas as 4 do
+  e-mail real de 08/10). Eventos de teste no GA4 permanecem.
+- Pendente: nenhum desta fatia.
 
 #### Ajustes da 2ª revisão (incorporados)
 
