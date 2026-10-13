@@ -887,3 +887,30 @@ grep -rE "product-engineer|product_engineer" workers/*/src/ packages/*/src/
   o caminho "tenant sem Meta" descrito na conversa original (tag não
   dispara por lookup vazio) — vale confirmar na Fatia 8 que isso não
   gera erro silencioso no worker.
+
+
+## Ajuste visual DOI mobile — 2026-10-12
+
+- O símbolo `&#10035;` no cabeçalho do email DOI foi substituído por `*` ASCII
+  estilizado para evitar apresentação emoji em mobile. Atualizados o template
+  local `config/email-templates/product-engineer/doi-v1.html` e o template
+  ativo Brevo ID 1; `products.catalog.json` registra versão v1.1 e updatedAt.
+- Prévia Brevo estreita confirmou o asterisco textual. Tag `optin`, sender e
+  contrato DOI permaneceram. A ferramenta informou que enviou o email de teste
+  para a caixa de teste do proprietário. A caixa Gmail acessível não encontrou
+  a mensagem; Gmail mobile e Apple Mail no iPhone ainda não foram verificados.
+- Verificação em Brevo Transactional → Email → Logs: eventos `Sent` e
+  `Delivered` às 20:24 em 12/10/2026 para a caixa de teste selecionada. A inbox
+  Gmail aberta nesta sessão era outra conta; recebimento está confirmado pelo
+  Brevo, mas inspeção da mensagem e clientes móveis seguem pendentes. Nenhum
+  envio adicional realizado.
+
+## Ajuste DOI v1.2 — 2026-10-13
+
+- Asterisco do header aparecia sobrescrito no Gmail iPhone: span passou a
+  inline (`<span style="color:#d4ed98;">*</span>`, sem `vertical-align`).
+- Saudação `Hi {{ contact.FIRSTNAME }},` trocada por `Hi,` — o Brevo só
+  preenche atributos do contato depois da confirmação DOI.
+- Template Brevo ID 1 atualizado via API (tag `optin`, assunto e link DOI
+  preservados); catálogo em v1.2. Teste recebido e aprovado pelo proprietário.
+- Templates passam a ser checados pelo `email-brand-check` (hook PostToolUse).

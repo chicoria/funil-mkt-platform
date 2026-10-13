@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=/Users/chicoria/git/adilson-hub/.agents/skills/email-brand-check/scripts/hook-post-edit.mjs; [ -f \"$f\" ] || exit 0; node \"$f\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

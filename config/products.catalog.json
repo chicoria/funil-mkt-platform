@@ -1,6 +1,6 @@
 {
   "schemaVersion": 5,
-  "updatedAt": "2026-09-12",
+  "updatedAt": "2026-10-12",
   "description": "Catálogo central multi-tenant — tenants.{id}.products.{code} declara cada produto. Fonte única para tracking, integrações, links e dashboard por tenant/produto.",
   "global": {
     "hotmart": {
@@ -2212,7 +2212,7 @@
                 "id": "1",
                 "description": "Double Opt-In confirmation via Brevo native DOI - Product Engineer Field Notes",
                 "localFile": "config/email-templates/product-engineer/doi-v1.html",
-                "version": "v1"
+                "version": "v1.2"
               }
             },
             "doiFlows": [

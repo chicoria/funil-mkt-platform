@@ -22,6 +22,7 @@ Regras locais deste `AGENTS.md` continuam validas. Em caso de conflito, a regra 
 - Antes de concluir qualquer alteracao em produtos, checkout, Hotmart, Brevo, DOI, listas, segmentos, emails, automacoes, tracking, workers, filas, KV, D1, env vars ou paginas publicas relacionadas, verifique se `config/products.catalog.json` precisa ser atualizado.
 - Quando o catalogo mudar, atualize `updatedAt` e siga `config/README.md`.
 - Se o catalogo nao precisar mudar, registre isso no resumo final.
+- Templates em `config/email-templates/product-engineer/*.html` devem passar no `email-brand-check` (`/Users/chicoria/git/adilson-hub/.agents/skills/email-brand-check/`) antes do upload para o Brevo; o hook PostToolUse em `.claude/settings.json` roda o check automaticamente.
 - Nao commitar `.env.local`, tokens, chaves privadas, cookies ou valores reais de secrets.
 - Para mudancas nao triviais, trabalhar por slice e aplicar Planning Review + Code Quality Review.
 - Implementador nao autoaprova o proprio slice — lancar Slice Validator separado antes de transitar para DONE (ver `slice-validation.md`).
