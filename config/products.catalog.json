@@ -1,6 +1,6 @@
 {
   "schemaVersion": 5,
-  "updatedAt": "2026-10-12",
+  "updatedAt": "2026-11-01",
   "description": "Catálogo central multi-tenant — tenants.{id}.products.{code} declara cada produto. Fonte única para tracking, integrações, links e dashboard por tenant/produto.",
   "global": {
     "hotmart": {
@@ -2158,6 +2158,10 @@
           "measurementId": "G-LTQ72HWDXR",
           "measurementIdEnvVar": "GA4_MEASUREMENT_ID_PRODUCT_ENGINEER",
           "apiSecretEnvVar": "GA4_API_SECRET_PRODUCT_ENGINEER"
+        },
+        "metaCapi": {
+          "accessTokenEnv": "META_SYSTEM_USER_ACCESS_TOKEN_PRODUCT_ENGINEER",
+          "_note": "Token do system user agent-api-pe (Business 1147709561172015), atribuido ao pixel; serve de token CAPI (smoke events_received: 1 em 2026-11-01). Vive na LT - Meta CAPI Token by Tenant do sGTM. Ver plans/onboardings/product-engineer-meta-2026-11-01.md."
         }
       },
       "dashboard": {
@@ -2185,6 +2189,13 @@
             "differentiation": {
               "produto": "PRODUCT_ENGINEER_NEWSLETTER",
               "product_code": "PRODUCT_ENGINEER_NEWSLETTER"
+            },
+            "metaPixel": {
+              "pixelIdEnvVar": "META_PIXEL_ID_PRODUCT_ENGINEER",
+              "pixelId": "3208451502837323",
+              "testEventCodeEnvVar": "META_TEST_EVENT_CODE_PRODUCT_ENGINEER",
+              "differentiationKey": "produto",
+              "differentiationValue": "PRODUCT_ENGINEER_NEWSLETTER"
             }
           },
           "brevo": {
