@@ -606,6 +606,22 @@ CAPI sai do sGTM).
    `trafego/gtm/`.
 4. Outros tenants intactos: um evento DECOLE de teste continua a chegar ao
    pixel DECOLE.
+5. **Checagem independente com Codex (obrigatória, no fim).** Depois de
+   publicar, correr o Codex em modo só leitura sobre tudo o que a frente
+   tocou, como Slice Validator separado de quem implementou:
+
+   ```sh
+   codex exec -s read-only -C ~/git/funil-mkt-platform "Valida a Frente 3c do tenant {tenant}: \
+   lê plans/onboardings/{tenant}-meta-*.md e a Frente 3c do runbook; confere, só com GETs, \
+   versions:live do GTM Web do tenant e do sGTM 241313282 (tags FB_CONVERSIONS_API-{pixel}-*, \
+   triggers, variáveis, linhas novas das LTs Meta, outros tenants intactos), o catálogo \
+   (tenants.{tenant}.tracking.metaCapi, metaPixel do produto, updatedAt) e o site (fbq/fbevents \
+   não no código; Network com facebook.com/tr?id={pixel}). Não alteres nada. Devolve \
+   APROVADO ou a lista de MUST-FIX com evidência."
+   ```
+
+   Registar o veredito no ledger do onboarding; a frente só passa a DONE com
+   APROVADO.
 
 **Consentimento:** decisão do titular, registada no onboarding. Se houver
 banner, as tags Meta do GTM Web disparam só com consentimento.
