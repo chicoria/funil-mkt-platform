@@ -117,6 +117,22 @@ no runbook). Nova checagem Codex depois de SERVER, Lead dedup e DECOLE.
 2026-11-01. Vitest: 583 passam; 1 ficheiro falha por motivo alheio
 (`tests/setup-brevo-domain.test.mjs` sem suite vitest).
 
+**Contra-checagem Codex de todos os tenants (2026-11-01): REPROVADO**, sem
+falhas causadas por este onboarding:
+- IDs, hosts, pixels e measurement IDs de decole, product-engineer e
+  entrepontos: OK; nenhuma linha visível de outro tenant alterada v25→v26.
+- MUST-FIX "env vars ausentes no .env.local" (20 nomes, quase todos de
+  Workers/DECOLE): critério do runbook estava errado (secrets dos Workers vivem
+  no Secrets Store); runbook corrigido. Não é regressão.
+- MUST-FIX "export Web DECOLE ausente": guardado `trafego/gtm/decole-web-v23.json`
+  (live lido hoje, sem segredos).
+- MUST-FIX "preservação dos tokens CAPI não verificável": provado por hash
+  SHA-256 v25→v26: `decole` IGUAL, `superare-test` IGUAL, `product-engineer` NOVO.
+- SHOULD-FIX (pré-existentes, DECOLE): `workerViews` refere
+  `META_PIXEL_ID_DECOLE_PLANOVOO` e o produto usa `META_PIXEL_ID_PLANOVOO`;
+  `BREVO_BASE_URL`/`BREVO_TIMEOUT_MS`/`BREVO_SANDBOX` sem fonte documentada.
+  Ficam no backlog da plataforma, fora deste onboarding.
+
 ## Ledger
 
 | Fatia | Aceite | Status |

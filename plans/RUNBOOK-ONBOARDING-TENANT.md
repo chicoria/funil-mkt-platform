@@ -1204,8 +1204,9 @@ em LT - GA4 Measurement ID by Tenant e, se o produto tem metaPixel no catálogo,
 Token by Tenant; nenhuma linha de outro tenant removida ou alterada face ao export anterior; \
 (2) GTM Web de cada tenant: containerPublicId do catálogo, tags Meta só com o pixel do \
 próprio tenant, transport_url para o sgtm.* do tenant; \
-(3) catálogo: JSON válido, updatedAt, env vars referidas (nomes, nunca valores) existentes \
-em ~/.env.local, pixels/measurement IDs iguais aos das LTs; \
+(3) catálogo: JSON válido, updatedAt, pixels/measurement IDs iguais aos das LTs; env vars \
+referidas só para as que o agente usa localmente (META_*, GA4_*, GTM_*) em ~/.env.local, \
+por nome; as dos Workers vivem no Secrets Store/wrangler, não no .env.local; \
 (4) nenhum segredo real em trafego/gtm/ nem em plans/. \
 Responde APROVADO ou REPROVADO com uma tabela tenant × produto × verificação e \
 MUST-FIX/SHOULD-FIX com ficheiro e evidência."
@@ -1218,6 +1219,13 @@ Regras:
 - Se o Codex não conseguir verificar algo (ex.: tokens ocultos no export, sem
   tráfego recente), registar como "não verificável" com o motivo, nunca como
   aprovado.
+- **Tokens nas LTs:** os exports guardam `<redacted>`, por isso a preservação
+  prova-se por hash: ler `versions/{anterior}` e `versions/{nova}` só com GET,
+  comparar `sha256(valor)` por chave e registar `IGUAL`/`NOVO`/`MUDOU` (nunca o
+  valor). Só o tenant do onboarding pode ser `NOVO`; nenhum `MUDOU`.
+- **Exports de todos os GTM Web:** antes de correr, guardar em `trafego/gtm/`
+  o `versions:live` de cada tenant (ex.: `decole-web-v23.json`), verificado sem
+  segredos.
 
 ---
 
