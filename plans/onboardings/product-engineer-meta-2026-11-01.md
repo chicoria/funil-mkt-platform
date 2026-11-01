@@ -203,6 +203,18 @@ Stats mostraram `gtm.js`, `bio_link_click`, `scroll`/`form_*` no pixel. Preparad
   às 14:38:49 UTC, 200, com o User-Agent do iPhone/Safari do titular. CompleteRegistration
   no pixel: aguardar as stats (atraso de 1–2 h).
 
+## Limpeza dos testes (pendente do titular)
+
+- 2026-11-01: os 3 contactos de teste (`chicoria+pe-smoke-20261101@`, `…b@`, `…c@gmail.com`)
+  foram **retirados da lista #3** no Brevo do PE (POST `/contacts/lists/3/contacts/remove`
+  201; GET confirma `listIds: []`). Não foram apagados.
+- Por apagar (ação do titular, apagamento permanente): os 3 contactos no Brevo PE, 6 linhas
+  em `funnel_events` e 4 em `identity_links` dos 3 perfis de teste. Script dirigido (dry run
+  por defeito): `bash scripts/onboarding/cleanup-pe-smoke-20261101.sh --apply`; correr de
+  novo sem `--apply` para confirmar zeros. Não usar `scripts/cleanup-test-data.sh` aqui:
+  usa a chave Brevo da DECOLE e o padrão largo `chicoria+*`.
+- GA4 e Meta não têm API de apagar: os 3 Leads e 3 sign-ups de teste ficam lá.
+
 ## Ledger
 
 | Fatia | Aceite | Status |
