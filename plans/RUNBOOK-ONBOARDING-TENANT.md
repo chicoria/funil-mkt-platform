@@ -30,7 +30,7 @@ Onboarding de um novo tenant na `funil-mkt-platform` envolve **11 frentes** (alg
 | 5 | Workers wrangler.toml: bindings + rota + redeploy | Operador | Frente 8 (smoke) |
 | 6 | CF Pages secret: `ADMIN_SECRET_{TENANT}` + redeploy | Operador | Frente 8 (smoke) |
 | 7 | Cloud Run domain mapping: `sgtm.{tenant_domain}` | Operador | Frente 3, Frente 3b (transport_url) |
-| 8 | Smoke checklist executável | Operador | — |
+| 8 | Smoke checklist executável + contra-checagem Codex de todos os tenants | Operador + Codex | — |
 | 9 | **(nova, opcional)** Turnstile: widget + validação server-side | Operador | — (proteção contra bot, não bloqueia o fluxo básico) |
 
 **Exemplo usado neste runbook (v1.0):** tenant `superare` (fake, nunca onboardado de verdade) com domínio `superare.com.br`.
@@ -614,7 +614,8 @@ CAPI sai do sGTM).
    `trafego/gtm/`.
 4. Outros tenants intactos: um evento DECOLE de teste continua a chegar ao
    pixel DECOLE.
-5. **Checagem independente com Codex (obrigatória, no fim).** Depois de
+5. **Checagem independente com Codex (obrigatória, no fim)**, seguida da
+   [contra-checagem de todos os tenants](#contra-checagem-codex--todos-os-tenants-e-produtos-do-catálogo). Depois de
    publicar, correr o Codex em modo só leitura sobre tudo o que a frente
    tocou, como Slice Validator separado de quem implementou:
 
@@ -1177,6 +1178,46 @@ curl -s -o /dev/null -w "%{http_code}" -X POST \
   -d "EMAIL=teste@example.com&FIRSTNAME=Teste"
 # Esperado: 400 turnstile_missing (sem token)
 ```
+
+---
+
+## Contra-checagem Codex — todos os tenants e produtos do catálogo
+
+Obrigatória no fim de **qualquer** onboarding ou mudança que toque
+infraestrutura partilhada (sGTM `241313282`, catálogo, Workers, Brevo
+partilhado, GTM Web de outro tenant). Não basta validar o tenant novo: o
+Codex, como validador independente e só leitura, confere que **todos** os
+tenants e produtos de `config/products.catalog.json` continuam coerentes com
+o que está em produção. Complementa a checagem específica de cada frente (ex.:
+3c.5 passo 5).
+
+```sh
+codex exec -s read-only -C ~/git/funil-mkt-platform "Contra-checagem pós-onboarding do \
+tenant {tenant} ({data}). NÃO alteres nada, não envies eventos, não publiques. \
+Para CADA tenant e produto em config/products.catalog.json (hoje: decole \
+[DECOLE_ESG_MENTORIA, DECOLE_PLANOVOO], product-engineer [PRODUCT_ENGINEER_NEWSLETTER], \
+entrepontos [ENTREPONTOS_MULHERES, ENTREPONTOS_KIDS]) confere: \
+(1) sGTM: export live mais recente em trafego/gtm/ (ou GET versions:live com a service \
+account, só leitura): o host sgtm.* do tenant em LT - Tenant ID by Host, o measurement ID \
+em LT - GA4 Measurement ID by Tenant e, se o produto tem metaPixel no catálogo, a linha \
+{tenant}|{produto} em LT - Meta Pixel ID by Tenant/Product e o tenant em LT - Meta CAPI \
+Token by Tenant; nenhuma linha de outro tenant removida ou alterada face ao export anterior; \
+(2) GTM Web de cada tenant: containerPublicId do catálogo, tags Meta só com o pixel do \
+próprio tenant, transport_url para o sgtm.* do tenant; \
+(3) catálogo: JSON válido, updatedAt, env vars referidas (nomes, nunca valores) existentes \
+em ~/.env.local, pixels/measurement IDs iguais aos das LTs; \
+(4) nenhum segredo real em trafego/gtm/ nem em plans/. \
+Responde APROVADO ou REPROVADO com uma tabela tenant × produto × verificação e \
+MUST-FIX/SHOULD-FIX com ficheiro e evidência."
+```
+
+Regras:
+- Atualizar a lista de tenants/produtos do comando quando o catálogo mudar.
+- Registar o veredito e a data no ledger do onboarding. O onboarding só fecha
+  com APROVADO; um REPROVADO noutro tenant é tratado antes de declarar DONE.
+- Se o Codex não conseguir verificar algo (ex.: tokens ocultos no export, sem
+  tráfego recente), registar como "não verificável" com o motivo, nunca como
+  aprovado.
 
 ---
 
