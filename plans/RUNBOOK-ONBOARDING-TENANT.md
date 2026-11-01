@@ -559,6 +559,14 @@ Pontos que já custaram tempo:
 - *Mapa `FBEventName`:* rever para os eventos do tenant (ex.: `generate_lead`
   → `Lead`; eventos sem nome padrão Meta saem com o próprio nome, como custom).
   O `event_id` do dataLayer tem de ser o mesmo que o sGTM manda por CAPI.
+- **Só eventos de negócio para a Meta (browser).** Não ligar a `Pixel_Event`
+  ao `Custom_Event` genérico: isso manda à Meta `scroll`, `form_start`,
+  `form_submit`, `gtm.js` e afins (ruído visto no PE em 2026-11-01). Criar o
+  trigger `FB_CONVERSIONS_API-{pixel}-Web-Trigger-Business_Events`
+  (customEvent, `{{_event}}` regex com a allowlist do tenant, ex.:
+  `^(generate_lead|bio_link_click|cta_click)$`) e usá-lo só na `Pixel_Event`.
+  A `GA4_Event` continua no `Custom_Event` (exclui `^gtm\.`), para o GA4 não
+  perder eventos. A allowlist sai dos eventos `site` do catálogo do tenant.
 - *Se o GA4 do tenant já tem* `GA4 Event - All Custom Events` (Frente 3b), não
   duplicar com `GA4_Event` do template: manter um só.
 - *Processo* (`gtm-api-guardrails.md`): service account
@@ -584,6 +592,17 @@ Tenant/Product` já existe e serve todos os tenants.
   O `{produto}` é o valor que os eventos do tenant mandam em `produto`
   (`ED - produto`); ver o catálogo e o código do site (ex.: PE:
   `PRODUCT_ENGINEER_NEWSLETTER`). Um produto novo do tenant = uma linha nova.
+- **Só eventos de negócio para a Meta (servidor).** A tag CAPI dispara para
+  todos os hits GA4 que chegam ao sGTM. Por tenant, acrescentar um bloqueador
+  `Meta Blocker — {tenant} fora da allowlist` (tipo `always`, duas condições:
+  `{{LT - Tenant ID by Host}}` = `{tenant}` **e** `{{Event Name}}` não casa a
+  allowlist) aos `blockingTriggerId` da tag `Meta CAPI - Dynamic by
+  Tenant/Product`, sem tirar os bloqueadores existentes. Allowlist do PE:
+  `^(gtm\.dom|generate_lead|sign_up|bio_link_click|cta_click)$`. O `gtm.dom` é o
+  PageView com o mesmo `event_id` do browser; o `page_view` da tag GA4
+  Configuration fica bloqueado porque não tem esse `event_id` e duplicaria o
+  PageView (a DECOLE evita isto com `send_page_view=false` no `GA4_Config`). O
+  bloqueador é por tenant, por isso não muda nada nos outros.
 - Os triggers de bloqueio (`Meta Blocker — …`) valem para todos: confirmar que
   não cortam eventos do tenant que devam ir para a Meta.
 - *Processo:* igual a 3c.2; o diff tem de mostrar só as linhas novas. O token

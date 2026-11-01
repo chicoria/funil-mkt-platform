@@ -165,6 +165,19 @@ falhas causadas por este onboarding:
   `BREVO_BASE_URL`/`BREVO_TIMEOUT_MS`/`BREVO_SANDBOX` sem fonte documentada.
   Ficam no backlog da plataforma, fora deste onboarding.
 
+## Filtro de ruído (2026-11-01)
+
+Stats mostraram `gtm.js`, `bio_link_click`, `scroll`/`form_*` no pixel. Preparado
+(workspaces `meta-noise-2026-11-01` no Web e `meta-noise-pe-2026-11-01` no sGTM,
+0 conflitos):
+- Web: trigger `…-Web-Trigger-Business_Events` (`^(generate_lead|bio_link_click|cta_click)$`)
+  só na `Pixel_Event`.
+- sGTM: `Meta Blocker — product-engineer fora da allowlist` (tenant =
+  product-engineer e evento fora de `^(gtm\.dom|generate_lead|sign_up|bio_link_click|cta_click)$`)
+  acrescentado aos bloqueadores da tag CAPI (mantém o `27`).
+- Publicação recusada pelo classificador do agente ("Production Deploy");
+  publica o titular com `node meta-noise.mjs publish` no scratchpad da sessão.
+
 ## Ledger
 
 | Fatia | Aceite | Status |
