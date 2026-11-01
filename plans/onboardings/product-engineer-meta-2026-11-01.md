@@ -98,8 +98,11 @@ são imagens base64 dos templates).
   `ev=bio_link_click`, ambos com `eid`. Stats do pixel: `BROWSER` 2.
 - sGTM: pedidos `sgtm.theproductengineer.net` com `gtm.dom`/`page_view` e
   `produto=PRODUCT_ENGINEER_NEWSLETTER`.
-- Servidor (CAPI via sGTM): ainda **não** aparece `SERVER` nas stats
-  (agregação horária com atraso); verificação em curso.
+- Servidor (CAPI via sGTM): **não confirmado**. Polling de 40 min às stats
+  (`aggregation=event_source`) só mostrou o balde das 08:00 com `BROWSER` 2;
+  nem os eventos de browser do smoke das ~09:30 tinham entrado, logo o atraso
+  das stats não permite concluir. Confirmar no Events Manager (Visão geral,
+  coluna Servidor) mais tarde, ou com um evento de teste com `test_event_code`.
 - Lead browser/servidor deduplicado: **não testado** (exige uma inscrição real
   de teste).
 - Regressão DECOLE: stats dos pixels DECOLE vazias nas últimas 6 h (sem
