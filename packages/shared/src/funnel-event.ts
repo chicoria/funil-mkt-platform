@@ -17,6 +17,9 @@ export interface FunnelAttribution {
   utm_medium?: string;
   utm_campaign?: string;
   client_ip?: string;
+  // Visitor User-Agent at the click that produced a server-side event; Meta CAPI requires it
+  // (client_user_agent) for website events sent by the worker.
+  user_agent?: string;
 }
 
 export interface FunnelLead {

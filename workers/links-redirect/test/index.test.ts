@@ -607,6 +607,17 @@ describe("links-redirect worker", () => {
     expect(evt?.attribution?.client_ip).toBe("9.8.7.6");
   });
 
+  it("guarda o User-Agent do visitante na attribution (Meta CAPI exige client_user_agent)", async () => {
+    const sent: unknown[] = [];
+    const req = new Request("https://links.decolesuacarreiraesg.com.br/plano-de-voo/checkout?anonymous_id=anon-ua", {
+      method: "GET",
+      headers: { "cf-connecting-ip": "9.8.7.6", "user-agent": "Mozilla/5.0 (smoke)" },
+    });
+    await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send: async (b: unknown) => { sent.push(b); } } }));
+    const evt = sent[0] as { attribution?: { user_agent?: string } };
+    expect(evt?.attribution?.user_agent).toBe("Mozilla/5.0 (smoke)");
+  });
+
   it("recusa metodos nao permitidos", async () => {
     const res = await worker.fetch(makeRequest("health", { method: "POST" }), makeEnv());
     expect(res.status).toBe(405);

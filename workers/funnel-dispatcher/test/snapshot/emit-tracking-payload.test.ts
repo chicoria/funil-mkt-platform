@@ -306,6 +306,35 @@ describe("emit_tracking — campos de atribuição (passados quando presentes)",
     expect(params.gclid).toBe("gclid123");
   });
 
+  it("User-Agent e IP do visitante seguem para o sGTM (header + user_agent/ip_override) para o Meta CAPI", async () => {
+    let ua = "";
+    let body: Ga4Payload | null = null;
+    vi.stubGlobal("fetch", vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      if (String(url).includes("sgtm.example.com")) {
+        ua = new Headers(init?.headers).get("user-agent") || "";
+        body = JSON.parse(String(init?.body || "{}")) as Ga4Payload;
+      }
+      return new Response("{}", { status: 200 });
+    }));
+    const env = makeEnv({
+      CATALOG_JSON: TRACKING_CATALOG,
+      SGTM_ENDPOINT_URL_DECOLE: SGTM_ENDPOINT,
+      GA4_MEASUREMENT_ID_DECOLE: GA4_MEASUREMENT_ID,
+      GA4_API_SECRET_DECOLE: GA4_API_SECRET,
+    });
+    await worker.queue({ messages: [{ body: {
+      event_id: "gm-ua-1", event_type: "PURCHASE_APPROVED", product_code: "DECOLE_ESG_MENTORIA", source: "hotmart",
+      occurred_at: "2026-05-01T10:00:00.000Z", attribution: { client_ip: "9.8.7.6", user_agent: "Mozilla/5.0 (smoke)" },
+      payload: { value: 1500, currency: "BRL" },
+    } }] }, env);
+    vi.unstubAllGlobals();
+    expect(ua).toBe("Mozilla/5.0 (smoke)");
+    const params = (body as unknown as Ga4Payload).events[0].params;
+    expect(params.user_agent).toBe("Mozilla/5.0 (smoke)");
+    expect(params.ip_override).toBe("9.8.7.6");
+    expect(params.client_ip_address).toBe("9.8.7.6");
+  });
+
   it("campos de atribuição ausentes NÃO aparecem em params (sem undefined/null)", async () => {
     const payload = await captureEmitTrackingPayload({
       event_id: "gm-attr-absent-1",

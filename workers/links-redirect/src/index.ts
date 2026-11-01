@@ -453,6 +453,7 @@ function buildBeginCheckoutEvent(request: Request, url: URL, result: HandlerResu
       utm_medium: firstSearchParam(url.searchParams, ["utm_medium"]) || undefined,
       utm_campaign: firstSearchParam(url.searchParams, ["utm_campaign"]) || undefined,
       client_ip: clientIp || undefined,
+      user_agent: request.headers.get("user-agent") || undefined,
     },
     lead: {
       email: email || undefined,
@@ -534,6 +535,7 @@ function buildSignUpEvent(request: Request, url: URL, result: HandlerResult): Fu
       utm_medium: firstSearchParam(url.searchParams, ["utm_medium"]) || undefined,
       utm_campaign: firstSearchParam(url.searchParams, ["utm_campaign"]) || undefined,
       client_ip: clientIp || undefined,
+      user_agent: request.headers.get("user-agent") || undefined,
     },
     lead: {
       email: email || undefined,

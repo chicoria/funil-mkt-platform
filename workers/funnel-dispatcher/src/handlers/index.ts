@@ -2123,9 +2123,12 @@ async function emitTracking(event: FunnelEvent, env: DispatcherEnv): Promise<voi
 
   const mpUrl = `${tracking.sgtmEndpointUrl}/mp/collect?measurement_id=${encodeURIComponent(tracking.ga4MeasurementId)}&api_secret=${encodeURIComponent(tracking.ga4ApiSecret)}`;
 
+  // The sGTM GA4 client takes user_agent/ip from the request; forward the visitor's, not the worker's,
+  // so the Meta CAPI tag has client_user_agent (required for website events) and the real IP.
+  const userAgent = asString(event.attribution?.user_agent);
   await postJson(mpUrl, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...(userAgent ? { "user-agent": userAgent } : {}) },
     body: JSON.stringify({
       client_id: clientId,
       timestamp_micros: String(unixTime(event.occurred_at) * 1_000_000),
@@ -2151,7 +2154,8 @@ async function emitTracking(event: FunnelEvent, env: DispatcherEnv): Promise<voi
                 asString(event.identity?.anonymous_id);
               return externalId ? { external_id: externalId } : {};
             })(),
-            ...(asString(event.attribution?.client_ip) ? { client_ip_address: asString(event.attribution?.client_ip) } : {}),
+            ...(asString(event.attribution?.client_ip) ? { client_ip_address: asString(event.attribution?.client_ip), ip_override: asString(event.attribution?.client_ip) } : {}),
+            ...(userAgent ? { user_agent: userAgent } : {}),
             ...(asString(event.attribution?.fbp) ? { fbp: asString(event.attribution?.fbp) } : {}),
             ...(asString(event.attribution?.fbc) ? { fbc: asString(event.attribution?.fbc) } : {}),
             ...(asString(event.attribution?.gclid) ? { gclid: asString(event.attribution?.gclid) } : {}),
