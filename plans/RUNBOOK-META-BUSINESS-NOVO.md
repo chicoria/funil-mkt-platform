@@ -106,11 +106,33 @@ Ler o ID por GET `{business}/owned_pixels` e registar `META_PIXEL_ID_{TENANT}`.
 interface. (Funciona com a app da DECOLE no Business da DECOLE, como no
 Entrepontos.)
 
-Depois, na interface:
-- Pixel > Pessoas: atribuir o system user com controlo total.
-- Events Manager > o pixel > Configurações > API de Conversões > gerar token:
-  guardar como `META_CAPI_ACCESS_TOKEN_{TENANT}` pelo mesmo método do clipboard.
-- Testar eventos: anotar o test event code (`META_TEST_EVENT_CODE_{TENANT}`).
+Ao criar o dataset, a Meta cria sozinha um "Conversions API System User" com
+só ANALYZE. O system user Admin já **lê** o pixel (GET funciona), mas sem
+atribuição não tem EDIT/UPLOAD.
+
+**Atribuir o system user ao pixel (interface; feito assim em 2026-11-01).**
+`POST /{pixel}/assigned_users` foi recusado pela política de permissões do
+agente, por isso pela interface:
+1. Business > Configurações > Fontes de dados > Conjuntos de dados e pixels >
+   o pixel > separador **Pessoas** > "Atribuir pessoas".
+2. Marcar `agent-api-{tenant}` (System user).
+3. Ligar **Acesso total — Gerenciar o conjunto de dados de eventos** (liga
+   também o acesso parcial) > "Atribuir" > "Concluir".
+4. Confirmar por GET `{pixel}/assigned_users?business={business}`: o system
+   user com `ADVERTISE, UPLOAD, ANALYZE, EDIT`.
+
+**Test event code.** Events Manager > o pixel > **Eventos de teste** >
+"Selecionar o canal" = **Site** > abrir "Confirme se os eventos do seu servidor
+estão configurados corretamente": o código `TEST#####` aparece aí. Não é
+secreto; registar como `META_TEST_EVENT_CODE_{TENANT}`.
+
+**Token CAPI: não é preciso gerar outro.** Com o system user atribuído ao
+pixel, o próprio `META_SYSTEM_USER_ACCESS_TOKEN_{TENANT}` envia eventos CAPI.
+Smoke em 2026-11-01: `POST /{pixel}/events` com um `PageView` de teste
+(`action_source=website`, `event_id`, `user_data` mínimo) e
+`test_event_code` devolveu `events_received: 1`. Esse token vai para a
+`LT - Meta CAPI Token by Tenant` do sGTM. Gerar um token CAPI separado no
+Events Manager só se se quiser isolar o CAPI do token de gestão.
 
 ## 6. Seguir para a Frente 3c
 

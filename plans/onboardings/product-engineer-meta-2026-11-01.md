@@ -27,12 +27,14 @@ Passos, casos de uso e permissões: [RUNBOOK-META-BUSINESS-NOVO.md](../RUNBOOK-M
 | Token sem expiração, 24 permissões | `META_SYSTEM_USER_ACCESS_TOKEN_PRODUCT_ENGINEER` em `~/.env.local` | gravado do clipboard; GET `me` confirma |
 | Dataset/Pixel "The Product Engineer (theproductengineer.net)" | `3208451502837323` | interface; `POST /{business}/adspixels` deu #10 |
 
-Pendências de M1:
-- Atribuir `agent-api-pe` ao Pixel (Business > Conjuntos de dados > Pessoas).
-  A tentativa pela API foi bloqueada pela permissão do agente; fazer na
-  interface.
-- Gerar o token CAPI do Pixel (Events Manager > Configurações > API de
-  Conversões) e gravar `META_CAPI_ACCESS_TOKEN_PRODUCT_ENGINEER`.
+Fecho de M1 (2026-11-01):
+- `agent-api-pe` atribuído ao Pixel pela interface (separador Pessoas, acesso
+  total); GET `assigned_users` confirma `ADVERTISE, UPLOAD, ANALYZE, EDIT`.
+- Test event code `TEST43942` (`META_TEST_EVENT_CODE_PRODUCT_ENGINEER`).
+- CAPI de teste com o token do `agent-api-pe`: `events_received: 1`. Esse token
+  serve de token CAPI; não foi gerado outro.
+- `~/.env.local`: `META_BUSINESS_ID_`, `META_APP_ID_`, `META_SYSTEM_USER_ACCESS_TOKEN_`,
+  `META_PIXEL_ID_`, `META_TEST_EVENT_CODE_PRODUCT_ENGINEER`.
 
 ## M2 — GTM Web `GTM-TK6V8G33` (`266435700`) — NOT_STARTED
 
@@ -47,8 +49,8 @@ Mapa `FBEventName`: `generate_lead` → `Lead`, `bio_link_click` → custom
 Live v25. `LT - Tenant ID by Host` já tem `theproductengineer.net → product-engineer`.
 Acrescentar:
 - `LT - Meta Pixel ID by Tenant/Product`: `product-engineer|PRODUCT_ENGINEER_NEWSLETTER` → `3208451502837323`
-- `LT - Meta CAPI Token by Tenant`: `product-engineer` → token CAPI (M1)
-- `LT - Meta Test Event Code by Tenant/Product`: `product-engineer|PRODUCT_ENGINEER_NEWSLETTER` → code do Events Manager
+- `LT - Meta CAPI Token by Tenant`: `product-engineer` → `META_SYSTEM_USER_ACCESS_TOKEN_PRODUCT_ENGINEER`
+- `LT - Meta Test Event Code by Tenant/Product`: `product-engineer|PRODUCT_ENGINEER_NEWSLETTER` → `TEST43942`
 
 Container partilhado com DECOLE e Entrepontos: Planning Review antes de publicar.
 
@@ -62,7 +64,7 @@ deduplicação browser/servidor pelo `event_id`.
 
 | Fatia | Aceite | Status |
 |---|---|---|
-| M1 | Ativos e token confirmados por GET | DONE (faltam atribuição do pixel e token CAPI) |
+| M1 | Ativos, token, atribuição ao pixel e CAPI de teste | DONE |
 | M2 | GTM Web live com tags Meta, PageView no Pixel Helper | NOT_STARTED |
 | M3 | LTs sGTM live, CAPI de teste recebido | NOT_STARTED |
 | M4 | Catálogo + smoke de deduplicação | NOT_STARTED |
