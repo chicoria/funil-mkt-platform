@@ -113,7 +113,19 @@ são imagens base64 dos templates).
   - D1 `funnel_events`: `GENERATE_LEAD` product-engineer às 11:46:50 (worker
     OK; o `event_id` da D1 é gerado pelo worker e não entra na Meta, porque
     `GENERATE_LEAD` não tem `emit_tracking`);
-  - Lead do lado servidor na Meta: por confirmar nas stats/Events Manager.
+  - Logs do sGTM (Cloud Run, projeto `gtm-k6q4h6br-ndq3n`, só leitura): às
+    11:46:51 `GET /g/collect` em `sgtm.theproductengineer.net`, 200, com
+    `en=generate_lead`, `ep.event_name=Lead`, `ep.produto=PRODUCT_ENGINEER_NEWSLETTER`
+    e `evnid=7e098146-…_7f117a4b-…`, **igual ao `eid` do Lead do browser** →
+    deduplicação garantida do lado dos dados. (O GA4 manda o `event_id` em
+    `evnid`, não em `ep.event_id`; os hits da DECOLE têm a mesma forma.)
+  - A chamada de saída do sGTM para a Meta **não aparece nos logs**: o Cloud Run
+    só regista pedidos de entrada e a tag Meta CAPI não tem log de consola em
+    produção. Confirmar pelo Events Manager (coluna Servidor) ou pelo modo de
+    pré-visualização do sGTM.
+  - Desde a publicação (09:30 UTC) só houve hits de `sgtm.theproductengineer.net`
+    (19, todos 200); nenhum da DECOLE, por falta de tráfego: regressão ainda não
+    observável, sem erros.
   - Pendente: abrir o email DOI no alias e confirmar → `SIGN_UP` pelo worker
     (`emit_tracking`) → sGTM → CAPI.
   - Limpeza depois do teste: `scripts/cleanup-test-data.sh` / `remove-contact.sh`
