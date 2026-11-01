@@ -217,11 +217,29 @@ Stats mostraram `gtm.js`, `bio_link_click`, `scroll`/`form_*` no pixel. Preparad
   usa a chave Brevo da DECOLE e o padrão largo `chicoria+*`.
 - GA4 e Meta não têm API de apagar: os 3 Leads e 3 sign-ups de teste ficam lá.
 
+**Contra-checagem Codex final (2026-11-01, read-only): APROVADO**, sem MUST-FIX. Tenant ×
+produto (decole ESG/Plano de Voo, product-engineer, entrepontos Mulheres/Kids): hosts, measurement
+IDs, pixels e containers coerentes; v26→v27 só acrescentou o bloqueador `29` (scoped ao PE);
+nenhum segredo real nos exports/planos. Não verificável: preservação dos tokens v26→v27 por hash
+(exports sanitizados; LT e fingerprint idênticos), regressão operacional DECOLE (sem tráfego).
+SHOULD-FIX aplicado: esta tabela. SHOULD-FIX pré-existentes da DECOLE passados ao backlog abaixo.
+
 ## Ledger
 
 | Fatia | Aceite | Status |
 |---|---|---|
 | M1 | Ativos, token, atribuição ao pixel e CAPI de teste | DONE |
-| M2 | GTM Web live com tags Meta, PageView no site | DONE (live v5) |
-| M3 | LTs sGTM live, CAPI recebido | IN_PROGRESS (live v26; evento SERVER ainda não visível nas stats) |
-| M4 | Catálogo + smoke de deduplicação + checagem Codex | IN_PROGRESS (Lead dedup e regressão DECOLE por confirmar) |
+| M2 | GTM Web live com tags Meta, só eventos de negócio | DONE (live v6) |
+| M3 | LTs sGTM live, CAPI recebido, allowlist do PE | DONE (live v27; SERVER nas stats desde 10:00; CompleteRegistration 14:00 UTC) |
+| M4 | Catálogo + smoke + contra-checagem Codex | DONE (catálogo `af2464b`; Codex APROVADO) |
+
+Pendências fora do aceite:
+- Apagar os dados de teste (titular, no computador):
+  `bash scripts/onboarding/cleanup-pe-smoke-20261101.sh --apply`.
+- Regressão DECOLE observável só quando houver tráfego/conversões DECOLE.
+
+Backlog da plataforma (pré-existente, DECOLE, apontado pelo Codex):
+- `Pixel_Event` DECOLE (triggers `30`/`55`) ainda envia todos os eventos à Meta: aplicar a
+  allowlist de eventos de negócio da Frente 3c (trigger no Web + bloqueador por tenant no sGTM).
+- `workerViews` refere `META_PIXEL_ID_DECOLE_PLANOVOO`; o produto usa `META_PIXEL_ID_PLANOVOO`.
+- `BREVO_BASE_URL`/`BREVO_TIMEOUT_MS`/`BREVO_SANDBOX` sem fonte documentada.
