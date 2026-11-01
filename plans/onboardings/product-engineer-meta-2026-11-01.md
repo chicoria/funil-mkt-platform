@@ -16,6 +16,8 @@ Tenant `product-engineer`, site theproductengineer.net. Segue a Frente 3c do
 
 ## M1 — Ativos Meta — DONE (2026-11-01)
 
+Passos, casos de uso e permissões: [RUNBOOK-META-BUSINESS-NOVO.md](../RUNBOOK-META-BUSINESS-NOVO.md).
+
 | Ativo | ID | Como |
 |---|---|---|
 | Business | `1147709561172015` | titular |
