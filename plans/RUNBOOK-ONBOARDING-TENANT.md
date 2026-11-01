@@ -25,6 +25,7 @@ Onboarding de um novo tenant na `funil-mkt-platform` envolve **11 frentes** (alg
 | 2b | **(nova)** Brevo: atributos de funil, lista, template DOI (com tag `optin`) | Operador | Frente 5 funcionar de ponta a ponta |
 | 3 | sGTM: lookup tables + publish workspace (server container) | Operador | Frente 8 (smoke) |
 | 3b | **(nova, padrão de plataforma)** Web container: GA4 Configuration + trigger/tag genéricos de evento | Operador | GA4 receber dados — **sem isso, zero dados chegam, mesmo com tudo mais certo** |
+| 3c | **(nova, padrão de plataforma)** Meta: Pixel no Business do tenant + tags do template Meta no GTM Web + LTs Meta no sGTM | Titular (Business/pixel) + operador | Atribuição de campanhas Meta; sem isso o tenant não tem Pixel/CAPI |
 | 4 | Secrets Store workers: todos os secrets `_TENANT` | Operador | Frente 5 |
 | 5 | Workers wrangler.toml: bindings + rota + redeploy | Operador | Frente 8 (smoke) |
 | 6 | CF Pages secret: `ADMIN_SECRET_{TENANT}` + redeploy | Operador | Frente 8 (smoke) |
@@ -49,7 +50,7 @@ Onboarding de um novo tenant na `funil-mkt-platform` envolve **11 frentes** (alg
 | Cloud Run service (preview) | `server-side-tagging-preview` em `us-central1` |
 | GCP Service Account | `acesso-api@gtm-k6q4h6br-ndq3n.iam.gserviceaccount.com` |
 | SA credentials local | `~/secrets/decole/gtm-k6q4h6br-ndq3n-7525dc924517.json` |
-| CF Pages project | `mkt-dashboard` |
+| CF Pages project | `decole-dashboard` (confirmado via API em 2026-10-16; repo `mkt-dashboard`) |
 | Repositório plataforma | `/Users/chicoria/git/funil-mkt-platform` |
 | Repositório dashboard | `/Users/chicoria/git/mkt-dashboard` |
 
@@ -371,8 +372,11 @@ tem uma tag que efetivamente dispara o evento GA4.
 
 ### 3b.1 — Identificar o container Web do tenant
 
-O tenant precisa ter sua própria conta + container GTM Web (diferente da
-conta server-side `6266094107` compartilhada). Confirmar
+O tenant precisa ter seu próprio container GTM Web. Pode usar uma conta GTM
+existente autorizada: Entrepontos foi criado na conta `6266094107` de Elizete
+Fazza, separado do container server-side partilhado. Para criar containers por
+API, a service account precisa de **Administrador na conta GTM**; edição/publicação
+apenas num container não permite criar outros containers. Confirmar
 `GTM_ACCOUNT_ID_{TENANT}` / `GTM_CONTAINER_ID_{TENANT}` /
 `GTM_WORKSPACE_ID_{TENANT}` antes de prosseguir — e que a service account
 (`acesso-api@gtm-k6q4h6br-ndq3n.iam.gserviceaccount.com`) foi convidada
@@ -509,6 +513,102 @@ curl -s -X POST "https://analyticsdata.googleapis.com/v1beta/properties/{GA4_PRO
   -d '{"dimensions":[{"name":"eventName"}],"metrics":[{"name":"eventCount"}]}'
 # Esperado: pelo menos 1 row depois de uma visita real ao site
 ```
+
+---
+
+## Frente 3c — Meta Pixel + Conversions API (padrão de plataforma)
+
+**Regra:** o Pixel nunca vai no código do site (nada de `fbq`/`fbevents.js`
+num `.js` do tenant). Segue o mesmo padrão da DECOLE ESG e do Plano de Voo:
+browser pelo GTM Web do tenant, servidor pelo sGTM partilhado, mesmo
+`event_id` nos dois para a Meta deduplicar. Exemplo real em curso:
+[`onboardings/product-engineer-meta-2026-11-01.md`](onboardings/product-engineer-meta-2026-11-01.md).
+
+**3c.1 — Ativos Meta (titular, na interface).** Passo a passo completo, com os
+casos de uso e as permissões, em [RUNBOOK-META-BUSINESS-NOVO.md](RUNBOOK-META-BUSINESS-NOVO.md).
+Resultado esperado no fim de 3c.1, todos em `~/.env.local`:
+`META_BUSINESS_ID_{TENANT}`, `META_APP_ID_{TENANT}`,
+`META_SYSTEM_USER_ACCESS_TOKEN_{TENANT}` (sem expiração, gravado do
+clipboard), `META_PIXEL_ID_{TENANT}`, `META_TEST_EVENT_CODE_{TENANT}`.
+Pontos que já custaram tempo:
+- O pixel cria-se na **interface** (`POST /{business}/adspixels` numa app nova
+  devolve #10).
+- O system user tem de ser **atribuído ao pixel** (separador Pessoas, acesso
+  total); a Meta só atribui sozinha um "Conversions API System User" com
+  ANALYZE. Confirmar por GET `{pixel}/assigned_users`: `ADVERTISE, UPLOAD,
+  ANALYZE, EDIT`.
+- **Não é preciso token CAPI separado**: o token do system user, com o pixel
+  atribuído, envia CAPI. Provar antes de seguir com um `POST /{pixel}/events`
+  de teste (`test_event_code`) e esperar `events_received: 1`.
+
+**3c.2 — GTM Web do tenant.**
+- *Pré-requisito:* as tags GA4 do container do tenant (Frente 3b) mandam para
+  o sGTM (`server_container_url`/`transport_url`); sem isso o CAPI do sGTM
+  não recebe os eventos do browser. Confirmar no `versions:live`.
+- *O que criar:* replicar do live da DECOLE (conta `6266094107`, container
+  `231314463`) o conjunto do template de integração Meta
+  `FB_CONVERSIONS_API-1329973348435032-Web-*`, trocando o ID do pixel no nome
+  e nos valores:
+  - 5 tags: `Pixel_Setup` (DOM Ready: `fbevents.js`, `init`, `PageView`),
+    `Pixel_Event` (custom events: `fbq('track', {{FBEventName}}, …,
+    {eventID})`), `ParamBuilder`, `GA4_Config`, `GA4_Event`;
+  - 2 triggers: `DOM_Ready`, `Custom_Event`;
+  - 8 variáveis: `FBEventName` (mapa evento do dataLayer → nome Meta),
+    `Get_Event_ID`, `Event_ID_Constant`, `User_Data`, `Custom_Data_Currency`,
+    `Custom_Data_Items`, `Custom_Data_Transaction_ID`, `Custom_Data_Value`.
+- *Mapa `FBEventName`:* rever para os eventos do tenant (ex.: `generate_lead`
+  → `Lead`; eventos sem nome padrão Meta saem com o próprio nome, como custom).
+  O `event_id` do dataLayer tem de ser o mesmo que o sGTM manda por CAPI.
+- *Se o GA4 do tenant já tem* `GA4 Event - All Custom Events` (Frente 3b), não
+  duplicar com `GA4_Event` do template: manter um só.
+- *Processo* (`gtm-api-guardrails.md`): service account
+  `~/secrets/decole/gtm-k6q4h6br-ndq3n-7525dc924517.json`; ler
+  `versions:live` do tenant e da DECOLE; criar no workspace; rever o
+  `workspaces/{id}/status`; publicar; confirmar `versions:live`; exportar o
+  container para `trafego/gtm/{tenant}-web-v{N}.json`.
+
+**3c.3 — sGTM partilhado (conta `6266094107`, container `241313282`).**
+Só acrescentar linhas às lookup tables; a tag `Meta CAPI - Dynamic by
+Tenant/Product` já existe e serve todos os tenants.
+- *Pré-requisito:* o host do tenant já está em `LT - Tenant ID by Host`
+  (Frente 3). Sem linha na LT de pixel, a tag não tem pixel para o tenant e o
+  CAPI não sai.
+- *Linhas a acrescentar:*
+
+  | LT | Chave | Valor |
+  |---|---|---|
+  | `LT - Meta Pixel ID by Tenant/Product` | `{tenant}\|{produto}` | `META_PIXEL_ID_{TENANT}` |
+  | `LT - Meta CAPI Token by Tenant` | `{tenant}` | `META_SYSTEM_USER_ACCESS_TOKEN_{TENANT}` |
+  | `LT - Meta Test Event Code by Tenant/Product` | `{tenant}\|{produto}` | `META_TEST_EVENT_CODE_{TENANT}` |
+
+  O `{produto}` é o valor que os eventos do tenant mandam em `produto`
+  (`ED - produto`); ver o catálogo e o código do site (ex.: PE:
+  `PRODUCT_ENGINEER_NEWSLETTER`). Um produto novo do tenant = uma linha nova.
+- Os triggers de bloqueio (`Meta Blocker — …`) valem para todos: confirmar que
+  não cortam eventos do tenant que devam ir para a Meta.
+- *Processo:* igual a 3c.2; o diff tem de mostrar só as linhas novas. O token
+  não vai para o export versionado (usar o export sanitizado, como
+  `entrepontos-server-v25-sanitized.json`).
+
+**3c.4 — Catálogo e secrets.** Em `tenants.{id}` do catálogo:
+`tracking.metaPixel` (pixel por produto) e `metaCapi.accessTokenEnv`
+(`META_SYSTEM_USER_ACCESS_TOKEN_{TENANT}`); atualizar `updatedAt`. Secrets
+`meta_*_{tenant}` nos Workers só se algum worker enviar CAPI direto (hoje o
+CAPI sai do sGTM).
+
+**3c.5 — Smoke (aceite da frente).**
+1. Site: Meta Pixel Helper mostra o pixel e `PageView`; no Network, pedidos
+   `facebook.com/tr?id={pixel}&ev=PageView`.
+2. Events Manager > Eventos de teste (canal Site, código de teste): um evento
+   do tenant (ex.: `Lead` numa inscrição de teste) aparece **do navegador e do
+   servidor**, marcado como deduplicado.
+3. `versions:live` dos dois containers com as mudanças e exports em
+   `trafego/gtm/`.
+4. Outros tenants intactos: um evento DECOLE de teste continua a chegar ao
+   pixel DECOLE.
+
+**Consentimento:** decisão do titular, registada no onboarding. Se houver
+banner, as tags Meta do GTM Web disparam só com consentimento.
 
 ---
 
@@ -732,10 +832,10 @@ echo "Senha SUPERARE: $SENHA"  # Anotar antes de continuar
 
 # Criar Pages secret
 echo "$SENHA" | npx wrangler pages secret put ADMIN_SECRET_SUPERARE \
-  --project-name mkt-dashboard
+  --project-name decole-dashboard
 
 # Verificar que o secret aparece na lista
-npx wrangler pages secret list --project-name mkt-dashboard
+npx wrangler pages secret list --project-name decole-dashboard
 # Esperado: ADMIN_SECRET_SUPERARE na lista
 ```
 
@@ -754,7 +854,7 @@ cd /Users/chicoria/git/mkt-dashboard
 
 # Build + deploy
 npx @cloudflare/next-on-pages
-npx wrangler pages deploy .vercel/output/static --project-name mkt-dashboard
+npx wrangler pages deploy .vercel/output/static --project-name decole-dashboard
 
 # Verificar URL do deploy
 # Esperado: URL do projeto mkt-dashboard com novo deployment
@@ -966,7 +1066,7 @@ curl -s -o /dev/null -w "%{http_code}" \
   -X POST \
   -H "Content-Type: application/json" \
   -d '{"tenant": "superare", "password": "SENHA_DEFINIDA_NA_FRENTE_6"}' \
-  https://mkt-dashboard.pages.dev/api/auth
+  https://dashboard.decolesuacarreiraesg.com.br/api/auth
 # Esperado: 200 ou 302 (com Set-Cookie)
 ```
 
@@ -1163,3 +1263,37 @@ curl -s https://decole-dashboard-sync.chicoria.workers.dev/sync/status?tenant=de
 - Slice 2.11A.2: [`plans/slices/2.11A/2-populate-secrets-bindings.md`](./slices/2.11A/2-populate-secrets-bindings.md) — tabela completa de secrets existentes para DECOLE
 - Slice 2.11B.4: [`plans/slices/2.11B/4-publish-sgtm-prod.md`](./slices/2.11B/4-publish-sgtm-prod.md) — script publish GTM + IDs
 - Status atual: [`plans/STATUS-2.11.md`](./STATUS-2.11.md)
+
+
+## Observações do onboarding Entrepontos (2026-10-16)
+
+- Verificação de domínio pode ser automatizada com Site Verification API e DNS_TXT,
+  usando a mesma service account do Cloud Run. Ativar `siteverification.googleapis.com`
+  no projeto da credencial é pré-requisito; a credencial atual não pode ativar
+  serviços, portanto essa ativação foi feita pelo administrador humano. Adicionar
+  TXT novo sem substituir SPF, DKIM ou verificações já existentes.
+- `Ready=True` e `CertificateProvisioned=True` do mapping não substituem o smoke
+  HTTPS do domínio real. Esperar resposta sem desativar validação TLS antes de
+  publicar tags Web que enviem eventos para esse endpoint.
+- `mkt-dashboard` é o nome do repositório; o projeto Pages real é `decole-dashboard`,
+  URL https://dashboard.decolesuacarreiraesg.com.br. Inventariar projetos por API
+  antes de escrever secrets. Usar operação nomeada de secret; não reenviar valores
+  mascarados obtidos num GET de configuração.
+- O dashboard usa `config/tenant-products.json` como projeção pública por allowlist
+  do catálogo central (nome, produtos e hasCheckout). Atualizá-lo com o novo tenant
+  e verificar correspondência; não copiar secrets/config de integrações para o frontend.
+- `dashboard-sync` ainda lê credenciais GA4 como strings, não Secrets Store objects.
+  Configurar secrets Worker nomeados para o tenant ou fazer migração própria testada;
+  só adicionar bindings de Store não basta nesse worker.
+- Com tracking opcional no site, não emitir conversões server-side sem transportar
+  e verificar o consentimento analytics. Entrepontos mantém DOI no Event Store e
+  emite GA4 apenas via Web consentido; não tem Measurement Protocol secret.
+- Desativar enhanced measurement de formulários/URLs e sanitizar page_location,
+  page_referrer e page_title; não basta remover PII dos eventos customizados.
+- Para testes Gmail, `utilizador+etiqueta@gmail.com` entrega em `utilizador@gmail.com`;
+  o texto antes do `+` determina a caixa. Usar endereços controlados e não inscritos,
+  confirmar entrega, listas vazias antes de DOI e apenas lista correta depois.
+- Registar limitações de dashboards: todos os SIGN_UP do Event Store incluem também
+  visitas sem identidade à rota. Rótulo genérico é acessos à confirmação, sem
+  apresentar esses acessos como taxa de opt-in verificado. A confirmação de opt-in
+  é validada na Brevo.
