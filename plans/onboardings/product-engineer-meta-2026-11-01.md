@@ -183,6 +183,26 @@ Stats mostraram `gtm.js`, `bio_link_click`, `scroll`/`form_*` no pixel. Preparad
   `bio_link_click` (antes também `scroll`); o sGTM continua a receber `scroll`
   para o GA4, bloqueado para o CAPI pelo `29`.
 
+## CompleteRegistration (SIGN_UP do worker) sem user agent — corrigido (2026-11-01)
+
+- Sintoma: Lead aparece no pixel (browser + servidor), CompleteRegistration nunca,
+  apesar de 2 DOIs confirmados (12:01 e 13:43 UTC) e `/mp/collect` 200 no sGTM.
+- Causa: logs do sGTM mostram os `/mp/collect` do worker com `userAgent` vazio. A tag
+  Meta CAPI fica sem `client_user_agent`, obrigatório para eventos `website`. Vale para
+  todos os tenants (o `emit_tracking` nunca enviou user agent); na DECOLE o
+  CompleteRegistration só foi validado em maio em Eventos de teste (`TEST24981`) e não
+  há conversões DECOLE na D1 desde 23/09 para confirmar produção.
+- Correção (commit `137a10f`): `links-redirect` grava `attribution.user_agent`;
+  `emit_tracking` envia-o no header `User-Agent` e em `user_agent`, e o IP do visitante
+  em `ip_override`. Testes novos nos dois workers; 585 testes passam; typecheck OK.
+- Deploy (autorizado, sem auto mode): `decole-funnel-dispatcher` `5aced385`,
+  `decole-links-redirect` `dc1c2d70`; `/health` 200 em links.theproductengineer.net,
+  links.decolesuacarreiraesg.com.br e links.entrepontos.club. Os `wrangler.toml` com
+  alterações não commitadas do Entrepontos já estavam ao vivo desde 16/10.
+- Prova: 3.ª inscrição (`…+pe-smoke-20261101c`), DOI confirmado pelo titular; `/mp/collect`
+  às 14:38:49 UTC, 200, com o User-Agent do iPhone/Safari do titular. CompleteRegistration
+  no pixel: aguardar as stats (atraso de 1–2 h).
+
 ## Ledger
 
 | Fatia | Aceite | Status |
