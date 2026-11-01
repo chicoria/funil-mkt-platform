@@ -200,8 +200,10 @@ Stats mostraram `gtm.js`, `bio_link_click`, `scroll`/`form_*` no pixel. Preparad
   links.decolesuacarreiraesg.com.br e links.entrepontos.club. Os `wrangler.toml` com
   alterações não commitadas do Entrepontos já estavam ao vivo desde 16/10.
 - Prova: 3.ª inscrição (`…+pe-smoke-20261101c`), DOI confirmado pelo titular; `/mp/collect`
-  às 14:38:49 UTC, 200, com o User-Agent do iPhone/Safari do titular. CompleteRegistration
-  no pixel: aguardar as stats (atraso de 1–2 h).
+  às 14:38:49 UTC, 200, com o User-Agent do iPhone/Safari do titular. **CompleteRegistration
+  confirmado no pixel**: stats do bloco 14:00 UTC mostram `CompleteRegistration` 1 (com
+  `Lead` 2 e `PageView` 2), o primeiro do pixel; os DOIs de 12:01 e 13:43, antes da
+  correção, nunca apareceram.
 
 ## Limpeza dos testes (pendente do titular)
 
