@@ -590,8 +590,9 @@ Tenant/Product` já existe e serve todos os tenants.
   não vai para o export versionado (usar o export sanitizado, como
   `entrepontos-server-v25-sanitized.json`).
 
-**3c.4 — Catálogo e secrets.** Em `tenants.{id}` do catálogo:
-`tracking.metaPixel` (pixel por produto) e `metaCapi.accessTokenEnv`
+**3c.4 — Catálogo e secrets.** No catálogo:
+`tenants.{id}.products.{PRODUTO}.tracking.metaPixel` (pixel por produto) e
+`tenants.{id}.tracking.metaCapi.accessTokenEnv`
 (`META_SYSTEM_USER_ACCESS_TOKEN_{TENANT}`); atualizar `updatedAt`. Secrets
 `meta_*_{tenant}` nos Workers só se algum worker enviar CAPI direto (hoje o
 CAPI sai do sGTM).
@@ -599,6 +600,13 @@ CAPI sai do sGTM).
 **3c.5 — Smoke (aceite da frente).**
 1. Site: Meta Pixel Helper mostra o pixel e `PageView`; no Network, pedidos
    `facebook.com/tr?id={pixel}&ev=PageView`.
+   *Test code:* a tag CAPI do sGTM lê `{{ED - test_event_code}}` (parâmetro do
+   evento), não a LT de test code; a linha na LT é só registo. Para ver eventos
+   do servidor em "Eventos de teste", o evento tem de levar `test_event_code`
+   (ex.: `dataLayer.push({event:'generate_lead', …, test_event_code:'TEST…'})`
+   numa sessão de teste, com o parâmetro acrescentado à tag GA4_Event), ou
+   confirmar pelas stats do pixel (`/{pixel}/stats?aggregation=event_source`,
+   `SERVER`), que chegam com atraso de até 1 h.
 2. Events Manager > Eventos de teste (canal Site, código de teste): um evento
    do tenant (ex.: `Lead` numa inscrição de teste) aparece **do navegador e do
    servidor**, marcado como deduplicado.

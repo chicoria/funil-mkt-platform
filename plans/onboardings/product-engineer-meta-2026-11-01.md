@@ -41,8 +41,9 @@ Fecho de M1 (2026-11-01):
 Live v4 tem só GA4 Configuration + GA4 Event - All Custom Events. Replicar do
 live v23 da DECOLE as 5 tags, 2 triggers e 8 variáveis
 `FB_CONVERSIONS_API-1329973348435032-Web-*` com o pixel `3208451502837323`.
-Mapa `FBEventName`: `generate_lead` → `Lead`, `bio_link_click` → custom
-`BioLinkClick`. Publicar só com diff revisto; exportar para `trafego/gtm/`.
+Mapa `FBEventName`: `generate_lead` → `Lead` (já no mapa do template); `bio_link_click`
+não tem nome padrão Meta e sai com o próprio nome (`bio_link_click`), igual no browser e
+no servidor, porque os dois usam `FBEventName`. Publicar só com diff revisto; exportar para `trafego/gtm/`.
 
 ## M3 — sGTM `241313282` — NOT_STARTED
 
@@ -85,8 +86,31 @@ Só linhas acrescentadas: Tenant by Host `sgtm.theproductengineer.net`;
 Pixel, Token e Test code para `product-engineer|PRODUCT_ENGINEER_NEWSLETTER`.
 Diff: 4 variáveis atualizadas; 0 conflitos.
 
-**Publicação:** a chamada de publish foi recusada pelo classificador de
-permissões do agente; publica o titular (ver relatório da sessão).
+**Publicação (2026-11-01, autorizada pelo titular):** sGTM live **v26**, GTM
+Web live **v5**, ambos confirmados por `versions:live` logo após o publish.
+Exports: `trafego/gtm/product-engineer-web-v5.json` e
+`trafego/gtm/sgtm-v26-sanitized.json` (tokens das LTs como `<redacted>`;
+verificado que nenhum token real do `.env.local` aparece; os `EAA…` restantes
+são imagens base64 dos templates).
+
+**Smoke (2026-11-01, site ao vivo, /bio):**
+- Browser: `facebook.com/tr?id=3208451502837323&ev=PageView` e
+  `ev=bio_link_click`, ambos com `eid`. Stats do pixel: `BROWSER` 2.
+- sGTM: pedidos `sgtm.theproductengineer.net` com `gtm.dom`/`page_view` e
+  `produto=PRODUCT_ENGINEER_NEWSLETTER`.
+- Servidor (CAPI via sGTM): ainda **não** aparece `SERVER` nas stats
+  (agregação horária com atraso); verificação em curso.
+- Lead browser/servidor deduplicado: **não testado** (exige uma inscrição real
+  de teste).
+- Regressão DECOLE: stats dos pixels DECOLE vazias nas últimas 6 h (sem
+  tráfego); **não confirmável** agora. O diff do sGTM só acrescentou linhas
+  (confirmado pelo Codex contra o v25).
+
+**Checagem Codex (read-only, 2026-11-01): REPROVADO**, com MUST-FIX
+(nome `BioLinkClick` no plano vs. `bio_link_click` publicado → plano
+alinhado ao publicado; evidência de smoke → registada acima) e SHOULD-FIX
+(passagem do test code; caminho do `metaPixel` no runbook 3c.4 → corrigidos
+no runbook). Nova checagem Codex depois de SERVER, Lead dedup e DECOLE.
 
 **M4 — catálogo:** `tenants.product-engineer.tracking.metaCapi` e
 `products.PRODUCT_ENGINEER_NEWSLETTER.tracking.metaPixel`, `updatedAt`
@@ -98,6 +122,6 @@ permissões do agente; publica o titular (ver relatório da sessão).
 | Fatia | Aceite | Status |
 |---|---|---|
 | M1 | Ativos, token, atribuição ao pixel e CAPI de teste | DONE |
-| M2 | GTM Web live com tags Meta, PageView no Pixel Helper | IN_PROGRESS (workspace pronto, falta publicar) |
-| M3 | LTs sGTM live, CAPI de teste recebido | IN_PROGRESS (workspace pronto, falta publicar) |
-| M4 | Catálogo + smoke de deduplicação + checagem Codex | IN_PROGRESS (catálogo feito; smoke e Codex depois de publicar) |
+| M2 | GTM Web live com tags Meta, PageView no site | DONE (live v5) |
+| M3 | LTs sGTM live, CAPI recebido | IN_PROGRESS (live v26; evento SERVER ainda não visível nas stats) |
+| M4 | Catálogo + smoke de deduplicação + checagem Codex | IN_PROGRESS (Lead dedup e regressão DECOLE por confirmar) |
