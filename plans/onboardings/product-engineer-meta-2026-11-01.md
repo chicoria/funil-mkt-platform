@@ -175,8 +175,13 @@ Stats mostraram `gtm.js`, `bio_link_click`, `scroll`/`form_*` no pixel. Preparad
 - sGTM: `Meta Blocker — product-engineer fora da allowlist` (tenant =
   product-engineer e evento fora de `^(gtm\.dom|generate_lead|sign_up|bio_link_click|cta_click)$`)
   acrescentado aos bloqueadores da tag CAPI (mantém o `27`).
-- Publicação recusada pelo classificador do agente ("Production Deploy");
-  publica o titular com `node meta-noise.mjs publish` no scratchpad da sessão.
+- Publicado (sem auto mode, autorizado pelo titular): sGTM **v27** (tag CAPI
+  com bloqueadores `27` e `29`), GTM Web **v6**. Exports:
+  `trafego/gtm/sgtm-v27-sanitized.json`, `trafego/gtm/product-engineer-web-v6.json`
+  (sem tokens reais).
+- Smoke no site após reload sem cache: browser → Meta só `PageView` e
+  `bio_link_click` (antes também `scroll`); o sGTM continua a receber `scroll`
+  para o GA4, bloqueado para o CAPI pelo `29`.
 
 ## Ledger
 
