@@ -103,8 +103,25 @@ são imagens base64 dos templates).
   nem os eventos de browser do smoke das ~09:30 tinham entrado, logo o atraso
   das stats não permite concluir. Confirmar no Events Manager (Visão geral,
   coluna Servidor) mais tarde, ou com um evento de teste com `test_event_code`.
-- Lead browser/servidor deduplicado: **não testado** (exige uma inscrição real
-  de teste).
+- Inscrição de teste (2026-11-01 11:46 UTC, autorizada pelo titular; email
+  `chicoria+pe-smoke-20261101@gmail.com`, nome "Smoke", em /bio):
+  - dataLayer `generate_lead` com `event_id` `7f117a4b-…`, `placement=bio`,
+    `produto=PRODUCT_ENGINEER_NEWSLETTER`;
+  - browser → Meta: `ev=Lead`, `eid=7e098146-…_7f117a4b-…` (prefixo do
+    template + `event_id` do lead; é o mesmo `event_id` que a `GA4_Event` manda
+    ao sGTM, logo deduplicável);
+  - D1 `funnel_events`: `GENERATE_LEAD` product-engineer às 11:46:50 (worker
+    OK; o `event_id` da D1 é gerado pelo worker e não entra na Meta, porque
+    `GENERATE_LEAD` não tem `emit_tracking`);
+  - Lead do lado servidor na Meta: por confirmar nas stats/Events Manager.
+  - Pendente: abrir o email DOI no alias e confirmar → `SIGN_UP` pelo worker
+    (`emit_tracking`) → sGTM → CAPI.
+  - Limpeza depois do teste: `scripts/cleanup-test-data.sh` / `remove-contact.sh`
+    (Brevo + D1), com confirmação do titular.
+- Ruído a rever (SHOULD-FIX): o `Custom_Event` também envia à Meta os eventos
+  automáticos do GA4 (`scroll`, `form_start`, `form_submit`), como na DECOLE.
+  Avaliar limitar o trigger aos eventos de negócio (`generate_lead`,
+  `bio_link_click`, …).
 - Regressão DECOLE: stats dos pixels DECOLE vazias nas últimas 6 h (sem
   tráfego); **não confirmável** agora. O diff do sGTM só acrescentou linhas
   (confirmado pelo Codex contra o v25).
