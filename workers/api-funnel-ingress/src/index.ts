@@ -140,6 +140,18 @@ function productCodeFromBody(payload: Record<string, unknown>, fallback: string)
   return (candidates[0] || fallback).toUpperCase().replace(/[^A-Z0-9_]+/g, "_");
 }
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// BUG-002: precheckout only accepts products of the resolved tenant (code or alias).
+function isKnownTenantProduct(catalog: CatalogV5, tenantId: string, productCode: string): boolean {
+  const products = catalog.tenants?.[tenantId]?.products || {};
+  return Object.entries(products).some(
+    ([code, product]) =>
+      code.toUpperCase() === productCode ||
+      (product?.aliases || []).some((alias) => productCodeFromBody({ product_code: alias }, "") === productCode)
+  );
+}
+
 // Fatia H (promo gratuito): acha a integração do tenant que serve o proxy de
 // status (GET /funnel/promo-status/{code} → {baseUrlEnv}/api/promo/{code}/status).
 // Genérico como findAppWebhook — não hardcoda o nome da integração ("planovoo"),
@@ -258,10 +270,10 @@ function buildCheckoutRedirect(
   productCode: string,
   payload: Record<string, unknown>
 ): URL | null {
-  const tenantLinks = (catalog.tenants as Record<string, { links?: { linksDomain?: string; routes?: Array<{ path: string; productCode: string }> } }>)[tenantId]?.links;
+  const tenantLinks = (catalog.tenants as Record<string, { links?: { linksDomain?: string; routes?: Array<{ path: string; type: string; productCode: string }> } }>)[tenantId]?.links;
   if (!tenantLinks?.linksDomain || !tenantLinks.routes) return null;
 
-  const route = tenantLinks.routes.find((r) => r.productCode === productCode);
+  const route = tenantLinks.routes.find((r) => r.productCode === productCode && r.type === "checkout");
   if (!route) return null;
 
   const url = new URL(`https://${tenantLinks.linksDomain}${route.path}`);
@@ -417,12 +429,29 @@ export default {
         }
       }
 
+      const productCode = productCodeFromBody(payload, "");
+      if (!productCode || !isKnownTenantProduct(catalog, tenantId, productCode)) {
+        logIngress({ stage: "blocked", pathname, tenant_id: tenantId, error: "unknown_product", status: 400 });
+        return withCors(jsonResponse({ ok: false, error: "unknown_product" }, 400), request, catalog, tenantId);
+      }
+      const event = withTenantId(fromPrecheckoutForm(payload, productCode), tenantId);
+      // Email stays optional (checkout redirects accept a lead without email), but any
+      // email input must be a string and the value that will be queued must be valid.
+      const emailInputs = [payload.email, payload.EMAIL].filter((value) => value !== undefined && value !== null && value !== "");
+      const queuedEmail = asString(event.lead?.email);
+      if (
+        emailInputs.some((value) => typeof value !== "string") ||
+        ((emailInputs.length > 0 || queuedEmail) && !EMAIL_PATTERN.test(queuedEmail))
+      ) {
+        logIngress({ stage: "blocked", pathname, tenant_id: tenantId, error: "invalid_email", status: 400 });
+        return withCors(jsonResponse({ ok: false, error: "invalid_email" }, 400), request, catalog, tenantId);
+      }
+
       const queue = env.FUNNEL_EVENTS;
       if (!queue) {
         logIngress({ stage: "error", pathname, tenant_id: tenantId, error: "queue_not_configured", status: 500 });
         return withCors(jsonResponse({ ok: false, error: "queue_not_configured" }, 500), request, catalog, tenantId);
       }
-      const event = withTenantId(fromPrecheckoutForm(payload, productCodeFromBody(payload, "UNKNOWN_PRODUCT")), tenantId);
       await queue.send(event);
       logIngress({
         stage: "queued",

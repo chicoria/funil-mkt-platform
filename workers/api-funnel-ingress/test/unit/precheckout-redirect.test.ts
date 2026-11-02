@@ -119,17 +119,18 @@ describe("precheckout — catalog-driven redirect", () => {
     expect(event.product_code).toBe("DECOLE_PLANOVOO");
   });
 
-  it("retorna 202 JSON como fallback quando produto nao tem rota no catalogo", async () => {
+  it("recusa produto que nao existe no catalogo do tenant (BUG-002)", async () => {
+    const send = vi.fn(async () => {});
     const req = precheckoutRequest({
       email: "test@example.com",
       product_code: "PRODUTO_SEM_ROTA",
     });
-    const res = await worker.fetch(req, makeEnv());
+    const res = await worker.fetch(req, makeEnv({ FUNNEL_EVENTS: { send } }));
 
-    // Produto sem rota configurada → fallback para 202 JSON
-    expect(res.status).toBe(202);
+    expect(res.status).toBe(400);
     const body = (await res.json()) as Record<string, unknown>;
-    expect(body.ok).toBe(true);
+    expect(body.error).toBe("unknown_product");
+    expect(send).not.toHaveBeenCalled();
   });
 
   it("propaga email/name/phone no redirect_url usando os nomes reais dos campos do form (EMAIL/FIRSTNAME/LASTNAME/SMS__COUNTRY_CODE/SMS)", async () => {

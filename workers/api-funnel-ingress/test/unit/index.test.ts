@@ -8,6 +8,7 @@ const TEST_CATALOG = JSON.stringify({
     decole: {
       domains: ["api.decolesuacarreiraesg.com.br"],
       allowedOrigins: ["https://decolesuacarreiraesg.com.br"],
+      products: { DECOLE_PLANOVOO: {}, DECOLE_ESG_MENTORIA: {} },
       integrations: {
         planovoo: {
           hookSecretEnv: "PLANOVOO_HOOK_SECRET_DECOLE",
@@ -24,6 +25,7 @@ const TEST_CATALOG = JSON.stringify({
     superare: {
       domains: ["api.superare.test"],
       allowedOrigins: ["https://app.superare.test"],
+      products: { SUPERARE_CURSO_X: {} },
       integrations: {
         superapp: {
           appWebhooks: [
