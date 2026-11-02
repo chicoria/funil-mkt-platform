@@ -1,0 +1,193 @@
+{
+  "date": "2026-10-30",
+  "note": "Reutilização explicitamente autorizada; evidência sanitizada. Sem tokens ou dados de pagamento.",
+  "records": [
+    {
+      "step": "reuse_pixel_before",
+      "result": {
+        "id": "1709529480821304",
+        "name": "Entrepontos",
+        "owner_business": {
+          "id": "577362448377604",
+          "name": "Elizete Fazza ESG"
+        }
+      }
+    },
+    {
+      "step": "reuse_account_pixels_before",
+      "result": {
+        "data": [
+          {
+            "id": "1329973348435032",
+            "name": "DECOLE sua carreira ESG"
+          },
+          {
+            "id": "2220600768748665",
+            "name": "Plano de Voo"
+          }
+        ],
+        "complete": true
+      }
+    },
+    {
+      "step": "reuse_account_before",
+      "result": {
+        "id": "act_604577275311600",
+        "name": "Elizete Fazza ESG",
+        "account_status": 1,
+        "currency": "BRL",
+        "timezone_name": "America/Sao_Paulo",
+        "business_country_code": "BR",
+        "business": {
+          "id": "577362448377604",
+          "name": "Elizete Fazza ESG"
+        },
+        "user_tasks": [
+          "DRAFT",
+          "ANALYZE",
+          "ADVERTISE",
+          "MANAGE"
+        ]
+      }
+    },
+    {
+      "step": "reuse_pixel_accounts_before",
+      "result": {
+        "data": []
+      }
+    },
+    {
+      "step": "reuse_pixel_users_before",
+      "result": {
+        "data": []
+      }
+    },
+    {
+      "step": "reuse_associate_pixel",
+      "result": {
+        "success": true
+      }
+    },
+    {
+      "step": "reuse_account_pixels_after",
+      "result": {
+        "data": [
+          {
+            "id": "1329973348435032",
+            "name": "DECOLE sua carreira ESG"
+          },
+          {
+            "id": "1709529480821304",
+            "name": "Entrepontos"
+          },
+          {
+            "id": "2220600768748665",
+            "name": "Plano de Voo"
+          }
+        ],
+        "complete": true
+      }
+    },
+    {
+      "step": "reuse_pixel_accounts_after",
+      "result": {
+        "data": [
+          {
+            "id": "act_604577275311600",
+            "name": "Elizete Fazza ESG"
+          }
+        ]
+      }
+    },
+    {
+      "step": "reuse_account_after",
+      "result": {
+        "id": "act_604577275311600",
+        "name": "Elizete Fazza ESG",
+        "account_status": 1,
+        "currency": "BRL",
+        "timezone_name": "America/Sao_Paulo",
+        "business_country_code": "BR",
+        "business": {
+          "id": "577362448377604",
+          "name": "Elizete Fazza ESG"
+        },
+        "user_tasks": [
+          "DRAFT",
+          "ANALYZE",
+          "ADVERTISE",
+          "MANAGE"
+        ]
+      }
+    },
+    {
+      "step": "reuse_pixel_users_after",
+      "result": {
+        "data": []
+      }
+    }
+  ],
+  "independent_validation": {
+    "reviewer": "meta_planning_review",
+    "date": "2026-10-30",
+    "method": "GET only",
+    "results": {
+      "pixel": {
+        "id": "1709529480821304",
+        "name": "Entrepontos",
+        "owner_business": {
+          "id": "577362448377604",
+          "name": "Elizete Fazza ESG"
+        }
+      },
+      "account_pixels": {
+        "data": [
+          {
+            "id": "1329973348435032",
+            "name": "DECOLE sua carreira ESG"
+          },
+          {
+            "id": "1709529480821304",
+            "name": "Entrepontos"
+          },
+          {
+            "id": "2220600768748665",
+            "name": "Plano de Voo"
+          }
+        ],
+        "complete": true
+      },
+      "pixel_accounts": {
+        "data": [
+          {
+            "id": "act_604577275311600",
+            "name": "Elizete Fazza ESG"
+          }
+        ],
+        "complete": true
+      },
+      "pixel_users": {
+        "data": [],
+        "complete": true
+      },
+      "account": {
+        "id": "act_604577275311600",
+        "name": "Elizete Fazza ESG",
+        "account_status": 1,
+        "currency": "BRL",
+        "timezone_name": "America/Sao_Paulo",
+        "business_country_code": "BR",
+        "business": {
+          "id": "577362448377604",
+          "name": "Elizete Fazza ESG"
+        },
+        "user_tasks": [
+          "DRAFT",
+          "ANALYZE",
+          "ADVERTISE",
+          "MANAGE"
+        ]
+      }
+    }
+  }
+}

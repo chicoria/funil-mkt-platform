@@ -22,6 +22,7 @@ jobs:
           - packages/shared
           - workers/funnel-dispatcher
           - workers/api-funnel-ingress
+          - workers/api-funnel-ingress
           - workers/api-hotmart-ingress
           - workers/links-redirect
           - workers/dashboard-sync
@@ -48,6 +49,7 @@ jobs:
         worker:
           - packages/shared
           - workers/funnel-dispatcher
+          - workers/api-funnel-ingress
           - workers/dashboard-sync
     steps:
       - uses: actions/checkout@v4

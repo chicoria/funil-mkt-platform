@@ -1,6 +1,6 @@
 {
   "schemaVersion": 5,
-  "updatedAt": "2026-11-01",
+  "updatedAt": "2026-11-02",
   "description": "Catálogo central multi-tenant — tenants.{id}.products.{code} declara cada produto. Fonte única para tracking, integrações, links e dashboard por tenant/produto.",
   "global": {
     "hotmart": {
@@ -2313,6 +2313,502 @@
                 "destinations": ["Brevo", "Event Store", "sGTM"],
                 "trackingRequiresIdentity": true,
                 "trackingConfigRef": "products.PRODUCT_ENGINEER_NEWSLETTER.tracking"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "entrepontos": {
+      "name": "Entrepontos",
+      "domains": [
+        "api.entrepontos.club",
+        "links.entrepontos.club",
+        "entrepontos.club",
+        "www.entrepontos.club"
+      ],
+      "allowedOrigins": [
+        "https://entrepontos.club",
+        "https://www.entrepontos.club"
+      ],
+      "credentials": {
+        "brevo_api_key_env": "BREVO_API_KEY_ENTREPONTOS",
+        "replyToEmail": "hello@entrepontos.club"
+      },
+      "tracking": {
+        "gtm": {
+          "containerPublicId": "GTM-NP5J47NR"
+        },
+        "sgtm": {
+          "endpointEnvVar": "SGTM_ENDPOINT_URL_ENTREPONTOS"
+        },
+        "ga4": {
+          "measurementId": "G-HLHGEBP2H0",
+          "measurementIdEnvVar": "GA4_MEASUREMENT_ID_ENTREPONTOS"
+        },
+        "metaCapi": {
+          "accessTokenEnv": "META_SYSTEM_USER_ACCESS_TOKEN",
+          "_note": "Entrepontos reutiliza o Business 577362448377604 (decisao do titular, 2026-11-02): token do system user agent-api, atribuido aos dois pixels Entrepontos (ADVERTISE/UPLOAD/ANALYZE/EDIT); serve de token CAPI. Vive na LT - Meta CAPI Token by Tenant do sGTM. Ver plans/STATUS-ENTREPONTOS-META.md."
+        }
+      },
+      "dashboard": {
+        "ga4": {
+          "propertyIdEnv": "GA4_PROPERTY_ID_ENTREPONTOS",
+          "serviceAccountKeyEnv": "GA4_SERVICE_ACCOUNT_KEY_ENTREPONTOS"
+        }
+      },
+      "links": {
+        "linksDomain": "links.entrepontos.club",
+        "routes": [
+          {
+            "path": "/mulheres/confirmado",
+            "type": "doi_confirmation",
+            "productCode": "ENTREPONTOS_MULHERES",
+            "redirectUrl": "https://entrepontos.club/confirmado/"
+          },
+          {
+            "path": "/kids/confirmado",
+            "type": "doi_confirmation",
+            "productCode": "ENTREPONTOS_KIDS",
+            "redirectUrl": "https://entrepontos.club/kids/confirmado/"
+          }
+        ]
+      },
+      "products": {
+        "ENTREPONTOS_MULHERES": {
+          "name": "Entrepontos — Encontros para mulheres",
+          "tracking": {
+            "productCode": "ENTREPONTOS_MULHERES",
+            "differentiation": {
+              "produto": "ENTREPONTOS_MULHERES",
+              "product_code": "ENTREPONTOS_MULHERES"
+            },
+            "metaPixel": {
+              "pixelIdEnvVar": "META_PIXEL_ID_ENTREPONTOS_MULHERES",
+              "pixelId": "1709529480821304",
+              "testEventCodeEnvVar": "META_TEST_EVENT_CODE_ENTREPONTOS_MULHERES",
+              "differentiationKey": "produto",
+              "differentiationValue": "ENTREPONTOS_MULHERES"
+            }
+          },
+          "brevo": {
+            "funnelPrefix": "EP_MULHERES",
+            "funnelFields": {
+              "steps": "EP_MULHERES_FUNIL_STEPS",
+              "lastStep": "EP_MULHERES_FUNIL_LAST_STEP",
+              "lastStepTimestamp": "EP_MULHERES_FUNIL_LAST_STEP_TIMESTAMP"
+            },
+            "lists": {
+              "precheckout": {
+                "id": "2",
+                "name": "entrepontos-mulheres"
+              }
+            },
+            "templates": {
+              "doi": {
+                "id": "1",
+                "description": "Confirmação de interesse por double opt-in",
+                "localFile": "config/email-templates/entrepontos/doi-mulheres-v1.html",
+                "version": "v1"
+              }
+            },
+            "doiFlows": [
+              {
+                "key": "precheckoutDoi",
+                "templateId": "1",
+                "triggerEvent": "GENERATE_LEAD",
+                "endpoint": "/contacts/doubleOptinConfirmation",
+                "includeListId": "2",
+                "redirectionUrl": "https://links.entrepontos.club/mulheres/confirmado?rid={rid}",
+                "templatePlaceholder": "{{ params.DOIurl }}",
+                "managedVia": "api",
+                "localTemplateFile": "config/email-templates/entrepontos/doi-mulheres-v1.html"
+              }
+            ]
+          },
+          "funnelEventArchitecture": {
+            "managedBy": "catalog",
+            "systems": {
+              "ingresses": [
+                "api-funnel-ingress"
+              ],
+              "dispatcher": "funnel-dispatcher",
+              "queue": {
+                "name": "decole-q-funnel-events",
+                "dlq": "decole-q-funnel-events-dlq"
+              }
+            },
+            "events": [
+              {
+                "funnelStage": "AWARENESS",
+                "eventType": "PAGE_VIEW",
+                "delivery": "gtm_web_only",
+                "source": "site",
+                "destinations": [
+                  "GA4"
+                ],
+                "trackingConfigRef": "products.ENTREPONTOS_MULHERES.tracking"
+              },
+              {
+                "funnelStage": "CONSIDERATION",
+                "eventType": "CTA_CLICK",
+                "delivery": "gtm_web_only",
+                "source": "site",
+                "destinations": [
+                  "GA4"
+                ],
+                "trackingConfigRef": "products.ENTREPONTOS_MULHERES.tracking"
+              },
+              {
+                "funnelStage": "CONSIDERATION",
+                "eventType": "GENERATE_LEAD",
+                "delivery": "both",
+                "trackingDelivery": "gtm_web_to_sgtm",
+                "serverTracking": false,
+                "deliveryNotes": "Mesmo padrão da DECOLE: dataLayer/GTM Web -> sGTM -> GA4. A chain server_queue abaixo não re-emite tracking, só cuida da Brevo/DOI.",
+                "source": "site",
+                "ingress": "api-funnel-ingress",
+                "queue": "decole-q-funnel-events",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "send_brevo_doi",
+                  "update_brevo_funnel",
+                  "sync_brevo_segments"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store"
+                ],
+                "brevoConfig": {
+                  "listId": "2",
+                  "doiTemplateId": "1",
+                  "doiRedirectUrl": "https://links.entrepontos.club/mulheres/confirmado",
+                  "doiIdentity": true,
+                  "funnelPrefix": "EP_MULHERES"
+                },
+                "trackingConfigRef": "products.ENTREPONTOS_MULHERES.tracking"
+              },
+              {
+                "funnelStage": "CONVERSION",
+                "eventType": "SIGN_UP",
+                "delivery": "server_queue",
+                "deliveryNotes": "Confirmação DOI registada no Event Store. Sem emissão GA4 no servidor para respeitar a preferência de medição do browser.",
+                "source": "links-redirect",
+                "ingress": "decole-q-funnel-events",
+                "queue": "decole-q-funnel-events",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "enrich_attribution",
+                  "update_brevo_funnel"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store"
+                ],
+                "trackingRequiresIdentity": true,
+                "trackingConfigRef": "products.ENTREPONTOS_MULHERES.tracking",
+                "serverTracking": false
+              }
+            ]
+          }
+        },
+        "ENTREPONTOS_KIDS": {
+          "name": "Entrepontos Kids",
+          "tracking": {
+            "productCode": "ENTREPONTOS_KIDS",
+            "differentiation": {
+              "produto": "ENTREPONTOS_KIDS",
+              "product_code": "ENTREPONTOS_KIDS"
+            },
+            "metaPixel": {
+              "pixelIdEnvVar": "META_PIXEL_ID_ENTREPONTOS_KIDS",
+              "pixelId": "1102408865735469",
+              "testEventCodeEnvVar": "META_TEST_EVENT_CODE_ENTREPONTOS_KIDS",
+              "differentiationKey": "produto",
+              "differentiationValue": "ENTREPONTOS_KIDS"
+            }
+          },
+          "brevo": {
+            "funnelPrefix": "EP_KIDS",
+            "funnelFields": {
+              "steps": "EP_KIDS_FUNIL_STEPS",
+              "lastStep": "EP_KIDS_FUNIL_LAST_STEP",
+              "lastStepTimestamp": "EP_KIDS_FUNIL_LAST_STEP_TIMESTAMP"
+            },
+            "lists": {
+              "precheckout": {
+                "id": "4",
+                "name": "entrepontos-kids"
+              }
+            },
+            "templates": {
+              "doi": {
+                "id": "2",
+                "description": "Confirmação de interesse por double opt-in",
+                "localFile": "config/email-templates/entrepontos/doi-kids-v1.html",
+                "version": "v1"
+              }
+            },
+            "doiFlows": [
+              {
+                "key": "precheckoutDoi",
+                "templateId": "2",
+                "triggerEvent": "GENERATE_LEAD",
+                "endpoint": "/contacts/doubleOptinConfirmation",
+                "includeListId": "4",
+                "redirectionUrl": "https://links.entrepontos.club/kids/confirmado?rid={rid}",
+                "templatePlaceholder": "{{ params.DOIurl }}",
+                "managedVia": "api",
+                "localTemplateFile": "config/email-templates/entrepontos/doi-kids-v1.html"
+              }
+            ]
+          },
+          "funnelEventArchitecture": {
+            "managedBy": "catalog",
+            "systems": {
+              "ingresses": [
+                "api-funnel-ingress"
+              ],
+              "dispatcher": "funnel-dispatcher",
+              "queue": {
+                "name": "decole-q-funnel-events",
+                "dlq": "decole-q-funnel-events-dlq"
+              }
+            },
+            "events": [
+              {
+                "funnelStage": "AWARENESS",
+                "eventType": "PAGE_VIEW",
+                "delivery": "gtm_web_only",
+                "source": "site",
+                "destinations": [
+                  "GA4"
+                ],
+                "trackingConfigRef": "products.ENTREPONTOS_KIDS.tracking"
+              },
+              {
+                "funnelStage": "CONSIDERATION",
+                "eventType": "CTA_CLICK",
+                "delivery": "gtm_web_only",
+                "source": "site",
+                "destinations": [
+                  "GA4"
+                ],
+                "trackingConfigRef": "products.ENTREPONTOS_KIDS.tracking"
+              },
+              {
+                "funnelStage": "CONSIDERATION",
+                "eventType": "GENERATE_LEAD",
+                "delivery": "both",
+                "trackingDelivery": "gtm_web_to_sgtm",
+                "serverTracking": false,
+                "deliveryNotes": "Mesmo padrão da DECOLE: dataLayer/GTM Web -> sGTM -> GA4. A chain server_queue abaixo não re-emite tracking, só cuida da Brevo/DOI.",
+                "source": "site",
+                "ingress": "api-funnel-ingress",
+                "queue": "decole-q-funnel-events",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "send_brevo_doi",
+                  "update_brevo_funnel",
+                  "sync_brevo_segments"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store"
+                ],
+                "brevoConfig": {
+                  "listId": "4",
+                  "doiTemplateId": "2",
+                  "doiRedirectUrl": "https://links.entrepontos.club/kids/confirmado",
+                  "doiIdentity": true,
+                  "funnelPrefix": "EP_KIDS"
+                },
+                "trackingConfigRef": "products.ENTREPONTOS_KIDS.tracking"
+              },
+              {
+                "funnelStage": "CONVERSION",
+                "eventType": "SIGN_UP",
+                "delivery": "server_queue",
+                "deliveryNotes": "Confirmação DOI registada no Event Store. Sem emissão GA4 no servidor para respeitar a preferência de medição do browser.",
+                "source": "links-redirect",
+                "ingress": "decole-q-funnel-events",
+                "queue": "decole-q-funnel-events",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "enrich_attribution",
+                  "update_brevo_funnel"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store"
+                ],
+                "trackingRequiresIdentity": true,
+                "trackingConfigRef": "products.ENTREPONTOS_KIDS.tracking",
+                "serverTracking": false
+              }
+            ]
+          }
+        },
+        "ENTREPONTOS_WORKSHOP_MULHERES": {
+          "name": "Entrepontos — Workshop para mulheres",
+          "precheckout": {
+            "requireEmail": true,
+            "requireTurnstile": true,
+            "fieldPatterns": {
+              "edition": "^[a-z0-9-]{1,40}$"
+            }
+          },
+          "tracking": {
+            "productCode": "ENTREPONTOS_WORKSHOP_MULHERES",
+            "differentiation": {
+              "produto": "ENTREPONTOS_WORKSHOP_MULHERES",
+              "product_code": "ENTREPONTOS_WORKSHOP_MULHERES"
+            },
+            "metaPixel": {
+              "pixelIdEnvVar": "META_PIXEL_ID_ENTREPONTOS_MULHERES",
+              "pixelId": "1709529480821304",
+              "testEventCodeEnvVar": "META_TEST_EVENT_CODE_ENTREPONTOS_MULHERES",
+              "differentiationKey": "produto",
+              "differentiationValue": "ENTREPONTOS_WORKSHOP_MULHERES"
+            }
+          },
+          "brevo": {
+            "funnelPrefix": "EP_WS_MULHERES",
+            "funnelFields": {
+              "steps": "EP_WS_MULHERES_FUNIL_STEPS",
+              "lastStep": "EP_WS_MULHERES_FUNIL_LAST_STEP",
+              "lastStepTimestamp": "EP_WS_MULHERES_FUNIL_LAST_STEP_TIMESTAMP"
+            },
+            "lists": {
+              "registration": {
+                "id": "5",
+                "name": "entrepontos-workshop-mulheres"
+              }
+            }
+          },
+          "funnelEventArchitecture": {
+            "managedBy": "catalog",
+            "systems": {
+              "ingresses": [
+                "api-funnel-ingress"
+              ],
+              "dispatcher": "funnel-dispatcher",
+              "queue": {
+                "name": "decole-q-funnel-events",
+                "dlq": "decole-q-funnel-events-dlq"
+              }
+            },
+            "events": [
+              {
+                "funnelStage": "CONSIDERATION",
+                "eventType": "GENERATE_LEAD",
+                "delivery": "both",
+                "trackingDelivery": "gtm_web_to_sgtm",
+                "serverTracking": false,
+                "deliveryNotes": "Inscrição numa edição do workshop (pagamento fora do site). Entra na lista do workshop sem DOI; edition vai no payload_json. Instruções de pagamento (send_template_email) na W3; tracking Meta via GTM na W4.",
+                "source": "site",
+                "ingress": "api-funnel-ingress",
+                "queue": "decole-q-funnel-events",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "update_brevo_funnel"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store"
+                ],
+                "brevoConfig": {
+                  "directListIds": [
+                    "5"
+                  ],
+                  "funnelPrefix": "EP_WS_MULHERES"
+                },
+                "trackingConfigRef": "products.ENTREPONTOS_WORKSHOP_MULHERES.tracking"
+              }
+            ]
+          }
+        },
+        "ENTREPONTOS_WORKSHOP_KIDS": {
+          "name": "Entrepontos Kids — Workshop",
+          "precheckout": {
+            "requireEmail": true,
+            "requireTurnstile": true,
+            "fieldPatterns": {
+              "edition": "^[a-z0-9-]{1,40}$"
+            }
+          },
+          "tracking": {
+            "productCode": "ENTREPONTOS_WORKSHOP_KIDS",
+            "differentiation": {
+              "produto": "ENTREPONTOS_WORKSHOP_KIDS",
+              "product_code": "ENTREPONTOS_WORKSHOP_KIDS"
+            },
+            "metaPixel": {
+              "pixelIdEnvVar": "META_PIXEL_ID_ENTREPONTOS_KIDS",
+              "pixelId": "1102408865735469",
+              "testEventCodeEnvVar": "META_TEST_EVENT_CODE_ENTREPONTOS_KIDS",
+              "differentiationKey": "produto",
+              "differentiationValue": "ENTREPONTOS_WORKSHOP_KIDS"
+            }
+          },
+          "brevo": {
+            "funnelPrefix": "EP_WS_KIDS",
+            "funnelFields": {
+              "steps": "EP_WS_KIDS_FUNIL_STEPS",
+              "lastStep": "EP_WS_KIDS_FUNIL_LAST_STEP",
+              "lastStepTimestamp": "EP_WS_KIDS_FUNIL_LAST_STEP_TIMESTAMP"
+            },
+            "lists": {
+              "registration": {
+                "id": "6",
+                "name": "entrepontos-workshop-kids"
+              }
+            }
+          },
+          "funnelEventArchitecture": {
+            "managedBy": "catalog",
+            "systems": {
+              "ingresses": [
+                "api-funnel-ingress"
+              ],
+              "dispatcher": "funnel-dispatcher",
+              "queue": {
+                "name": "decole-q-funnel-events",
+                "dlq": "decole-q-funnel-events-dlq"
+              }
+            },
+            "events": [
+              {
+                "funnelStage": "CONSIDERATION",
+                "eventType": "GENERATE_LEAD",
+                "delivery": "both",
+                "trackingDelivery": "gtm_web_to_sgtm",
+                "serverTracking": false,
+                "deliveryNotes": "Inscrição numa edição do workshop (pagamento fora do site). Entra na lista do workshop sem DOI; edition vai no payload_json. Instruções de pagamento (send_template_email) na W3; tracking Meta via GTM na W4.",
+                "source": "site",
+                "ingress": "api-funnel-ingress",
+                "queue": "decole-q-funnel-events",
+                "chain": [
+                  "resolve_identity",
+                  "upsert_event_store",
+                  "update_brevo_funnel"
+                ],
+                "destinations": [
+                  "Brevo",
+                  "Event Store"
+                ],
+                "brevoConfig": {
+                  "directListIds": [
+                    "6"
+                  ],
+                  "funnelPrefix": "EP_WS_KIDS"
+                },
+                "trackingConfigRef": "products.ENTREPONTOS_WORKSHOP_KIDS.tracking"
               }
             ]
           }

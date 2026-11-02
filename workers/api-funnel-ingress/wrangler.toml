@@ -9,7 +9,8 @@ routes = [
   # api.theproductengineer.net existir na zona antes do deploy (Workers
   # Routes exigem o hostname existir, mesmo que seja um placeholder
   # proxied); ver plans/onboardings/product-engineer-2026-10-08.md.
-  "api.theproductengineer.net/funnel/*"
+  "api.theproductengineer.net/funnel/*",
+  "api.entrepontos.club/funnel/*"
   # SUPERARE (futuro, Slice 2.7 multi-tenant): adicionar quando zona DNS estiver ativa.
   # "api.superare.com.br/funnel/*"
 ]
@@ -49,6 +50,13 @@ secret_name = "promo_status_secret_decole"
 binding = "TURNSTILE_SECRET_KEY_PRODUCT_ENGINEER"
 store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
 secret_name = "turnstile_secret_key_product_engineer"
+
+# Entrepontos: Turnstile exigido em todo o tenant (newsletter + inscrição em workshop).
+# Só implantar junto com o site que envia o token (widget entrepontos.club).
+[[secrets_store_secrets]]
+binding = "TURNSTILE_SECRET_KEY_ENTREPONTOS"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "turnstile_secret_key_entrepontos"
 
 [observability]
 enabled = true

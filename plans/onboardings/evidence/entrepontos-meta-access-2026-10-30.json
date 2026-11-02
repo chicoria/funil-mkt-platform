@@ -1,0 +1,170 @@
+{
+  "date": "2026-10-30",
+  "note": "Confirmação read-only após atribuição manual pelo titular. Sem tokens ou dados de pagamento.",
+  "records": [
+    {
+      "step": "access_confirm_account",
+      "result": {
+        "id": "act_604577275311600",
+        "name": "Elizete Fazza ESG",
+        "account_status": 1,
+        "currency": "BRL",
+        "timezone_name": "America/Sao_Paulo",
+        "business_country_code": "BR"
+      }
+    },
+    {
+      "step": "access_confirm_pixel",
+      "result": {
+        "id": "1709529480821304",
+        "name": "Entrepontos",
+        "owner_business": {
+          "id": "577362448377604",
+          "name": "Elizete Fazza ESG"
+        }
+      }
+    },
+    {
+      "step": "access_confirm_accounts",
+      "result": {
+        "data": [
+          {
+            "id": "act_604577275311600",
+            "name": "Elizete Fazza ESG"
+          }
+        ]
+      }
+    },
+    {
+      "step": "access_confirm_users",
+      "result": {
+        "data": [
+          {
+            "id": "122236601564575015",
+            "name": "Adilson Jardim",
+            "tasks": [
+              "ADVERTISE",
+              "UPLOAD",
+              "ANALYZE",
+              "EDIT"
+            ]
+          },
+          {
+            "id": "122163609698712497",
+            "name": "Conversions API System User",
+            "tasks": [
+              "ADVERTISE",
+              "UPLOAD",
+              "ANALYZE",
+              "EDIT"
+            ]
+          },
+          {
+            "id": "122106250778782480",
+            "name": "agent-api",
+            "tasks": [
+              "ADVERTISE",
+              "UPLOAD",
+              "ANALYZE",
+              "EDIT"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "independent_validation": {
+    "reviewer": "meta_planning_review",
+    "date": "2026-10-30",
+    "method": "GET only",
+    "results": {
+      "pixel": {
+        "id": "1709529480821304",
+        "name": "Entrepontos",
+        "owner_business": {
+          "id": "577362448377604",
+          "name": "Elizete Fazza ESG"
+        }
+      },
+      "account_pixels": {
+        "data": [
+          {
+            "id": "1329973348435032",
+            "name": "DECOLE sua carreira ESG"
+          },
+          {
+            "id": "1709529480821304",
+            "name": "Entrepontos"
+          },
+          {
+            "id": "2220600768748665",
+            "name": "Plano de Voo"
+          }
+        ],
+        "complete": true
+      },
+      "pixel_accounts": {
+        "data": [
+          {
+            "id": "act_604577275311600",
+            "name": "Elizete Fazza ESG"
+          }
+        ],
+        "complete": true
+      },
+      "pixel_users": {
+        "data": [
+          {
+            "id": "122236601564575015",
+            "name": "Adilson Jardim",
+            "tasks": [
+              "ADVERTISE",
+              "UPLOAD",
+              "ANALYZE",
+              "EDIT"
+            ]
+          },
+          {
+            "id": "122163609698712497",
+            "name": "Conversions API System User",
+            "tasks": [
+              "ADVERTISE",
+              "UPLOAD",
+              "ANALYZE",
+              "EDIT"
+            ]
+          },
+          {
+            "id": "122106250778782480",
+            "name": "agent-api",
+            "tasks": [
+              "ADVERTISE",
+              "UPLOAD",
+              "ANALYZE",
+              "EDIT"
+            ]
+          }
+        ],
+        "complete": true
+      },
+      "account": {
+        "id": "act_604577275311600",
+        "name": "Elizete Fazza ESG",
+        "account_status": 1,
+        "currency": "BRL",
+        "timezone_name": "America/Sao_Paulo",
+        "business_country_code": "BR",
+        "business": {
+          "id": "577362448377604",
+          "name": "Elizete Fazza ESG"
+        },
+        "user_tasks": [
+          "DRAFT",
+          "ANALYZE",
+          "ADVERTISE",
+          "MANAGE"
+        ]
+      }
+    }
+  }
+}

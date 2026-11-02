@@ -4,7 +4,8 @@ compatibility_date = "2026-02-05"
 workers_dev = false
 routes = [
   { pattern = "links.decolesuacarreiraesg.com.br/*", zone_name = "decolesuacarreiraesg.com.br" },
-  { pattern = "links.theproductengineer.net/*", zone_name = "theproductengineer.net" }
+  { pattern = "links.theproductengineer.net/*", zone_name = "theproductengineer.net" },
+  { pattern = "links.entrepontos.club/*", zone_name = "entrepontos.club" }
 ]
 
 [[queues.producers]]

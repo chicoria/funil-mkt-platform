@@ -1,0 +1,152 @@
+{
+  "date": "2026-11-02",
+  "method": "GET only; token values and paging URLs omitted",
+  "checks": {
+    "pixel": {
+      "id": "1709529480821304",
+      "name": "Entrepontos",
+      "owner_business": {
+        "id": "577362448377604",
+        "name": "Elizete Fazza ESG"
+      },
+      "is_unavailable": false
+    },
+    "account": {
+      "id": "act_604577275311600",
+      "name": "Elizete Fazza ESG",
+      "account_status": 1,
+      "currency": "BRL",
+      "timezone_name": "America/Sao_Paulo",
+      "business_country_code": "BR",
+      "user_tasks": [
+        "DRAFT",
+        "ANALYZE",
+        "ADVERTISE",
+        "MANAGE"
+      ]
+    },
+    "pixel_users": {
+      "data": [
+        {
+          "id": "122236601564575015",
+          "name": "Adilson Jardim",
+          "tasks": [
+            "ADVERTISE",
+            "UPLOAD",
+            "ANALYZE",
+            "EDIT"
+          ]
+        },
+        {
+          "id": "122163609698712497",
+          "name": "Conversions API System User",
+          "tasks": [
+            "ADVERTISE",
+            "UPLOAD",
+            "ANALYZE",
+            "EDIT"
+          ]
+        },
+        {
+          "id": "122106250778782480",
+          "name": "agent-api",
+          "tasks": [
+            "ADVERTISE",
+            "UPLOAD",
+            "ANALYZE",
+            "EDIT"
+          ]
+        }
+      ]
+    },
+    "client_pages": {
+      "data": [],
+      "complete": true
+    },
+    "pixel_accounts": {
+      "data": [
+        {
+          "id": "act_604577275311600",
+          "name": "Elizete Fazza ESG"
+        }
+      ]
+    },
+    "pixel_event_stats": {
+      "data": []
+    },
+    "owned_pages": {
+      "data": [
+        {
+          "id": "1501807893006756",
+          "name": "Entrepontos"
+        },
+        {
+          "id": "483391978198375",
+          "name": "Elizete Fazza",
+          "instagram_business_account": {
+            "id": "17841401638634396",
+            "username": "elizetefazza",
+            "name": "Elizete Fazza | ESG | EHS | Sustentabilidade"
+          }
+        }
+      ],
+      "complete": true
+    },
+    "instagram_accounts": {
+      "data": [
+        {
+          "id": "17841401638634396",
+          "username": "elizetefazza",
+          "name": "Elizete Fazza | ESG | EHS | Sustentabilidade"
+        }
+      ],
+      "complete": true
+    },
+    "account_pages": {
+      "data": [
+        {
+          "id": "483391978198375",
+          "name": "Elizete Fazza"
+        }
+      ],
+      "complete": true
+    },
+    "entrepontos_page": {
+      "id": "1501807893006756",
+      "name": "Entrepontos",
+      "link": "https://www.facebook.com/1501807893006756",
+      "is_published": true
+    },
+    "entrepontos_page_users": {
+      "data": [
+        {
+          "id": "122236601564575015",
+          "name": "Adilson Jardim",
+          "tasks": [
+            "MANAGE_LEADS",
+            "MODERATE",
+            "MESSAGING",
+            "ANALYZE",
+            "ADVERTISE",
+            "CREATE_CONTENT",
+            "MANAGE"
+          ]
+        },
+        {
+          "id": "122106250778782480",
+          "name": "agent-api",
+          "tasks": [
+            "MANAGE_LEADS",
+            "VIEW_MONETIZATION_INSIGHTS",
+            "MODERATE",
+            "MESSAGING",
+            "ANALYZE",
+            "ADVERTISE",
+            "CREATE_CONTENT",
+            "MANAGE"
+          ]
+        }
+      ]
+    }
+  }
+}

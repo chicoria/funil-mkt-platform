@@ -1,0 +1,246 @@
+{
+  "date": "2026-10-30",
+  "graphVersion": "v21.0",
+  "note": "Allowlisted API evidence; no access tokens, billing details or personal contact data. No campaigns created.",
+  "records": [
+    {
+      "step": "business",
+      "result": {
+        "id": "577362448377604",
+        "name": "Elizete Fazza ESG",
+        "verification_status": "not_verified"
+      }
+    },
+    {
+      "step": "accounts_before",
+      "result": {
+        "data": [
+          {
+            "id": "act_3444050182439254",
+            "name": "DECOLE - Plano de Voo",
+            "currency": "BRL",
+            "timezone_name": "Europe/Budapest",
+            "account_status": 101
+          },
+          {
+            "id": "act_4294150874247788",
+            "name": "DECOLE - Plano de Voo",
+            "currency": "BRL",
+            "timezone_name": "America/Vancouver",
+            "account_status": 101
+          },
+          {
+            "id": "act_604577275311600",
+            "name": "Elizete Fazza ESG",
+            "currency": "BRL",
+            "timezone_name": "America/Sao_Paulo",
+            "account_status": 1
+          }
+        ],
+        "complete": true
+      }
+    },
+    {
+      "step": "pixels_before",
+      "result": {
+        "data": [
+          {
+            "id": "2220600768748665",
+            "name": "Plano de Voo",
+            "owner_business": {
+              "id": "577362448377604",
+              "name": "Elizete Fazza ESG"
+            }
+          },
+          {
+            "id": "1329973348435032",
+            "name": "DECOLE sua carreira ESG",
+            "owner_business": {
+              "id": "577362448377604",
+              "name": "Elizete Fazza ESG"
+            }
+          }
+        ],
+        "complete": true
+      }
+    },
+    {
+      "step": "system_users_prewrite",
+      "result": {
+        "data": [
+          {
+            "id": "122106250778782480",
+            "name": "agent-api",
+            "role": "ADMIN"
+          },
+          {
+            "id": "122163609698712497",
+            "name": "Conversions API System User",
+            "role": "EMPLOYEE"
+          }
+        ],
+        "complete": true
+      }
+    },
+    {
+      "step": "pixel_create",
+      "result": {
+        "id": "1709529480821304"
+      }
+    },
+    {
+      "step": "pixel_verify",
+      "result": {
+        "id": "1709529480821304",
+        "name": "Entrepontos",
+        "owner_business": {
+          "id": "577362448377604",
+          "name": "Elizete Fazza ESG"
+        }
+      }
+    },
+    {
+      "step": "pixel_users_before",
+      "result": {
+        "data": []
+      }
+    },
+    {
+      "step": "pixel_assign_agent",
+      "result": {
+        "error": {
+          "http_status": 400,
+          "code": 10,
+          "message": "(#10) Application does not have permission for this action",
+          "type": "OAuthException"
+        }
+      }
+    },
+    {
+      "step": "pixel_users_after",
+      "result": {
+        "data": []
+      }
+    },
+    {
+      "step": "timezone_verified",
+      "result": {
+        "source": "https://developers.facebook.com/docs/marketing-api/reference/ad-account/timezone-ids/",
+        "symbol": "TZ_EUROPE_LISBON",
+        "timezone_id": 110
+      }
+    },
+    {
+      "step": "account_create_parameters",
+      "result": {
+        "name": "Entrepontos",
+        "currency": "BRL",
+        "timezone_id": 110,
+        "end_advertiser": "577362448377604",
+        "media_agency": "NONE",
+        "partner": "NONE"
+      }
+    },
+    {
+      "step": "account_create",
+      "result": {
+        "error": {
+          "http_status": 400,
+          "code": 3979,
+          "error_subcode": 2455008,
+          "message": "You have exceeded the number of allowed ad accounts for your Business Manager at this time.",
+          "error_user_title": "Limite da conta de anúncios atingido",
+          "error_user_msg": "Você atingiu o número máximo de contas de anúncios permitidas para uma nova conta comercial. Será possível criar mais contas de anúncios após várias semanas de conformidade com nossas políticas. Se não quiser esperar, verifique sua empresa.Saiba mais",
+          "type": "OAuthException"
+        }
+      }
+    },
+    {
+      "step": "accounts_after",
+      "result": {
+        "data": [
+          {
+            "id": "act_3444050182439254",
+            "name": "DECOLE - Plano de Voo",
+            "currency": "BRL",
+            "timezone_name": "Europe/Budapest",
+            "account_status": 101
+          },
+          {
+            "id": "act_4294150874247788",
+            "name": "DECOLE - Plano de Voo",
+            "currency": "BRL",
+            "timezone_name": "America/Vancouver",
+            "account_status": 101
+          },
+          {
+            "id": "act_604577275311600",
+            "name": "Elizete Fazza ESG",
+            "currency": "BRL",
+            "timezone_name": "America/Sao_Paulo",
+            "account_status": 1
+          }
+        ],
+        "complete": true
+      }
+    }
+  ],
+  "independent_validation": {
+    "date": "2026-10-30",
+    "reviewer": "meta_planning_review",
+    "method": "GET only",
+    "results": {
+      "pixel": {
+        "id": "1709529480821304",
+        "name": "Entrepontos",
+        "owner_business": {
+          "id": "577362448377604",
+          "name": "Elizete Fazza ESG"
+        }
+      },
+      "assigned_users": {
+        "data": [],
+        "complete": true
+      },
+      "owned_accounts": {
+        "data": [
+          {
+            "id": "act_3444050182439254",
+            "name": "DECOLE - Plano de Voo",
+            "currency": "BRL",
+            "timezone_name": "Europe/Budapest",
+            "account_status": 101
+          },
+          {
+            "id": "act_4294150874247788",
+            "name": "DECOLE - Plano de Voo",
+            "currency": "BRL",
+            "timezone_name": "America/Vancouver",
+            "account_status": 101
+          },
+          {
+            "id": "act_604577275311600",
+            "name": "Elizete Fazza ESG",
+            "currency": "BRL",
+            "timezone_name": "America/Sao_Paulo",
+            "account_status": 1
+          }
+        ],
+        "complete": true
+      }
+    },
+    "initial_assigned_users_request": {
+      "error": {
+        "http_status": 400,
+        "code": 100,
+        "message": "(#100) For field 'assigned_users': The parameter business is required",
+        "type": "OAuthException"
+      }
+    },
+    "assigned_users_request_parameters": {
+      "business": "577362448377604",
+      "fields": "id,name,tasks",
+      "limit": 100
+    }
+  }
+}

@@ -1,0 +1,474 @@
+{
+  "exportFormatVersion": 2,
+  "containerVersion": {
+    "path": "accounts/6266094107/containers/267346531/versions/2",
+    "accountId": "6266094107",
+    "containerId": "267346531",
+    "containerVersionId": "2",
+    "name": "Entrepontos — GA4 Web consentido",
+    "description": "Sem page_view automático; ep_* sanitizados; GTM carregado apenas após analytics opt-in no site.",
+    "container": {
+      "path": "accounts/6266094107/containers/267346531",
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "name": "entrepontos.club",
+      "domainName": [
+        "entrepontos.club",
+        "www.entrepontos.club"
+      ],
+      "publicId": "GTM-NP5J47NR",
+      "usageContext": [
+        "web"
+      ],
+      "fingerprint": "1792145647806",
+      "tagManagerUrl": "https://tagmanager.google.com/#/container/accounts/6266094107/containers/267346531/workspaces?apiLink=container",
+      "features": {
+        "supportUserPermissions": true,
+        "supportEnvironments": true,
+        "supportWorkspaces": true,
+        "supportGtagConfigs": false,
+        "supportBuiltInVariables": true,
+        "supportClients": false,
+        "supportFolders": true,
+        "supportTags": true,
+        "supportTemplates": true,
+        "supportTriggers": true,
+        "supportVariables": true,
+        "supportVersions": true,
+        "supportZones": true,
+        "supportTransformations": false
+      },
+      "tagIds": [
+        "GTM-NP5J47NR"
+      ]
+    },
+    "tag": [
+      {
+        "accountId": "6266094107",
+        "containerId": "267346531",
+        "tagId": "10",
+        "name": "GA4 Configuration - entrepontos.club",
+        "type": "googtag",
+        "parameter": [
+          {
+            "type": "template",
+            "key": "tagId",
+            "value": "G-HLHGEBP2H0"
+          },
+          {
+            "type": "list",
+            "key": "configSettingsTable",
+            "list": [
+              {
+                "type": "map",
+                "map": [
+                  {
+                    "type": "template",
+                    "key": "parameter",
+                    "value": "transport_url"
+                  },
+                  {
+                    "type": "template",
+                    "key": "parameterValue",
+                    "value": "https://sgtm.entrepontos.club"
+                  }
+                ]
+              },
+              {
+                "type": "map",
+                "map": [
+                  {
+                    "type": "template",
+                    "key": "parameter",
+                    "value": "send_page_view"
+                  },
+                  {
+                    "type": "template",
+                    "key": "parameterValue",
+                    "value": "false"
+                  }
+                ]
+              },
+              {
+                "type": "map",
+                "map": [
+                  {
+                    "type": "template",
+                    "key": "parameter",
+                    "value": "page_location"
+                  },
+                  {
+                    "type": "template",
+                    "key": "parameterValue",
+                    "value": "{{DL - ep_page_location}}"
+                  }
+                ]
+              },
+              {
+                "type": "map",
+                "map": [
+                  {
+                    "type": "template",
+                    "key": "parameter",
+                    "value": "page_referrer"
+                  },
+                  {
+                    "type": "template",
+                    "key": "parameterValue",
+                    "value": "{{DL - ep_page_referrer}}"
+                  }
+                ]
+              },
+              {
+                "type": "map",
+                "map": [
+                  {
+                    "type": "template",
+                    "key": "parameter",
+                    "value": "page_title"
+                  },
+                  {
+                    "type": "template",
+                    "key": "parameterValue",
+                    "value": "{{DL - ep_page_title}}"
+                  }
+                ]
+              },
+              {
+                "type": "map",
+                "map": [
+                  {
+                    "type": "template",
+                    "key": "parameter",
+                    "value": "allow_google_signals"
+                  },
+                  {
+                    "type": "template",
+                    "key": "parameterValue",
+                    "value": "false"
+                  }
+                ]
+              },
+              {
+                "type": "map",
+                "map": [
+                  {
+                    "type": "template",
+                    "key": "parameter",
+                    "value": "allow_ad_personalization_signals"
+                  },
+                  {
+                    "type": "template",
+                    "key": "parameterValue",
+                    "value": "false"
+                  }
+                ]
+              },
+              {
+                "type": "map",
+                "map": [
+                  {
+                    "type": "template",
+                    "key": "parameter",
+                    "value": "tenant_id"
+                  },
+                  {
+                    "type": "template",
+                    "key": "parameterValue",
+                    "value": "{{DL - tenant_id}}"
+                  }
+                ]
+              },
+              {
+                "type": "map",
+                "map": [
+                  {
+                    "type": "template",
+                    "key": "parameter",
+                    "value": "produto"
+                  },
+                  {
+                    "type": "template",
+                    "key": "parameterValue",
+                    "value": "{{DL - produto}}"
+                  }
+                ]
+              },
+              {
+                "type": "map",
+                "map": [
+                  {
+                    "type": "template",
+                    "key": "parameter",
+                    "value": "product_code"
+                  },
+                  {
+                    "type": "template",
+                    "key": "parameterValue",
+                    "value": "{{DL - product_code}}"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "fingerprint": "1792146415026",
+        "firingTriggerId": [
+          "2147479553"
+        ],
+        "consentSettings": {
+          "consentStatus": "notSet"
+        }
+      },
+      {
+        "accountId": "6266094107",
+        "containerId": "267346531",
+        "tagId": "11",
+        "name": "GA4 Event - All Custom Events",
+        "type": "gaawe",
+        "parameter": [
+          {
+            "type": "boolean",
+            "key": "sendEcommerceData",
+            "value": "false"
+          },
+          {
+            "type": "template",
+            "key": "eventName",
+            "value": "{{Event}}"
+          },
+          {
+            "type": "template",
+            "key": "measurementIdOverride",
+            "value": "G-HLHGEBP2H0"
+          }
+        ],
+        "fingerprint": "1792146415380",
+        "firingTriggerId": [
+          "9"
+        ],
+        "consentSettings": {
+          "consentStatus": "notSet"
+        }
+      }
+    ],
+    "trigger": [
+      {
+        "accountId": "6266094107",
+        "containerId": "267346531",
+        "triggerId": "9",
+        "name": "All Custom Events",
+        "type": "customEvent",
+        "customEventFilter": [
+          {
+            "type": "matchRegex",
+            "parameter": [
+              {
+                "type": "template",
+                "key": "arg0",
+                "value": "{{_event}}"
+              },
+              {
+                "type": "template",
+                "key": "arg1",
+                "value": "^gtm\\..*"
+              },
+              {
+                "type": "boolean",
+                "key": "negate",
+                "value": "true"
+              }
+            ]
+          }
+        ],
+        "fingerprint": "1792146413233"
+      }
+    ],
+    "variable": [
+      {
+        "accountId": "6266094107",
+        "containerId": "267346531",
+        "variableId": "3",
+        "name": "DL - tenant_id",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "integer",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "boolean",
+            "key": "setDefaultValue",
+            "value": "false"
+          },
+          {
+            "type": "template",
+            "key": "name",
+            "value": "tenant_id"
+          }
+        ],
+        "fingerprint": "1792146408171"
+      },
+      {
+        "accountId": "6266094107",
+        "containerId": "267346531",
+        "variableId": "4",
+        "name": "DL - produto",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "integer",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "boolean",
+            "key": "setDefaultValue",
+            "value": "false"
+          },
+          {
+            "type": "template",
+            "key": "name",
+            "value": "produto"
+          }
+        ],
+        "fingerprint": "1792146409122"
+      },
+      {
+        "accountId": "6266094107",
+        "containerId": "267346531",
+        "variableId": "5",
+        "name": "DL - product_code",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "integer",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "boolean",
+            "key": "setDefaultValue",
+            "value": "false"
+          },
+          {
+            "type": "template",
+            "key": "name",
+            "value": "product_code"
+          }
+        ],
+        "fingerprint": "1792146409555"
+      },
+      {
+        "accountId": "6266094107",
+        "containerId": "267346531",
+        "variableId": "6",
+        "name": "DL - ep_page_location",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "integer",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "boolean",
+            "key": "setDefaultValue",
+            "value": "false"
+          },
+          {
+            "type": "template",
+            "key": "name",
+            "value": "ep_page_location"
+          }
+        ],
+        "fingerprint": "1792146410460"
+      },
+      {
+        "accountId": "6266094107",
+        "containerId": "267346531",
+        "variableId": "7",
+        "name": "DL - ep_page_referrer",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "integer",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "boolean",
+            "key": "setDefaultValue",
+            "value": "false"
+          },
+          {
+            "type": "template",
+            "key": "name",
+            "value": "ep_page_referrer"
+          }
+        ],
+        "fingerprint": "1792146411365"
+      },
+      {
+        "accountId": "6266094107",
+        "containerId": "267346531",
+        "variableId": "8",
+        "name": "DL - ep_page_title",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "integer",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "boolean",
+            "key": "setDefaultValue",
+            "value": "false"
+          },
+          {
+            "type": "template",
+            "key": "name",
+            "value": "ep_page_title"
+          }
+        ],
+        "fingerprint": "1792146411661"
+      }
+    ],
+    "builtInVariable": [
+      {
+        "accountId": "6266094107",
+        "containerId": "267346531",
+        "type": "pageUrl",
+        "name": "Page URL"
+      },
+      {
+        "accountId": "6266094107",
+        "containerId": "267346531",
+        "type": "pageHostname",
+        "name": "Page Hostname"
+      },
+      {
+        "accountId": "6266094107",
+        "containerId": "267346531",
+        "type": "pagePath",
+        "name": "Page Path"
+      },
+      {
+        "accountId": "6266094107",
+        "containerId": "267346531",
+        "type": "referrer",
+        "name": "Referrer"
+      },
+      {
+        "accountId": "6266094107",
+        "containerId": "267346531",
+        "type": "event",
+        "name": "Event"
+      }
+    ],
+    "fingerprint": "1792148819903",
+    "tagManagerUrl": "https://tagmanager.google.com/#/versions/accounts/6266094107/containers/267346531/versions/2?apiLink=version"
+  }
+}

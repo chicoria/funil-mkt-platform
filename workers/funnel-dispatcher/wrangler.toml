@@ -91,6 +91,23 @@ secret_name = "ga4_api_secret_product_engineer"
 # N8N_WEBHOOK_URL removido: forward_n8n não está em nenhuma chain do catálogo
 # (código morto). Cleanup completo programado no slice 2.11A.9 (Fase 4).
 
+
+# Entrepontos: email + GA4, sem checkout/Meta.
+[[secrets_store_secrets]]
+binding = "BREVO_API_KEY_ENTREPONTOS"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "brevo_api_key_entrepontos"
+
+[[secrets_store_secrets]]
+binding = "SGTM_ENDPOINT_URL_ENTREPONTOS"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "sgtm_endpoint_url_entrepontos"
+
+[[secrets_store_secrets]]
+binding = "GA4_MEASUREMENT_ID_ENTREPONTOS"
+store_id = "23bdc9c2e8ca470d82352c53ec8d2e67"
+secret_name = "ga4_measurement_id_entrepontos"
+
 [[queues.consumers]]
 queue = "decole-q-funnel-events"
 max_batch_size = 25

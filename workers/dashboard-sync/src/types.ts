@@ -9,6 +9,7 @@ export interface TenantDashboardCatalog {
       metaAds?: { accessTokenEnv: string };
     };
     products?: Record<string, {
+      name?: string;
       dashboard?: {
         metaAds?: { adAccountIdEnv: string };
       };
