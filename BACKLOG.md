@@ -66,7 +66,7 @@ faltantes a `CHECKOUT_FORWARD_PARAMS`.
 
 ## BUG-003 — corpo público escolhe o tipo de evento em `/funnel/precheckout` e `/funnel/event`
 
-- **Status:** corrigido no código (2026-11-02), **ainda não implantado** — implantar junto com BUG-002.
+- **Status:** corrigido em `948de7a` e implantado em 2026-11-02 (ingress `a5c926e2-5f12-4a1f-b18b-98b6625cf96d`, antes `37274a24-68ce-48a5-adbc-89e7e5249575`). Smokes CORS 204/403 nos 3 tenants; sem POST de teste.
 - **Componente:** `packages/shared/src/event-normalizer.ts` (`fromPrecheckoutForm`,
   `fromBrowserTracking` leem `event_type`/`event`/`type` do corpo);
   `workers/api-funnel-ingress/src/index.ts` (handlers).
@@ -108,7 +108,7 @@ produtos de outro tenant.
 
 ## BUG-002 — `/funnel/precheckout` aceita payload vazio/inválido e grava evento + perfil
 
-- **Status:** corrigido no código em `78a9af3` (2026-11-02), **ainda não implantado**.
+- **Status:** corrigido em `78a9af3` e implantado em 2026-11-02 com BUG-003 (ingress `a5c926e2-5f12-4a1f-b18b-98b6625cf96d`).
   O precheckout recusa `unknown_product` e `invalid_email`; e-mail ausente continua aceite
   (redirect de checkout sem e-mail).
 - **Data:** 2026-11-02
