@@ -2147,4 +2147,86 @@ describe("funnel-dispatcher", () => {
 
     vi.unstubAllGlobals();
   });
+
+  it("calcula FUNIL_STEPS apenas com eventos do mesmo produto", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    // Event store fake: same profile with events in two products.
+    const storedEvents = [
+      // Older event recorded under a catalog alias of the same product.
+      { tenant_id: "superare", profile_id: "profile-two-products", product_code: "PV_ALIAS", event_type: "GENERATE_LEAD" },
+      { tenant_id: "other-tenant", profile_id: "profile-two-products", product_code: "PLANOVOO", event_type: "PURCHASE_APPROVED" },
+      { tenant_id: "superare", profile_id: "profile-two-products", product_code: "MENTORIA", event_type: "BEGIN_CHECKOUT" },
+      { tenant_id: "superare", profile_id: "profile-two-products", product_code: "MENTORIA", event_type: "PURCHASE_BILLET_PRINTED" },
+    ];
+    const d1Stub = makeD1Stub();
+    d1Stub.db.prepare = vi.fn((sql: string) => ({
+      bind: vi.fn((...vals: unknown[]) => ({
+        run: vi.fn(async () => ({})),
+        first: vi.fn(async () => {
+          if (!sql.includes("group_concat")) return null;
+          const [tenantId, profileId, ...productCodes] = vals;
+          const scoped = sql.includes("product_code")
+            ? storedEvents.filter((row) => productCodes.includes(row.product_code))
+            : storedEvents;
+          const steps = scoped
+            .filter((row) => row.tenant_id === tenantId && row.profile_id === profileId)
+            .map((row) => row.event_type);
+          return { steps: steps.join("|") };
+        }),
+      })),
+      run: vi.fn(async () => ({})),
+      first: vi.fn(async () => null),
+    })) as any;
+
+    const env = makeEnv({
+      EVENT_STORE_DB: d1Stub.db,
+      BREVO_API_KEY_SUPERARE: "superare-key",
+      CATALOG_JSON: JSON.stringify({
+        tenants: {
+          superare: {
+            credentials: { brevo_api_key_env: "BREVO_API_KEY_SUPERARE" },
+            products: {
+              PLANOVOO: {
+                aliases: ["PV_ALIAS"],
+                brevo: {
+                  funnelFields: {
+                    steps: "SUPERARE_PV_FUNIL_STEPS",
+                    lastStep: "SUPERARE_PV_FUNIL_LAST_STEP",
+                    lastStepTimestamp: "SUPERARE_PV_FUNIL_LAST_STEP_TIMESTAMP",
+                  },
+                },
+                funnelEventArchitecture: {
+                  events: [{ eventType: "SIGN_UP", chain: ["update_brevo_funnel"] }],
+                },
+              },
+            },
+          },
+        },
+      }),
+    });
+    const event: any = {
+      event_id: "evt-two-products-1",
+      event_type: "SIGN_UP",
+      tenant_id: "superare",
+      product_code: "PLANOVOO",
+      source: "site",
+      occurred_at: "2026-11-02T12:00:00.000Z",
+      identity: { anonymous_id: "anon-two-products" },
+      attribution: {},
+      lead: { email: "lead@superare.test" },
+      payload: { profile_id: "profile-two-products" },
+    };
+
+    await worker.queue({ messages: [{ body: event }] }, env);
+
+    const contactCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/contacts"));
+    const contactBody = JSON.parse(String((contactCall?.[1] as RequestInit)?.body || "{}")) as { attributes?: Record<string, string> };
+    expect(contactBody.attributes?.SUPERARE_PV_FUNIL_STEPS).toBe("GENERATE_LEAD|SIGN_UP");
+
+    vi.unstubAllGlobals();
+  });
 });

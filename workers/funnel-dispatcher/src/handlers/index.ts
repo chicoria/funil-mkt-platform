@@ -1783,18 +1783,31 @@ async function resolveBrevoFunnelSteps(event: FunnelEvent, env: DispatcherEnv): 
     return event.event_type;
   }
 
+  // Steps are per product: the same profile may be in several funnels of the tenant.
+  // Events are stored with the raw product_code, so match every form of the product
+  // (raw, canonical and catalog aliases) to keep history recorded under an alias.
+  const resolvedProduct = resolveCatalogProduct(getCatalog(env), event);
+  const productCodes = [
+    ...new Set(
+      [
+        asString(event.product_code),
+        resolveCanonicalProductCode(event, env),
+        ...((resolvedProduct?.product?.aliases as string[] | undefined) || []).map((alias) => asString(alias).toUpperCase()),
+      ].filter(Boolean)
+    ),
+  ];
   const row = await eventStoreDb
     .prepare(
       `SELECT group_concat(event_type, '|') AS steps
        FROM (
          SELECT event_type
          FROM funnel_events
-         WHERE tenant_id = ? AND profile_id = ?
+         WHERE tenant_id = ? AND profile_id = ? AND product_code IN (${productCodes.map(() => "?").join(", ")})
          GROUP BY event_type
          ORDER BY MIN(occurred_at)
        )`
     )
-    .bind(tenantId, profileId)
+    .bind(tenantId, profileId, ...productCodes)
     .first<{ steps?: string }>();
 
   const fromStore = asString(row?.steps);
