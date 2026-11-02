@@ -6,6 +6,7 @@ import {
   type CatalogV5,
   type CatalogV5AppWebhook,
   type CatalogV5Integration,
+  type CatalogV5Product,
 } from "../../../packages/shared/src/catalog-v5";
 import bundledCatalog from "../../../config/products.catalog.json";
 import type { FunnelEvent } from "../../../packages/shared/src/funnel-event";
@@ -144,13 +145,27 @@ function productCodeFromBody(payload: Record<string, unknown>, fallback: string)
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // BUG-002: precheckout only accepts products of the resolved tenant (code or alias).
-function isKnownTenantProduct(catalog: CatalogV5, tenantId: string, productCode: string): boolean {
+function findTenantProduct(catalog: CatalogV5, tenantId: string, productCode: string): CatalogV5Product | undefined {
   const products = catalog.tenants?.[tenantId]?.products || {};
-  return Object.entries(products).some(
+  return Object.entries(products).find(
     ([code, product]) =>
       code.toUpperCase() === productCode ||
       (product?.aliases || []).some((alias) => productCodeFromBody({ product_code: alias }, "") === productCode)
-  );
+  )?.[1];
+}
+
+function isKnownTenantProduct(catalog: CatalogV5, tenantId: string, productCode: string): boolean {
+  return findTenantProduct(catalog, tenantId, productCode) !== undefined;
+}
+
+// Primeiro campo de products.{code}.precheckout.fieldPatterns que falha (ausente, não-string,
+// acima de 256 caracteres ou fora da regex). O tamanho é limitado antes da regex.
+const PRECHECKOUT_FIELD_MAX_LENGTH = 256;
+function invalidPrecheckoutField(payload: Record<string, unknown>, fieldPatterns: Record<string, string>): string | undefined {
+  return Object.entries(fieldPatterns).find(([field, pattern]) => {
+    const value = payload[field];
+    return typeof value !== "string" || value.length > PRECHECKOUT_FIELD_MAX_LENGTH || !new RegExp(pattern).test(value);
+  })?.[0];
 }
 
 // BUG-003: o tipo de evento vem do corpo público (event_type/event/type, já normalizado).
@@ -456,6 +471,21 @@ export default {
       ) {
         logIngress({ stage: "blocked", pathname, tenant_id: tenantId, error: "invalid_email", status: 400 });
         return withCors(jsonResponse({ ok: false, error: "invalid_email" }, 400), request, catalog, tenantId);
+      }
+      const precheckoutRules = findTenantProduct(catalog, tenantId, productCode)?.precheckout;
+      // Sem secret do tenant o bloco Turnstile acima não corre; produto que o exige fecha.
+      if (precheckoutRules?.requireTurnstile && !turnstileSecretBinding) {
+        logIngress({ stage: "blocked", pathname, tenant_id: tenantId, error: "turnstile_not_configured", status: 503 });
+        return withCors(jsonResponse({ ok: false, error: "turnstile_not_configured" }, 503), request, catalog, tenantId);
+      }
+      if (precheckoutRules?.requireEmail && !queuedEmail) {
+        logIngress({ stage: "blocked", pathname, tenant_id: tenantId, error: "email_required", status: 400 });
+        return withCors(jsonResponse({ ok: false, error: "email_required" }, 400), request, catalog, tenantId);
+      }
+      const invalidField = invalidPrecheckoutField(payload, precheckoutRules?.fieldPatterns || {});
+      if (invalidField) {
+        logIngress({ stage: "blocked", pathname, tenant_id: tenantId, error: "invalid_field", field: invalidField, status: 400 });
+        return withCors(jsonResponse({ ok: false, error: "invalid_field", field: invalidField }, 400), request, catalog, tenantId);
       }
 
       const queue = env.FUNNEL_EVENTS;

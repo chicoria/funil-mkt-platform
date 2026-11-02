@@ -102,8 +102,20 @@ export interface CatalogV5ProductLinks {
   offerPathTemplate?: string;
 }
 
+/**
+ * Regras do `/funnel/precheckout` por produto. `fieldPatterns` só valida a sintaxe
+ * (campo string obrigatório que casa com a regex); a existência do valor é do site.
+ */
+export interface CatalogV5ProductPrecheckout {
+  requireEmail?: boolean;
+  // Recusa (503) quando o tenant não tem secret Turnstile, em vez de saltar a verificação.
+  requireTurnstile?: boolean;
+  fieldPatterns?: Record<string, string>;
+}
+
 export interface CatalogV5Product {
   aliases?: string[];
+  precheckout?: CatalogV5ProductPrecheckout;
   hotmart?: CatalogV5ProductHotmart;
   tracking?: CatalogV5ProductTracking;
   dashboard?: CatalogV5ProductDashboard;

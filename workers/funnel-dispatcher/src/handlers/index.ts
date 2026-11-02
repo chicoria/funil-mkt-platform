@@ -78,6 +78,8 @@ interface CatalogEventConfig {
   brevoConfig?: {
     listId?: string;
     listIds?: Array<string | number>;
+    // Listas sem DOI (inscrição transacional); listId/listIds ficam só para o fluxo DOI.
+    directListIds?: Array<string | number>;
     doiTemplateId?: string;
     doiRedirectUrl?: string;
     promoDoiTemplateId?: string;
@@ -2064,6 +2066,7 @@ async function updateBrevoFunnel(event: FunnelEvent, env: DispatcherEnv): Promis
   }
 
   const steps = await resolveBrevoFunnelSteps(event, env);
+  const directListIds = normalizeUniqueIds([resolveCatalogEvent(event, env)?.brevoConfig?.directListIds]);
 
   const url = `${asString(env.BREVO_BASE_URL) || BREVO_BASE_URL}/contacts`;
   try {
@@ -2081,6 +2084,7 @@ async function updateBrevoFunnel(event: FunnelEvent, env: DispatcherEnv): Promis
           [fields.lastStepTimestampField]: event.occurred_at,
           PRODUCT_CODE: event.product_code,
         },
+        ...(directListIds.length > 0 ? { listIds: directListIds } : {}),
         updateEnabled: true,
       }),
     });
@@ -2095,6 +2099,9 @@ async function updateBrevoFunnel(event: FunnelEvent, env: DispatcherEnv): Promis
         error: err instanceof Error ? err.message : String(err),
       })
     );
+    // Inscrição direta numa lista é a ação principal do evento: vai para retry da fila
+    // (os handlers anteriores já estão no dedupe e não repetem).
+    if (directListIds.length > 0) throw err;
   }
 }
 
