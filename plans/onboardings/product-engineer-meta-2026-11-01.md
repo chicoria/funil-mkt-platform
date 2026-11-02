@@ -205,7 +205,7 @@ Stats mostraram `gtm.js`, `bio_link_click`, `scroll`/`form_*` no pixel. Preparad
   `Lead` 2 e `PageView` 2), o primeiro do pixel; os DOIs de 12:01 e 13:43, antes da
   correção, nunca apareceram.
 
-## Limpeza dos testes (pendente do titular)
+## Limpeza dos testes (DONE 2026-11-02)
 
 - 2026-11-01: os 3 contactos de teste (`chicoria+pe-smoke-20261101@`, `…b@`, `…c@gmail.com`)
   foram **retirados da lista #3** no Brevo do PE (POST `/contacts/lists/3/contacts/remove`
@@ -215,6 +215,8 @@ Stats mostraram `gtm.js`, `bio_link_click`, `scroll`/`form_*` no pixel. Preparad
   por defeito): `bash scripts/onboarding/cleanup-pe-smoke-20261101.sh --apply`; correr de
   novo sem `--apply` para confirmar zeros. Não usar `scripts/cleanup-test-data.sh` aqui:
   usa a chave Brevo da DECOLE e o padrão largo `chicoria+*`.
+- 2026-11-02: o titular correu `--apply` (Brevo DELETE 204 ×3; 6 `funnel_events` e 4
+  `identity_links` apagados); o dry run seguinte confirma Brevo 404 ×3 e contagens 0/0.
 - GA4 e Meta não têm API de apagar: os 3 Leads e 3 sign-ups de teste ficam lá.
 
 **Contra-checagem Codex final (2026-11-01, read-only): APROVADO**, sem MUST-FIX. Tenant ×
@@ -234,8 +236,7 @@ SHOULD-FIX aplicado: esta tabela. SHOULD-FIX pré-existentes da DECOLE passados 
 | M4 | Catálogo + smoke + contra-checagem Codex | DONE (catálogo `af2464b`; Codex APROVADO) |
 
 Pendências fora do aceite:
-- Apagar os dados de teste (titular, no computador):
-  `bash scripts/onboarding/cleanup-pe-smoke-20261101.sh --apply`.
+- ~~Apagar os dados de teste~~ DONE 2026-11-02 (zeros confirmados).
 - Regressão DECOLE observável só quando houver tráfego/conversões DECOLE.
 
 Backlog da plataforma (pré-existente, DECOLE, apontado pelo Codex):
