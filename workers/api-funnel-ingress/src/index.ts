@@ -109,7 +109,8 @@ function withCors(response: Response, request: Request, catalog: CatalogV5, tena
 async function parseBody(request: Request): Promise<Record<string, unknown>> {
   const contentType = asString(request.headers.get("content-type")).toLowerCase();
 
-  if (contentType.includes("application/json")) {
+  // text/plain: navigator.sendBeacon com string (beacon de engagement dos sites) envia JSON assim.
+  if (contentType.includes("application/json") || contentType.includes("text/plain")) {
     try {
       const parsed = await request.json();
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
@@ -151,6 +152,12 @@ function isKnownTenantProduct(catalog: CatalogV5, tenantId: string, productCode:
       (product?.aliases || []).some((alias) => productCodeFromBody({ product_code: alias }, "") === productCode)
   );
 }
+
+// BUG-003: o tipo de evento vem do corpo público (event_type/event/type, já normalizado).
+// Compras, checkout, DOI e afins só nascem nos workers autenticados (hotmart-ingress,
+// links-redirect, webhooks HMAC); aqui só passam os tipos que o browser pode emitir.
+const PRECHECKOUT_EVENT_TYPES = new Set(["GENERATE_LEAD"]);
+const BROWSER_EVENT_TYPES = new Set(["PAGE_VIEW", "ENGAGEMENT_SNAPSHOT"]);
 
 // Fatia H (promo gratuito): acha a integração do tenant que serve o proxy de
 // status (GET /funnel/promo-status/{code} → {baseUrlEnv}/api/promo/{code}/status).
@@ -435,6 +442,10 @@ export default {
         return withCors(jsonResponse({ ok: false, error: "unknown_product" }, 400), request, catalog, tenantId);
       }
       const event = withTenantId(fromPrecheckoutForm(payload, productCode), tenantId);
+      if (!PRECHECKOUT_EVENT_TYPES.has(event.event_type)) {
+        logIngress({ stage: "blocked", pathname, tenant_id: tenantId, error: "invalid_event_type", event_type: event.event_type, status: 400 });
+        return withCors(jsonResponse({ ok: false, error: "invalid_event_type" }, 400), request, catalog, tenantId);
+      }
       // Email stays optional (checkout redirects accept a lead without email), but any
       // email input must be a string and the value that will be queued must be valid.
       const emailInputs = [payload.email, payload.EMAIL].filter((value) => value !== undefined && value !== null && value !== "");
@@ -498,7 +509,16 @@ export default {
         logIngress({ stage: "error", pathname, tenant_id: tenantId, error: "queue_not_configured", status: 500 });
         return withCors(jsonResponse({ ok: false, error: "queue_not_configured" }, 500), request, catalog, tenantId);
       }
-      const event = withTenantId(fromBrowserTracking(payload, productCodeFromBody(payload, "UNKNOWN_PRODUCT")), tenantId);
+      const productCode = productCodeFromBody(payload, "");
+      if (!productCode || !isKnownTenantProduct(catalog, tenantId, productCode)) {
+        logIngress({ stage: "blocked", pathname, tenant_id: tenantId, error: "unknown_product", status: 400 });
+        return withCors(jsonResponse({ ok: false, error: "unknown_product" }, 400), request, catalog, tenantId);
+      }
+      const event = withTenantId(fromBrowserTracking(payload, productCode), tenantId);
+      if (!BROWSER_EVENT_TYPES.has(event.event_type)) {
+        logIngress({ stage: "blocked", pathname, tenant_id: tenantId, error: "invalid_event_type", event_type: event.event_type, status: 400 });
+        return withCors(jsonResponse({ ok: false, error: "invalid_event_type" }, 400), request, catalog, tenantId);
+      }
       await queue.send(event);
       logIngress({
         stage: "queued",

@@ -146,8 +146,8 @@ status=$(http \
   -H "Content-Type: application/json" \
   -H "Origin: https://decolesuacarreiraesg.com.br" \
   -d "{\"event_id\":\"$EVENT_ID_A\",\"event_type\":\"GENERATE_LEAD\",\"product_code\":\"DECOLE_ESG_MENTORIA\",\"anonymous_id\":\"$ANON_A\",\"email\":\"${RUN_ID}-main@e2e-test.invalid\"}" \
-  "$API_BASE/funnel/event")
-check "POST /funnel/event → 202 (queued)" "202" "$status"
+  "$API_BASE/funnel/precheckout")
+check "POST /funnel/precheckout → 202 (queued)" "202" "$status"
 
 if [[ "$status" == "202" ]]; then
   echo "  Aguardando processamento pelo Queue (45s — Queue de produção tem latência ~35s)..."
@@ -210,12 +210,12 @@ else
   # Evento C: email A + anonymous_id compartilhado
   http -X POST -H "Content-Type: application/json" -H "Origin: https://decolesuacarreiraesg.com.br" \
     -d "{\"event_id\":\"$EVT_C\",\"event_type\":\"GENERATE_LEAD\",\"product_code\":\"DECOLE_ESG_MENTORIA\",\"anonymous_id\":\"$ANON_A\",\"email\":\"$EMAIL_A\"}" \
-    "$API_BASE/funnel/event" > /dev/null
+    "$API_BASE/funnel/precheckout" > /dev/null
 
   # Evento D: email B + MESMO anonymous_id → deve criar profile SEPARADO
   http -X POST -H "Content-Type: application/json" -H "Origin: https://decolesuacarreiraesg.com.br" \
     -d "{\"event_id\":\"$EVT_D\",\"event_type\":\"GENERATE_LEAD\",\"product_code\":\"DECOLE_ESG_MENTORIA\",\"anonymous_id\":\"$ANON_A\",\"email\":\"$EMAIL_B\"}" \
-    "$API_BASE/funnel/event" > /dev/null
+    "$API_BASE/funnel/precheckout" > /dev/null
 
   echo "  Aguardando processamento (45s)..."
   sleep 45

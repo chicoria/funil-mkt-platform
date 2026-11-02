@@ -64,9 +64,53 @@ faltantes a `CHECKOUT_FORWARD_PARAMS`.
 
 ---
 
+## BUG-003 — corpo público escolhe o tipo de evento em `/funnel/precheckout` e `/funnel/event`
+
+- **Status:** corrigido no código (2026-11-02), **ainda não implantado** — implantar junto com BUG-002.
+- **Componente:** `packages/shared/src/event-normalizer.ts` (`fromPrecheckoutForm`,
+  `fromBrowserTracking` leem `event_type`/`event`/`type` do corpo);
+  `workers/api-funnel-ingress/src/index.ts` (handlers).
+- **Tenants afetados:** todos.
+- **Descoberto por:** investigação do fluxo do Plano de Voo (W2a Entrepontos), 2026-11-02.
+
+### Sintoma
+
+Um POST público podia enfileirar qualquer tipo de evento (ex.: `PURCHASE_APPROVED`,
+também como `purchase-approved`), e o dispatcher corria a cadeia desse tipo no
+catálogo. `isOriginAllowed` aceita pedidos sem `Origin`, e só tenants com Turnstile
+server-side têm barreira adicional no precheckout. `/funnel/event` também aceitava
+produtos de outro tenant.
+
+### Correção
+
+- `/funnel/precheckout`: só `GENERATE_LEAD`; outro tipo normalizado → 400 `invalid_event_type`.
+- `/funnel/event`: allowlist `PAGE_VIEW`, `ENGAGEMENT_SNAPSHOT`; produto fora do tenant →
+  400 `unknown_product`. `GENERATE_LEAD` só entra pelo precheckout (o `scripts/e2e-prod.sh`
+  passou a usar `/funnel/precheckout`).
+- `parseBody` lê JSON em `text/plain`: o beacon `ENGAGEMENT_SNAPSHOT` da DECOLE
+  (`navigator.sendBeacon` com string) chegava como `{}` e virava `PAGE_VIEW/UNKNOWN_PRODUCT`.
+- Testes: `workers/api-funnel-ingress/test/unit/event-type-validation.test.ts`.
+- Revisão independente (sessão Claude, 2026-11-02) no lugar do Codex (sem quota).
+
+### Follow-up
+
+- Acrescentar `workers/api-funnel-ingress` à matriz de unitários do `ci-multitenant-gates`
+  **no mesmo push do catálogo Entrepontos** — `entrepontos-precheckout.test.ts` (já commitado)
+  falha sem o tenant no catálogo.
+- Ingress enfileira o código canónico do produto: alias com espaço (`"plano voo"` → `PLANO_VOO`)
+  passa no ingress e não casa no dispatcher (`funnel-dispatcher/src/catalog-adapter.ts:76`).
+- Corpo público pode trazer `__handler_results`, lido pelo dispatcher (`dispatcher.ts:56,86`);
+  `event_id` vem do cliente e a chave de dedupe não inclui o tipo (`dispatcher.ts:91-95`).
+- Avaliar exigir `Origin` (ou Turnstile) nos endpoints públicos de todos os tenants.
+- Conferir no D1 se houve eventos de compra com `source = site` antes do deploy.
+
+---
+
 ## BUG-002 — `/funnel/precheckout` aceita payload vazio/inválido e grava evento + perfil
 
-- **Status:** aberto
+- **Status:** corrigido no código em `78a9af3` (2026-11-02), **ainda não implantado**.
+  O precheckout recusa `unknown_product` e `invalid_email`; e-mail ausente continua aceite
+  (redirect de checkout sem e-mail).
 - **Data:** 2026-11-02
 - **Componente:** `workers/api-funnel-ingress/src/index.ts` (handler de
   `/funnel/precheckout`); validação a jusante em `workers/funnel-dispatcher`
