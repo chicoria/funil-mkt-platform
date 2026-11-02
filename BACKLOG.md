@@ -61,3 +61,56 @@ faltantes a `CHECKOUT_FORWARD_PARAMS`.
   pros dois produtos em 2026-07-13T11:14:23Z (antes do fix) — vale repetir
   o teste pós-deploy pra confirmar visualmente que o Hotmart chega
   pré-preenchido agora.
+
+---
+
+## BUG-002 — `/funnel/precheckout` aceita payload vazio/inválido e grava evento + perfil
+
+- **Status:** aberto
+- **Data:** 2026-11-02
+- **Componente:** `workers/api-funnel-ingress/src/index.ts` (handler de
+  `/funnel/precheckout`); validação a jusante em `workers/funnel-dispatcher`
+- **Tenants afetados:** todos (o handler é genérico); visto no `entrepontos`
+- **Descoberto por:** teste manual em produção em 2026-11-02, ao verificar se o
+  Entrepontos já tinha formulário de pré-checkout.
+
+### Sintoma
+
+`POST https://api.entrepontos.club/funnel/precheckout` com `Origin` permitido e
+corpo `{}` ou `{"EMAIL":"x"}` devolve `202 {"ok":true,"event_id":…,
+"event_type":"GENERATE_LEAD"}`. O evento foi persistido em `funnel_events`
+(`product_code = UNKNOWN_PRODUCT`) e criou um `profile_id` novo com linhas em
+`identity_links` (uma delas com `email_hash` do valor `x`). Os 2 eventos de teste
+e as 3 ligações de identidade foram apagados à mão em 2026-11-02 (contagens
+antes/depois confirmadas); o endpoint continua com o mesmo comportamento.
+
+### Causa provável
+
+Depois de `resolveTenantId` e `isOriginAllowed`, o handler não valida o corpo
+(email com formato válido, `product_code` presente e pertencente ao tenant,
+consentimento) antes de enfileirar em `FUNNEL_EVENTS`. A única barreira
+adicional é o Turnstile, e só nos tenants que têm o secret configurado. O
+Entrepontos não tem.
+
+### Impacto
+
+- Qualquer origem permitida (ou script que forje o header `Origin`) gera eventos
+  `GENERATE_LEAD` e perfis de lixo.
+- Infla `funnel_events`, o dashboard e, quando houver Pixel/CAPI, as conversões
+  de Lead enviadas à Meta e ao GA4.
+- Risco de contato inválido ou de conta alheia no Brevo (DOI) se o dispatcher
+  não rejeitar.
+
+### Correção sugerida
+
+- Validar no `api-funnel-ingress`, antes de enfileirar: `email` (formato e
+  tamanho), `product_code` ∈ produtos do tenant no catálogo, `consent === true`
+  quando o produto exigir DOI. Responder `400` com erro estável
+  (`invalid_email`, `invalid_product`, `consent_required`).
+- Não gerar `profile_id` nem `identity_links` para payload rejeitado.
+- Testes: corpo vazio, email inválido, produto desconhecido, produto de outro
+  tenant, e o caminho feliz para cada tenant do catálogo (cross-tenant).
+- Avaliar rate limit por IP e ativar Turnstile no Entrepontos.
+- Antes de ativar o Pixel do Entrepontos (`plans/STATUS-ENTREPONTOS-META.md`,
+  M3), resolver ou aceitar o risco: sem isto os Leads enviados à Meta podem ser
+  falsos.
