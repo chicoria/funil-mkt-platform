@@ -88,3 +88,14 @@ describe('precheckout — regras do produto no catálogo', () => {
     expect(send).not.toHaveBeenCalled();
   });
 });
+
+// O token Turnstile é de uso único e só serve para a verificação no ingress; não vai para a fila nem para o D1.
+describe('precheckout — token Turnstile fora do payload', () => {
+  it('remove cf-turnstile-response e cf_turnstile_response antes de enfileirar', async () => {
+    const { res, send } = await post({ product_code: 'T_NEWSLETTER', email: 'pessoa@example.com', 'cf-turnstile-response': 'tok', cf_turnstile_response: 'tok2' });
+    expect(res.status).toBe(202);
+    const queued = (send.mock.calls[0] as unknown[])[0] as { payload: Record<string, unknown> };
+    expect(queued.payload).not.toHaveProperty('cf-turnstile-response');
+    expect(queued.payload).not.toHaveProperty('cf_turnstile_response');
+  });
+});

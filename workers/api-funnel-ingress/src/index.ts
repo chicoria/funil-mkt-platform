@@ -451,6 +451,10 @@ export default {
         }
       }
 
+      // Token de uso único: só serve para a verificação acima, não vai para a fila nem para o D1.
+      delete payload["cf-turnstile-response"];
+      delete payload.cf_turnstile_response;
+
       const productCode = productCodeFromBody(payload, "");
       if (!productCode || !isKnownTenantProduct(catalog, tenantId, productCode)) {
         logIngress({ stage: "blocked", pathname, tenant_id: tenantId, error: "unknown_product", status: 400 });
