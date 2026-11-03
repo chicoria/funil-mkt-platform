@@ -1,0 +1,1705 @@
+{
+  "path": "accounts/6266094107/containers/267346531/versions/3",
+  "accountId": "6266094107",
+  "containerId": "267346531",
+  "containerVersionId": "3",
+  "name": "Entrepontos — Pixel Meta por público + begin_checkout",
+  "description": "W5 2026-11-03: Pixel e CAPI Entrepontos (newsletter + workshop), begin_checkout. Revisão independente APROVADA.",
+  "container": {
+    "path": "accounts/6266094107/containers/267346531",
+    "accountId": "6266094107",
+    "containerId": "267346531",
+    "name": "entrepontos.club",
+    "domainName": [
+      "entrepontos.club",
+      "www.entrepontos.club"
+    ],
+    "publicId": "GTM-NP5J47NR",
+    "usageContext": [
+      "web"
+    ],
+    "fingerprint": "1792145647806",
+    "tagManagerUrl": "https://tagmanager.google.com/#/container/accounts/6266094107/containers/267346531/workspaces?apiLink=container",
+    "features": {
+      "supportUserPermissions": true,
+      "supportEnvironments": true,
+      "supportWorkspaces": true,
+      "supportGtagConfigs": false,
+      "supportBuiltInVariables": true,
+      "supportClients": false,
+      "supportFolders": true,
+      "supportTags": true,
+      "supportTemplates": true,
+      "supportTriggers": true,
+      "supportVariables": true,
+      "supportVersions": true,
+      "supportZones": true,
+      "supportTransformations": false
+    },
+    "tagIds": [
+      "GTM-NP5J47NR"
+    ]
+  },
+  "tag": [
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "tagId": "10",
+      "name": "GA4 Configuration - entrepontos.club",
+      "type": "googtag",
+      "parameter": [
+        {
+          "type": "template",
+          "key": "tagId",
+          "value": "G-HLHGEBP2H0"
+        },
+        {
+          "type": "list",
+          "key": "configSettingsTable",
+          "list": [
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "transport_url"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "https://sgtm.entrepontos.club"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "send_page_view"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "false"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "page_location"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DL - ep_page_location}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "page_referrer"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DL - ep_page_referrer}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "page_title"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DL - ep_page_title}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "allow_google_signals"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "false"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "allow_ad_personalization_signals"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "false"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "tenant_id"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DL - tenant_id}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "produto"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DL - produto}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "product_code"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DL - product_code}}"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1792146415026",
+      "firingTriggerId": [
+        "2147479553"
+      ],
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "tagId": "11",
+      "name": "GA4 Event - All Custom Events",
+      "type": "gaawe",
+      "parameter": [
+        {
+          "type": "boolean",
+          "key": "sendEcommerceData",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "eventName",
+          "value": "{{Event}}"
+        },
+        {
+          "type": "template",
+          "key": "measurementIdOverride",
+          "value": "G-HLHGEBP2H0"
+        }
+      ],
+      "fingerprint": "1793619267315",
+      "firingTriggerId": [
+        "9"
+      ],
+      "paused": true,
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "tagId": "52",
+      "name": "FB_CONVERSIONS_API-1709529480821304-Web-Tag-GA4_Event",
+      "type": "gaawe",
+      "parameter": [
+        {
+          "type": "boolean",
+          "key": "sendEcommerceData",
+          "value": "false"
+        },
+        {
+          "type": "list",
+          "key": "eventSettingsTable",
+          "list": [
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "user_data"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{FB_CONVERSIONS_API-1709529480821304-Web-Variable-User_Data}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "currency"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{FB_CONVERSIONS_API-1709529480821304-Web-Variable-Custom_Data_Currency}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "items"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{FB_CONVERSIONS_API-1709529480821304-Web-Variable-Custom_Data_Items}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "transaction_id"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{FB_CONVERSIONS_API-1709529480821304-Web-Variable-Custom_Data_Transaction_ID}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "value"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{FB_CONVERSIONS_API-1709529480821304-Web-Variable-Custom_Data_Value}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "event_id"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{FB_CONVERSIONS_API-1709529480821304-Web-Variable-Event_ID_Constant}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "event_name"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{FB_CONVERSIONS_API-1709529480821304-Web-Variable-FBEventName}}"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "first_party_collection"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "true"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "parameter",
+                  "value": "produto"
+                },
+                {
+                  "type": "template",
+                  "key": "parameterValue",
+                  "value": "{{DL - produto}}"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "template",
+          "key": "eventName",
+          "value": "{{Event}}"
+        },
+        {
+          "type": "template",
+          "key": "measurementIdOverride",
+          "value": "G-HLHGEBP2H0"
+        }
+      ],
+      "fingerprint": "1793619251181",
+      "firingTriggerId": [
+        "29",
+        "30"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "tagId": "53",
+      "name": "FB_CONVERSIONS_API-1709529480821304-Web-Tag-Pixel_Event",
+      "type": "html",
+      "parameter": [
+        {
+          "type": "template",
+          "key": "html",
+          "value": "\n<script>\n  fbq('track', {{FB_CONVERSIONS_API-1709529480821304-Web-Variable-FBEventName}},\n    {\n      'currency': {{FB_CONVERSIONS_API-1709529480821304-Web-Variable-Custom_Data_Currency}},\n      'contents': {{FB_CONVERSIONS_API-1709529480821304-Web-Variable-Custom_Data_Items}},\n      'order_id': {{FB_CONVERSIONS_API-1709529480821304-Web-Variable-Custom_Data_Transaction_ID}},\n      'value': {{FB_CONVERSIONS_API-1709529480821304-Web-Variable-Custom_Data_Value}},\n    },\n    {\n      'eventID': {{FB_CONVERSIONS_API-1709529480821304-Web-Variable-Event_ID_Constant}},\n    }\n  );\n</script>"
+        },
+        {
+          "type": "boolean",
+          "key": "supportDocumentWrite",
+          "value": "false"
+        }
+      ],
+      "fingerprint": "1793619253323",
+      "firingTriggerId": [
+        "32"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "tagId": "54",
+      "name": "FB_CONVERSIONS_API-1709529480821304-Web-Tag-Pixel_Setup",
+      "type": "html",
+      "parameter": [
+        {
+          "type": "template",
+          "key": "html",
+          "value": "<!-- Facebook Pixel Code -->\n<script nonce=\"JuFJp4hJ\">\n!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?\nn.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;\nn.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;\nt.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,\ndocument,'script','https://connect.facebook.net/en_US/fbevents.js');\n\nfbq('init', '1709529480821304');\nfbq('set', 'agent', 'gtmss', '1709529480821304');\n\nfbq('track', {{FB_CONVERSIONS_API-1709529480821304-Web-Variable-FBEventName}}, {}, {'eventID': {{FB_CONVERSIONS_API-1709529480821304-Web-Variable-Event_ID_Constant}}});\n</script>\n<noscript><img height=\"1\" width=\"1\" style=\"display:none\"\nsrc=\"https://www.facebook.com/tr?id=1709529480821304&ev=PageView&noscript=1\"\n/></noscript>\n<!-- End Facebook Pixel Code -->"
+        },
+        {
+          "type": "boolean",
+          "key": "supportDocumentWrite",
+          "value": "false"
+        }
+      ],
+      "fingerprint": "1793619255382",
+      "firingTriggerId": [
+        "31"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "tagId": "55",
+      "name": "FB_CONVERSIONS_API-1709529480821304-Web-Tag-ParamBuilder",
+      "type": "html",
+      "parameter": [
+        {
+          "type": "template",
+          "key": "html",
+          "value": "\n<script\n  src=\"https://capi-automation.s3.us-east-2.amazonaws.com/public/client_js/capiParamBuilder/clientParamBuilder.bundle.js\">\n</script>\n<script>\n  clientParamBuilder.processAndCollectAllParams();\n</script>"
+        },
+        {
+          "type": "boolean",
+          "key": "supportDocumentWrite",
+          "value": "false"
+        }
+      ],
+      "fingerprint": "1793619257463",
+      "firingTriggerId": [
+        "31"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "tagId": "56",
+      "name": "FB_CONVERSIONS_API-1102408865735469-Web-Tag-Pixel_Event",
+      "type": "html",
+      "parameter": [
+        {
+          "type": "template",
+          "key": "html",
+          "value": "\n<script>\n  fbq('track', {{FB_CONVERSIONS_API-1102408865735469-Web-Variable-FBEventName}},\n    {\n      'currency': {{FB_CONVERSIONS_API-1102408865735469-Web-Variable-Custom_Data_Currency}},\n      'contents': {{FB_CONVERSIONS_API-1102408865735469-Web-Variable-Custom_Data_Items}},\n      'order_id': {{FB_CONVERSIONS_API-1102408865735469-Web-Variable-Custom_Data_Transaction_ID}},\n      'value': {{FB_CONVERSIONS_API-1102408865735469-Web-Variable-Custom_Data_Value}},\n    },\n    {\n      'eventID': {{FB_CONVERSIONS_API-1102408865735469-Web-Variable-Event_ID_Constant}},\n    }\n  );\n</script>"
+        },
+        {
+          "type": "boolean",
+          "key": "supportDocumentWrite",
+          "value": "false"
+        }
+      ],
+      "fingerprint": "1793619259576",
+      "firingTriggerId": [
+        "34"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "tagId": "57",
+      "name": "FB_CONVERSIONS_API-1102408865735469-Web-Tag-Pixel_Setup",
+      "type": "html",
+      "parameter": [
+        {
+          "type": "template",
+          "key": "html",
+          "value": "<!-- Facebook Pixel Code -->\n<script nonce=\"JuFJp4hJ\">\n!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?\nn.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;\nn.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;\nt.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,\ndocument,'script','https://connect.facebook.net/en_US/fbevents.js');\n\nfbq('init', '1102408865735469');\nfbq('set', 'agent', 'gtmss', '1102408865735469');\n\nfbq('track', {{FB_CONVERSIONS_API-1102408865735469-Web-Variable-FBEventName}}, {}, {'eventID': {{FB_CONVERSIONS_API-1102408865735469-Web-Variable-Event_ID_Constant}}});\n</script>\n<noscript><img height=\"1\" width=\"1\" style=\"display:none\"\nsrc=\"https://www.facebook.com/tr?id=1102408865735469&ev=PageView&noscript=1\"\n/></noscript>\n<!-- End Facebook Pixel Code -->"
+        },
+        {
+          "type": "boolean",
+          "key": "supportDocumentWrite",
+          "value": "false"
+        }
+      ],
+      "fingerprint": "1793619261714",
+      "firingTriggerId": [
+        "33"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "tagId": "58",
+      "name": "FB_CONVERSIONS_API-1102408865735469-Web-Tag-ParamBuilder",
+      "type": "html",
+      "parameter": [
+        {
+          "type": "template",
+          "key": "html",
+          "value": "\n<script\n  src=\"https://capi-automation.s3.us-east-2.amazonaws.com/public/client_js/capiParamBuilder/clientParamBuilder.bundle.js\">\n</script>\n<script>\n  clientParamBuilder.processAndCollectAllParams();\n</script>"
+        },
+        {
+          "type": "boolean",
+          "key": "supportDocumentWrite",
+          "value": "false"
+        }
+      ],
+      "fingerprint": "1793619263784",
+      "firingTriggerId": [
+        "33"
+      ],
+      "tagFiringOption": "oncePerEvent",
+      "consentSettings": {
+        "consentStatus": "notSet"
+      }
+    }
+  ],
+  "trigger": [
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "triggerId": "9",
+      "name": "All Custom Events",
+      "type": "customEvent",
+      "customEventFilter": [
+        {
+          "type": "matchRegex",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{_event}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "^gtm\\..*"
+            },
+            {
+              "type": "boolean",
+              "key": "negate",
+              "value": "true"
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1792146413233"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "triggerId": "29",
+      "name": "Entrepontos - DOM Ready (host)",
+      "type": "domReady",
+      "filter": [
+        {
+          "type": "matchRegex",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{Page Hostname}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "^(www\\.)?entrepontos\\.club$"
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1793619203252"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "triggerId": "30",
+      "name": "FB_CONVERSIONS_API-1709529480821304-Web-Trigger-Custom_Event",
+      "type": "customEvent",
+      "customEventFilter": [
+        {
+          "type": "matchRegex",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{_event}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "^gtm\\..*"
+            },
+            {
+              "type": "boolean",
+              "key": "negate",
+              "value": "true"
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1793619205365"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "triggerId": "31",
+      "name": "FB_CONVERSIONS_API-1709529480821304-Web-Trigger-DOM_Ready",
+      "type": "domReady",
+      "filter": [
+        {
+          "type": "matchRegex",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{Page Hostname}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "^(www\\.)?entrepontos\\.club$"
+            }
+          ]
+        },
+        {
+          "type": "equals",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{DL - produto}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "ENTREPONTOS_MULHERES"
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1793619207432"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "triggerId": "32",
+      "name": "FB_CONVERSIONS_API-1709529480821304-Web-Trigger-Business_Events",
+      "type": "customEvent",
+      "customEventFilter": [
+        {
+          "type": "matchRegex",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{_event}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "^(generate_lead|begin_checkout|cta_click)$"
+            }
+          ]
+        }
+      ],
+      "filter": [
+        {
+          "type": "matchRegex",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{DL - produto}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "^ENTREPONTOS_(WORKSHOP_)?MULHERES$"
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1793702740541"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "triggerId": "33",
+      "name": "FB_CONVERSIONS_API-1102408865735469-Web-Trigger-DOM_Ready",
+      "type": "domReady",
+      "filter": [
+        {
+          "type": "matchRegex",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{Page Hostname}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "^(www\\.)?entrepontos\\.club$"
+            }
+          ]
+        },
+        {
+          "type": "equals",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{DL - produto}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "ENTREPONTOS_KIDS"
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1793619211657"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "triggerId": "34",
+      "name": "FB_CONVERSIONS_API-1102408865735469-Web-Trigger-Business_Events",
+      "type": "customEvent",
+      "customEventFilter": [
+        {
+          "type": "matchRegex",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{_event}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "^(generate_lead|begin_checkout|cta_click)$"
+            }
+          ]
+        }
+      ],
+      "filter": [
+        {
+          "type": "matchRegex",
+          "parameter": [
+            {
+              "type": "template",
+              "key": "arg0",
+              "value": "{{DL - produto}}"
+            },
+            {
+              "type": "template",
+              "key": "arg1",
+              "value": "^ENTREPONTOS_(WORKSHOP_)?KIDS$"
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1793702741592"
+    }
+  ],
+  "variable": [
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "3",
+      "name": "DL - tenant_id",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "tenant_id"
+        }
+      ],
+      "fingerprint": "1792146408171"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "4",
+      "name": "DL - produto",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "produto"
+        }
+      ],
+      "fingerprint": "1792146409122"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "5",
+      "name": "DL - product_code",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "product_code"
+        }
+      ],
+      "fingerprint": "1792146409555"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "6",
+      "name": "DL - ep_page_location",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "ep_page_location"
+        }
+      ],
+      "fingerprint": "1792146410460"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "7",
+      "name": "DL - ep_page_referrer",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "ep_page_referrer"
+        }
+      ],
+      "fingerprint": "1792146411365"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "8",
+      "name": "DL - ep_page_title",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "false"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "ep_page_title"
+        }
+      ],
+      "fingerprint": "1792146411661"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "35",
+      "name": "DL - event_id",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "event_id"
+        }
+      ],
+      "fingerprint": "1793619216008"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "36",
+      "name": "FB_CONVERSIONS_API-1709529480821304-Web-Variable-Custom_Data_Currency",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "eventModel.currency"
+        }
+      ],
+      "fingerprint": "1793619218089"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "37",
+      "name": "FB_CONVERSIONS_API-1709529480821304-Web-Variable-Custom_Data_Items",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "eventModel.items"
+        }
+      ],
+      "fingerprint": "1793619220153"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "38",
+      "name": "FB_CONVERSIONS_API-1709529480821304-Web-Variable-Custom_Data_Transaction_ID",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "eventModel.transaction_id"
+        }
+      ],
+      "fingerprint": "1793619222223"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "39",
+      "name": "FB_CONVERSIONS_API-1709529480821304-Web-Variable-Custom_Data_Value",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "eventModel.value"
+        }
+      ],
+      "fingerprint": "1793619224222"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "40",
+      "name": "FB_CONVERSIONS_API-1709529480821304-Web-Variable-Event_ID_Constant",
+      "type": "c",
+      "parameter": [
+        {
+          "type": "template",
+          "key": "value",
+          "value": "7e098146-a49e-431c-8529-f44fdad289d4_{{FB_CONVERSIONS_API-1709529480821304-Web-Variable-Get_Event_ID}}"
+        }
+      ],
+      "fingerprint": "1793619226248"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "41",
+      "name": "FB_CONVERSIONS_API-1709529480821304-Web-Variable-Get_Event_ID",
+      "type": "jsm",
+      "parameter": [
+        {
+          "type": "template",
+          "key": "javascript",
+          "value": "function() {\n  var dlEventId = {{DL - event_id}};\n  if (dlEventId) return dlEventId;\n  var gtmData = window.google_tag_manager[{{Container ID}}].dataLayer.get('gtm');\n  return gtmData.start + '.' + gtmData.uniqueEventId;\n}\n"
+        }
+      ],
+      "fingerprint": "1793619228294"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "42",
+      "name": "FB_CONVERSIONS_API-1709529480821304-Web-Variable-FBEventName",
+      "type": "smm",
+      "parameter": [
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "true"
+        },
+        {
+          "type": "template",
+          "key": "input",
+          "value": "{{Event}}"
+        },
+        {
+          "type": "template",
+          "key": "defaultValue",
+          "value": "{{Event}}"
+        },
+        {
+          "type": "list",
+          "key": "map",
+          "list": [
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "add_payment_info"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "AddPaymentInfo"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "add_to_cart"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "AddToCart"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "add_to_wishlist"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "AddToWishlist"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "begin_checkout"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "InitiateCheckout"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "generate_lead"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "Lead"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "gtm.dom"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "PageView"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "page_view"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "PageView"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "purchase"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "Purchase"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "search"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "Search"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "sign_up"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "CompleteRegistration"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "view_item"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "ViewContent"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1793619230358"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "43",
+      "name": "FB_CONVERSIONS_API-1709529480821304-Web-Variable-User_Data",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "eventModel.user_data"
+        }
+      ],
+      "fingerprint": "1793619232469"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "44",
+      "name": "FB_CONVERSIONS_API-1102408865735469-Web-Variable-Custom_Data_Currency",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "eventModel.currency"
+        }
+      ],
+      "fingerprint": "1793619234668"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "45",
+      "name": "FB_CONVERSIONS_API-1102408865735469-Web-Variable-Custom_Data_Items",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "eventModel.items"
+        }
+      ],
+      "fingerprint": "1793619236741"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "46",
+      "name": "FB_CONVERSIONS_API-1102408865735469-Web-Variable-Custom_Data_Transaction_ID",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "eventModel.transaction_id"
+        }
+      ],
+      "fingerprint": "1793619238825"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "47",
+      "name": "FB_CONVERSIONS_API-1102408865735469-Web-Variable-Custom_Data_Value",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "eventModel.value"
+        }
+      ],
+      "fingerprint": "1793619240886"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "48",
+      "name": "FB_CONVERSIONS_API-1102408865735469-Web-Variable-Event_ID_Constant",
+      "type": "c",
+      "parameter": [
+        {
+          "type": "template",
+          "key": "value",
+          "value": "7e098146-a49e-431c-8529-f44fdad289d4_{{FB_CONVERSIONS_API-1102408865735469-Web-Variable-Get_Event_ID}}"
+        }
+      ],
+      "fingerprint": "1793619242908"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "49",
+      "name": "FB_CONVERSIONS_API-1102408865735469-Web-Variable-Get_Event_ID",
+      "type": "jsm",
+      "parameter": [
+        {
+          "type": "template",
+          "key": "javascript",
+          "value": "function() {\n  var dlEventId = {{DL - event_id}};\n  if (dlEventId) return dlEventId;\n  var gtmData = window.google_tag_manager[{{Container ID}}].dataLayer.get('gtm');\n  return gtmData.start + '.' + gtmData.uniqueEventId;\n}\n"
+        }
+      ],
+      "fingerprint": "1793619245027"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "50",
+      "name": "FB_CONVERSIONS_API-1102408865735469-Web-Variable-FBEventName",
+      "type": "smm",
+      "parameter": [
+        {
+          "type": "boolean",
+          "key": "setDefaultValue",
+          "value": "true"
+        },
+        {
+          "type": "template",
+          "key": "input",
+          "value": "{{Event}}"
+        },
+        {
+          "type": "template",
+          "key": "defaultValue",
+          "value": "{{Event}}"
+        },
+        {
+          "type": "list",
+          "key": "map",
+          "list": [
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "add_payment_info"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "AddPaymentInfo"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "add_to_cart"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "AddToCart"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "add_to_wishlist"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "AddToWishlist"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "begin_checkout"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "InitiateCheckout"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "generate_lead"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "Lead"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "gtm.dom"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "PageView"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "page_view"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "PageView"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "purchase"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "Purchase"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "search"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "Search"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "sign_up"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "CompleteRegistration"
+                }
+              ]
+            },
+            {
+              "type": "map",
+              "map": [
+                {
+                  "type": "template",
+                  "key": "key",
+                  "value": "view_item"
+                },
+                {
+                  "type": "template",
+                  "key": "value",
+                  "value": "ViewContent"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "fingerprint": "1793619247061"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "variableId": "51",
+      "name": "FB_CONVERSIONS_API-1102408865735469-Web-Variable-User_Data",
+      "type": "v",
+      "parameter": [
+        {
+          "type": "integer",
+          "key": "dataLayerVersion",
+          "value": "2"
+        },
+        {
+          "type": "template",
+          "key": "name",
+          "value": "eventModel.user_data"
+        }
+      ],
+      "fingerprint": "1793619249084"
+    }
+  ],
+  "builtInVariable": [
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "type": "pageUrl",
+      "name": "Page URL"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "type": "pageHostname",
+      "name": "Page Hostname"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "type": "pagePath",
+      "name": "Page Path"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "type": "referrer",
+      "name": "Referrer"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "type": "event",
+      "name": "Event"
+    },
+    {
+      "accountId": "6266094107",
+      "containerId": "267346531",
+      "type": "containerId",
+      "name": "Container ID"
+    }
+  ],
+  "fingerprint": "1793703968957",
+  "tagManagerUrl": "https://tagmanager.google.com/#/versions/accounts/6266094107/containers/267346531/versions/3?apiLink=version"
+}

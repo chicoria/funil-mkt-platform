@@ -198,3 +198,44 @@ volta a aceitar sem token) e manter site.
   entrepontos.club (browser automatizado recebe "Verify you are human", não resolvido).
 - Nenhum POST de teste. Falta: 1 envio real de newsletter feito pelo utilizador para
   validar Turnstile + DOI; commit/push do catálogo, wrangler.toml, CI e planos (W5).
+
+### Ingress eb360e5 — 2026-11-02 (deploy feito pelo utilizador)
+
+- Ingress d58a1440-1beb-4bfd-8c88-34c59b5aa9d7 (antes fdda001c): token Turnstile fora
+  do payload_json. Bindings inalterados (Turnstile PE + Entrepontos). Smokes OPTIONS
+  204/403 nos 3 tenants. Validação real: newsletter Kids com alias do utilizador
+  → D1 GENERATE_LEAD + SIGN_UP, Brevo lista 4, DOUBLE_OPT-IN=1.
+
+### W5 — GTM Web ws5 e sGTM ws35 completados (sem publicar) — 2026-11-03
+
+- Estado encontrado: live web v2 (só GA4) e sGTM v27; workspaces 5 (web) e 35 (server)
+  já tinham tags/LTs do Pixel Entrepontos de 2026-11-02, mas só para os produtos
+  newsletter (`ENTREPONTOS_MULHERES`/`ENTREPONTOS_KIDS`) e sem `begin_checkout`.
+- Web ws5: triggers `…-Web-Trigger-Business_Events` passam a casar `produto`
+  `^ENTREPONTOS_(WORKSHOP_)?(KIDS|MULHERES)$` e evento
+  `^(generate_lead|begin_checkout|cta_click)$` (o site manda `begin_checkout` com o
+  código do produto de workshop e `event_id`). Ligada a variável interna `Container ID`
+  (referenciada pelo template e desligada: causava erro de compilação, também no ws4).
+- sGTM ws35: linhas novas `entrepontos|ENTREPONTOS_WORKSHOP_{MULHERES,KIDS}` nas LTs de
+  pixel (1709529480821304 / 1102408865735469) e de test code (TEST57663 / TEST36097);
+  allowlist do bloqueador `entrepontos` acrescenta `begin_checkout`.
+- quick_preview: web ws5 e server ws35 compilam sem erro; 0 conflitos.
+- NÃO publicado. Falta: CAPI de teste (`events_received`), revisão independente,
+  autorização explícita para publicar, smoke em Eventos de teste, export em `trafego/gtm/`.
+- Ressalva: o anúncio impulsionado corre na conta `act_2025745358091176` (dedicada), não
+  na `act_604577275311600` do plano M1; confirmar a associação do Pixel a essa conta.
+
+### W5 publicado — 2026-11-03 (autorizado pelo utilizador)
+
+- CAPI de teste: `POST /{pixel}/events` com `test_event_code`, `events_received: 1` nos dois pixels.
+- Revisão independente (Claude, contexto limpo, só leitura; Codex sem quota até 4/11):
+  APROVADO, 0 MUST-FIX.
+- Publicado: GTM Web 267346531 versão 3 (antes 2) e sGTM 241313282 versão 28 (antes 27);
+  sem erro de compilação. Rollback: versão 2 (web) e 27 (sGTM).
+- Exports em `trafego/gtm/`: `entrepontos-web-v3.json`, `entrepontos-server-v28-sanitized.json`
+  (tokens mascarados).
+- SHOULD-FIX da revisão: evento `gtm.dom` novo no GA4 (ver Realtime); `cta_click` como evento
+  Meta não padrão (não otimizar para ele); confirmar advanced matching e eventos automáticos
+  desligados nos dois pixels; tag GA4 antiga pausada (não reativar).
+- Falta: smoke em Eventos de teste (inscrição real do utilizador) com browser e servidor
+  deduplicados.
